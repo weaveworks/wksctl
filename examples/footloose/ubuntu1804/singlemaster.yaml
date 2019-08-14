@@ -1,0 +1,19 @@
+cluster:
+  name: ubuntu-singlemaster
+  privateKey: cluster-key
+machines:
+- count: 2
+  spec:
+    image: quay.io/footloose/ubuntu18.04:0.4.0
+    name: node%d
+    portMappings:
+    - containerPort: 22
+      hostPort: 2222
+    - containerPort: 6443
+      hostPort: 6443
+    # The below is required for dockerd to run smoothly.
+    # See also: https://github.com/weaveworks/footloose#running-dockerd-in-container-machines
+    privileged: true
+    volumes:
+    - type: volume
+      destination: /var/lib/docker

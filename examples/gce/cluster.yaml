@@ -1,0 +1,31 @@
+apiVersion: cluster.k8s.io/v1alpha1
+kind: Cluster
+metadata:
+  name: example-gce
+spec:
+  clusterNetwork:
+    services:
+      cidrBlocks: [10.96.0.0/12]
+    pods:
+      cidrBlocks: [192.168.0.0/16]
+    serviceDomain: cluster.local
+  providerSpec:
+    value:
+      apiVersion: baremetalproviderspec/v1alpha1
+      kind: BareMetalClusterProviderSpec
+      sshKeyPath: ./ssh_key
+      user: wks
+      os:
+        files:
+        - source:
+            configmap: repo
+            key: kubernetes.repo
+          destination: /etc/yum.repos.d/kubernetes.repo
+        - source:
+            configmap: repo
+            key: docker-ce.repo
+          destination: /etc/yum.repos.d/docker-ce.repo
+      cri:
+        kind: docker
+        package: docker-ce
+        version: 18.09.7

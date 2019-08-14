@@ -1,0 +1,249 @@
+version: 2
+
+# https://circleci.com/blog/circleci-hacks-reuse-yaml-in-your-circleci-config-with-yaml/
+defaults: &defaults
+  docker:
+    - image: quay.io/wks/build:master-134af34f
+      environment:
+        GOPATH: /go/
+        SRCDIR: /src/github.com/weaveworks/wksctl
+  working_directory: /src/github.com/weaveworks/wksctl
+
+workflows:
+  version: 2
+  test-build-deploy:
+    jobs:
+      - build:
+          filters:
+            tags:
+              only: /.*/
+      - container-tests: {}
+      - unit-tests: {}
+      - integration-tests-container:
+          requires:
+            - build
+      - integration-tests-gcp-centos:
+          requires:
+            - build
+      - integration-tests-gcp-ubuntu:
+          requires:
+            - build
+
+jobs:
+  build:
+    <<: *defaults
+    steps:
+      - checkout
+      - setup_remote_docker
+      - run: make
+      - run: make lint
+      - deploy:
+          name: Push wksctl to S3
+          command: |
+            TAG=${CIRCLE_TAG}
+            if [ -z "$TAG" ]; then
+              TAG=$(./tools/image-tag)
+            fi
+      - persist_to_workspace:
+          root: .
+          paths:
+          - kubectl
+          - cmd/wksctl/wksctl
+          - cmd/mock-https-authz-server/server
+      # - run: docker login -u "$DOCKER_USER" -p "$DOCKER_PASSWORD" quay.io
+      # - run: make push
+
+  unit-tests:
+    docker:
+      - image: quay.io/wks/build:master-134af34f
+        environment:
+          GOPATH: /go
+          SRCDIR: /src/github.com/weaveworks/wksctl
+          KUBECTL_URL: https://dl.k8s.io/v1.10.5/kubernetes-client-linux-amd64.tar.gz
+          KUBECTL_CHECKSUM: da9d557989a0b9671a610f21642052febb8f70c3cf144c98a8a4f7ecab6bafe2
+    working_directory: /src/github.com/weaveworks/wksctl
+    steps:
+      - checkout
+      - run:
+          name: Install kubectl
+          command: |
+            curl -L $KUBECTL_URL -o kubectl.tar.gz
+            echo "$KUBECTL_CHECKSUM kubectl.tar.gz" | sha256sum -c
+            tar xvzf kubectl.tar.gz --strip-components=3
+            sudo mv kubectl /usr/local/bin
+
+      - run:
+          name: Run unit tests
+          command: |
+            go version
+            make unit-tests
+  container-tests:
+    machine:
+      docker_layer_caching: true
+    environment:
+      GOURL: https://dl.google.com/go/go1.12.7.linux-amd64.tar.gz
+      GOCHECKSUM: 66d83bfb5a9ede000e33c6579a91a29e6b101829ad41fffb5c5bb6c900e109d9
+      GOROOT: /home/circleci/goroot
+      GOPATH: /home/circleci/go
+      SRCDIR: /home/circleci/src/github.com/weaveworks/wksctl
+    working_directory: /home/circleci/src/github.com/weaveworks/wksctl
+    steps:
+      # - checkout
+      # - run:
+      #     name: Install go
+      #     command: |
+      #       (cd ~ && curl -L $GOURL -o go.tar.gz && echo "$GOCHECKSUM go.tar.gz" | sha256sum -c)
+      #       mkdir -p $GOROOT && tar xf ~/go.tar.gz -C $GOROOT --strip-components 1
+
+      # - run:
+      #     name: Run container tests
+      #     command: |
+      #       export PATH=$GOROOT/bin:$PATH
+      #       go version
+      #       make container-tests
+      - run: "true"
+  integration-tests-container:
+    machine:
+      docker_layer_caching: true
+    environment:
+      GOURL: https://dl.google.com/go/go1.12.7.linux-amd64.tar.gz
+      GOCHECKSUM: 66d83bfb5a9ede000e33c6579a91a29e6b101829ad41fffb5c5bb6c900e109d9
+      GOROOT: /home/circleci/goroot
+      GOPATH: /home/circleci/go
+      SRCDIR: /home/circleci/src/github.com/weaveworks/wksctl
+      HUGO_URL: https://github.com/gohugoio/hugo/releases/download/v0.55.6/hugo_0.55.6_Linux-64bit.tar.gz
+      HUGO_CHECKSUM: 39d3119cdb9ba5d6f1f1b43693e707937ce851791a2ea8d28003f49927c428f4
+      FOOTLOOSE_URL: https://github.com/weaveworks/footloose/releases/download/0.5.0/footloose-0.5.0-linux-x86_64
+      FOOTLOOSE_CHECKSUM: 0e4e49e81940c5876eafa26607154acd788d9979e9f4a4215f17532a3ea5429a
+      KUBECTL_URL: https://dl.k8s.io/v1.10.5/kubernetes-client-linux-amd64.tar.gz
+      KUBECTL_CHECKSUM: da9d557989a0b9671a610f21642052febb8f70c3cf144c98a8a4f7ecab6bafe2
+    working_directory: /home/circleci/src/github.com/weaveworks/wksctl
+    steps:
+      # - checkout
+      # - run:
+      #     name: Install go
+      #     command: |
+      #       (cd ~ && curl -L $GOURL -o go.tar.gz && echo "$GOCHECKSUM go.tar.gz" | sha256sum -c)
+      #       mkdir -p $GOROOT && tar xf ~/go.tar.gz -C $GOROOT --strip-components 1
+      # - run:
+      #     name: Install hugo
+      #     command: |
+      #       curl -L $HUGO_URL -o hugo.tar.gz
+      #       echo "$HUGO_CHECKSUM hugo.tar.gz" | sha256sum -c
+      #       tar xzf hugo.tar.gz hugo
+      #       chmod +x hugo
+      #       sudo mv hugo /usr/local/bin
+      # - run:
+      #     name: Install footloose
+      #     command: |
+      #       curl -L $FOOTLOOSE_URL -o footloose
+      #       echo "$FOOTLOOSE_CHECKSUM footloose" | sha256sum -c
+      #       chmod +x footloose
+      #       sudo mv footloose /usr/local/bin
+      # - run:
+      #     name: Install kubectl
+      #     command: |
+      #       curl -L $KUBECTL_URL -o kubectl.tar.gz
+      #       echo "$KUBECTL_CHECKSUM kubectl.tar.gz" | sha256sum -c
+      #       tar xvzf kubectl.tar.gz --strip-components=3
+      #       sudo mv kubectl /usr/local/bin
+      # - restore_cache:
+      #     keys:
+      #       - local-docker-registry-images
+      # - run:
+      #     name: Run integration container tests
+      #     command: |
+      #       export PATH=$GOROOT/bin:$PATH
+      #       go version
+      #       make integration-tests-container
+      # - save_cache:
+      #     key: local-docker-registry-images
+      #     paths:
+      #       # This ought to match the path mounted by the local Docker registry
+      #       # in the integration tests.
+      #       - "/tmp/registry"
+      - run: "true"
+  integration-tests-gcp-centos:
+    docker:
+      - image: quay.io/wks/build:master-134af34f
+        environment:
+          GOPATH: /go/
+          SRCDIR: /src/github.com/weaveworks/wksctl
+          KUBECTL_URL: https://dl.k8s.io/v1.10.5/kubernetes-client-linux-amd64.tar.gz
+          KUBECTL_CHECKSUM: da9d557989a0b9671a610f21642052febb8f70c3cf144c98a8a4f7ecab6bafe2
+          CREATE_IMAGE: 0
+          USE_IMAGE: 0
+          IMAGE_NAME: centos-cloud/centos-7
+    working_directory: /src/github.com/weaveworks/wksctl
+    steps:
+      # - checkout
+      # - setup_remote_docker
+
+      # - attach_workspace:
+      #     at: /tmp/workspace
+      # - run: /tmp/workspace/cmd/wksctl/wksctl version
+      # - run: env
+
+      # - run:
+      #     name: Install kubectl
+      #     command: |
+      #       curl -L $KUBECTL_URL -o kubectl.tar.gz
+      #       echo "$KUBECTL_CHECKSUM kubectl.tar.gz" | sha256sum -c
+      #       tar xvzf kubectl.tar.gz --strip-components=3
+      #       sudo mv kubectl /usr/local/bin
+
+      # - run:
+      #     name: Create VMs
+      #     command: $SRCDIR/test/integration/bin/up.sh
+
+      # - run:
+      #     name: Run integration tests
+      #     command: $SRCDIR/test/integration/bin/test.sh
+
+      # - run:
+      #     name: Destroy VMs
+      #     command: $SRCDIR/test/integration/bin/down.sh
+      #     when: always
+      - run: "true"
+  integration-tests-gcp-ubuntu:
+    docker:
+      - image: quay.io/wks/build:master-134af34f
+        environment:
+          GOPATH: /go/
+          SRCDIR: /src/github.com/weaveworks/wksctl
+          KUBECTL_URL: https://dl.k8s.io/v1.10.5/kubernetes-client-linux-amd64.tar.gz
+          KUBECTL_CHECKSUM: da9d557989a0b9671a610f21642052febb8f70c3cf144c98a8a4f7ecab6bafe2
+          CREATE_IMAGE: 0
+          USE_IMAGE: 0
+          IMAGE_NAME: ubuntu-os-cloud/ubuntu-1804-bionic-v20190530
+    working_directory: /src/github.com/weaveworks/wksctl
+    steps:
+      # - checkout
+      # - setup_remote_docker
+
+      # - attach_workspace:
+      #     at: /tmp/workspace
+      # - run: /tmp/workspace/cmd/wksctl/wksctl version
+      # - run: env
+
+      # - run:
+      #     name: Install kubectl
+      #     command: |
+      #       curl -L $KUBECTL_URL -o kubectl.tar.gz
+      #       echo "$KUBECTL_CHECKSUM kubectl.tar.gz" | sha256sum -c
+      #       tar xvzf kubectl.tar.gz --strip-components=3
+      #       sudo mv kubectl /usr/local/bin
+
+      # - run:
+      #     name: Create VMs
+      #     command: $SRCDIR/test/integration/bin/up.sh
+
+      # - run:
+      #     name: Run integration tests
+      #     command: $SRCDIR/test/integration/bin/test.sh
+
+      # - run:
+      #     name: Destroy VMs
+      #     command: $SRCDIR/test/integration/bin/down.sh
+      #     when: always
+      - run: "true"

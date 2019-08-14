@@ -1,0 +1,39 @@
+{
+  "category": "gitops",
+  "name": "Weaveworks Flux",
+  "description": "The GitOps Kubernetes operator",
+  "entryPoint": "flux.jsonnet",
+  "params": [
+    {
+      "name": "gitURL",
+      "defaultValue": "git@github.com/owner/repo",
+      "required": true,
+      "description": "URL of your Git repository"
+    },
+    {
+      "name": "gitBranch",
+      "defaultValue": "master",
+      "description": "Branch for Flux to use"
+    },
+    {
+      "name": "gitPath",
+      "defaultValue": ".",
+      "description": "Relative path to directory for Flux to search"
+    },
+    {
+      "name": "namespace",
+      "defaultValue": "flux",
+      "description": "Override the namespace for Flux's Kubernetes objects"
+    },
+    {
+      "name": "imageRepository",
+      "defaultValue": "",
+      "description": "Override the container image repository"
+    },
+    {
+      "name": "gitDeployKey",
+      "defaultValue": "",
+      "description": "base64 encoded deployment key"
+    }
+  ]
+}

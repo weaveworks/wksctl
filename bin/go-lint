@@ -1,0 +1,17 @@
+#!/bin/bash
+
+set -e
+
+if [ ! $(command -v golangci-lint) ]
+then
+    go get github.com/golangci/golangci-lint/cmd/golangci-lint@v1.17.1
+fi
+
+
+golangci-lint run --tests --disable-all --deadline=600s \
+    --enable=misspell \
+    --enable=ineffassign \
+    --enable=gofmt \
+    --skip-dirs=pkg/guide \
+    --skip-dirs=pkg/addons/assets \
+    ./...

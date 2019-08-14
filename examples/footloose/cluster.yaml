@@ -1,0 +1,43 @@
+apiVersion: cluster.k8s.io/v1alpha1
+kind: Cluster
+metadata:
+  name: example
+spec:
+  clusterNetwork:
+    services:
+      cidrBlocks: [10.96.0.0/12]
+    pods:
+      cidrBlocks: [192.168.0.0/16]
+    serviceDomain: cluster.local
+  providerSpec:
+    value:
+      apiVersion: baremetalproviderspec/v1alpha1
+      kind: BareMetalClusterProviderSpec
+      sshKeyPath: cluster-key
+      user: root
+      os:
+        files:
+        - source:
+            configmap: repo
+            key: kubernetes.repo
+          destination: /etc/yum.repos.d/kubernetes.repo
+        - source:
+            configmap: repo
+            key: docker-ce.repo
+          destination: /etc/yum.repos.d/docker-ce.repo
+        - source:
+            configmap: docker
+            key: daemon.json
+          destination: /etc/docker/daemon.json
+      cri:
+        kind: docker
+        package: docker-ce
+        version: 18.09.7
+      addons:
+      - name: ingress-nginx
+        deps: ["https://raw.githubusercontent.com/kubernetes/ingress-nginx/1f4469fc217cddfde5abef7fbeeac9eeda520434/deploy/mandatory.yaml"]
+        params:
+          type: "NodePort"
+          httpPort: "30080"
+          httpsPort: "30443"
+
