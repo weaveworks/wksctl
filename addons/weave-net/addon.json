@@ -1,0 +1,7 @@
+{
+  "kind": "yaml",
+  "category": "CNI",
+  "name": "Weave Net",
+  "description": "Weaveworks CNI plugin",
+  "entryPoint": "weave-net.yaml"
+}
