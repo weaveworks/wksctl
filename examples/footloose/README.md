@@ -103,44 +103,6 @@ $ footloose delete -c ${DISTRO}/${BACKEND}/singlemaster.yaml
 $ footloose delete -c ${DISTRO}/${BACKEND}/multimaster.yaml
 ```
 
-## Accessing UI applications
-
-The default configuration for footloose exposes two ports for ingress services - http at 30080 and https at 30443.  To expose a WebUI on these ports, update your cluster yaml to include the ingress-nginx addon.  For example:
-
-```yaml
-      addons:
-      - name: ingress-nginx
-        deps: ["https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/mandatory.yaml"]
-        params:
-          type: "NodePort"
-          httpPort: "30080"
-          httpsPort: "30443"
-```
-
-If you want to expose difference ports, update the footloose configuration file and the addon.
-
-Next, you will need to define an ingress object to front your web app.  Here is an example for the yipee.io app:
-
-```yaml
-apiVersion: extensions/v1beta1
-kind: Ingress
-metadata:
-  name: yipee-ingress
-  namespace: yipee
-  annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
-spec:
-  rules:
-  - http:
-      paths:
-      - path: /
-        backend:
-          serviceName: yipee-ui
-          servicePort: 80
-```
-
-Once the cluster is up and your application is deployed you will be able to access the application at https://localhost:30443
-
 ## Upload development controller images
 
 When developing `wksctl` and using a binary compiled from a branch, `wksctl`

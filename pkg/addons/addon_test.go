@@ -55,10 +55,6 @@ func TestBuildAllAddons(t *testing.T) {
 
 func TestListImagesAllAddons(t *testing.T) {
 	for _, addon := range List() {
-		if addon.ShortName == "ingress-nginx" {
-			// There aren't images in the node port service
-			continue
-		}
 		t.Run(addon.ShortName, func(t *testing.T) {
 			images, err := addon.ListImages()
 			assert.NoError(t, err)
