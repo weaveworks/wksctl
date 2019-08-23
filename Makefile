@@ -6,7 +6,7 @@
 IMAGE_PREFIX := quay.io/wksctl/
 IMAGE_TAG := $(shell tools/image-tag)
 GIT_REVISION := $(shell git rev-parse HEAD)
-VERSION=$(shell git describe)
+VERSION=$(shell git describe --always)
 UPTODATE := .uptodate
 
 # Every directory with a Dockerfile in it builds an image called
