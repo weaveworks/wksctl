@@ -49,7 +49,7 @@ func init() {
 	applyCmd.PersistentFlags().StringVar(&applyOptions.controllerImage, "controller-image", "quay.io/wksctl/controller:"+imageTag, "Controller image override")
 	applyCmd.PersistentFlags().StringVar(&applyOptions.gitURL, "git-url", "", "Git repo containing your cluster and machine information")
 	applyCmd.PersistentFlags().StringVar(&applyOptions.gitBranch, "git-branch", "master", "Git branch WKS should use to sync with your cluster")
-	applyCmd.PersistentFlags().StringVar(&applyOptions.gitPath, "git-path", "", "Relative path to files in Git")
+	applyCmd.PersistentFlags().StringVar(&applyOptions.gitPath, "git-path", ".", "Relative path to files in Git")
 	applyCmd.PersistentFlags().StringVar(&applyOptions.gitDeployKeyPath, "git-deploy-key", "", "Path to the Git deploy key")
 	applyCmd.PersistentFlags().StringVar(&applyOptions.sealedSecretKeyPath, "sealed-secret-key", "", "Path to a key used to decrypt sealed secrets")
 	applyCmd.PersistentFlags().StringVar(&applyOptions.sealedSecretCertPath, "sealed-secret-cert", "", "Path to a certificate used to encrypt sealed secrets")
