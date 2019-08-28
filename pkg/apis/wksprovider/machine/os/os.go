@@ -789,7 +789,11 @@ func (o OS) configureFlux(b *plan.Builder, params SeedNodeParams) error {
 	if gitData.GitURL == "" {
 		return nil
 	}
-	gitParams := map[string]string{"gitURL": gitData.GitURL, "gitBranch": gitData.GitBranch, "gitPath": gitData.GitPath}
+	gitParams := map[string]string{
+		"gitURL":    gitData.GitURL,
+		"gitBranch": gitData.GitBranch,
+		"gitPath":   gitData.GitPath,
+		"namespace": params.Namespace}
 	err := processDeployKey(gitParams, gitData.GitDeployKeyPath)
 	if err != nil {
 		return errors.Wrap(err, "failed to process the git deploy key")
