@@ -164,13 +164,6 @@ spec:
         kind: docker
         package: docker-ce
         version: 18.09.7
-      addons:
-      - name: ingress-nginx
-        deps: ["https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/mandatory.yaml"]
-        params:
-          type: "NodePort"
-          httpPort: "30080"
-          httpsPort: "30443"
 `
 	machinesyaml = `apiVersion: v1
 kind: List
