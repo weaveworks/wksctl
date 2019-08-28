@@ -1,0 +1,14 @@
+cluster:
+  name: centos-multimaster
+  privateKey: cluster-key
+machines:
+- count: 4
+  spec:
+    image: weaveworks/ignite-centos:latest
+    backend: ignite
+    name: node%d
+    portMappings:
+    - containerPort: 22
+      hostPort: 2222
+    - containerPort: 6443
+      hostPort: 6443
