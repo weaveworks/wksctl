@@ -108,6 +108,7 @@ Combining wksctl + footloose + ignite
 1. Observe the pods starting and running in your cluster
 
 ```console
+_YOUR_ORG_=foo
 mkdir -p $HOME/src/firekube-sample
 git init $HOME/src/firekube-sample
 cp cluster.yaml machines.yaml docker-config.yaml repo-config.yaml $HOME/src/firekube-sample
@@ -116,15 +117,25 @@ ssh-keygen -N "" -q -f $HOME/src/firekube-sample/firekube-sample-deploykey
 cd $HOME/src/firekube-sample
 git add -A
 git commit -a -m "Firekube"
-git remote add origin git@github.com:_YOUR_ORG_/firekube-sample.git
+git remote add origin git@github.com:$_YOUR_ORG_/firekube-sample.git
 git push -u origin master
+# Add $HOME/src/firekube-sample/firekube-sample-deploykey.pub to the deploy keys for firekube-sample, or if you have hub installed run:
+hub api --method POST /repos/$_YOUR_ORG_/firekube-sample/keys --field title=thekey --field key="$(cat $HOME/src/firekube-sample/firekube-sample-deploykey.pub)" --field readOnly=true
 cd - 
 footloose create -c centos7/ignite/singlemaster.yaml
-wksctl apply -v --git-url git@github.com:_YOUR_ORG_/firekube-sample.git --git-deploy-key $HOME/src/firekube-sample/firekube-sample-deploykey
+wksctl apply -v --git-url git@github.com:$_YOUR_ORG_/firekube-sample.git --git-deploy-key $HOME/src/firekube-sample/firekube-sample-deploykey
 wksctl kubeconfig
 export KUBECONFIG=$HOME/.wks/weavek8sops/example/kubeconfig
-get pods --all-namespaces --watch
+kubectl get pods --all-namespaces
+curl https://raw.githubusercontent.com/kubernetes/dashboard/v2.0.0-beta1/aio/deploy/recommended.yaml > $HOME/src/firekube-sample/kubernetes-dashboard.yaml
+cd -
+git add kubernetes-dashboard.yaml
+git commit -m "adds k8s dash"
+git push
+kubectl proxy
+open http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/
 ```
+
 ## Cleanup
 
 ```console
