@@ -96,6 +96,35 @@ $ wksctl apply \
     [...]
 ```
 
+## Firekube
+Combining wksctl + footloose + ignite
+
+1. Create a GitHub repo to hold your cluster confguration.
+1. Copy `cluster.yaml machines.yaml docker-config.yaml repo-config.yaml` files into your repo
+1. Add custom workloads e.g., Kubernetes Dashboard
+1. Commit and push your changes to GitHub
+1. Generate a deploy key, add it to GitHub with write permissions
+1. Execute `wksctl apply --git-url your-repo --git-deploy-key keyfile`
+1. Observe the pods starting and running in your cluster
+
+```console
+mkdir -p $HOME/src/firekube-sample
+git init $HOME/src/firekube-sample
+cp cluster.yaml machines.yaml docker-config.yaml repo-config.yaml $HOME/src/firekube-sample
+echo "firekube-sample-deploykey*" > $HOME/src/firekube-sample/.gitignore
+ssh-keygen -N "" -q -f $HOME/src/firekube-sample/firekube-sample-deploykey
+cd $HOME/src/firekube-sample
+git add -A
+git commit -a -m "Firekube"
+git remote add origin git@github.com:_YOUR_ORG_/firekube-sample.git
+git push -u origin master
+cd - 
+footloose create -c centos7/ignite/singlemaster.yaml
+wksctl apply -v --git-url git@github.com:_YOUR_ORG_/firekube-sample.git --git-deploy-key $HOME/src/firekube-sample/firekube-sample-deploykey
+wksctl kubeconfig
+export KUBECONFIG=$HOME/.wks/weavek8sops/example/kubeconfig
+get pods --all-namespaces --watch
+```
 ## Cleanup
 
 ```console
