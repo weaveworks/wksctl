@@ -28,6 +28,15 @@ workflows:
       - integration-tests-gcp-ubuntu:
           requires:
             - build
+      - release:
+          requires:
+            - build
+            - unit-tests
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /.*/
 
 jobs:
   build:
@@ -37,13 +46,6 @@ jobs:
       - setup_remote_docker
       - run: make
       - run: make lint
-      - deploy:
-          name: Push wksctl to S3
-          command: |
-            TAG=${CIRCLE_TAG}
-            if [ -z "$TAG" ]; then
-              TAG=$(./tools/image-tag)
-            fi
       - persist_to_workspace:
           root: .
           paths:
@@ -77,6 +79,13 @@ jobs:
           command: |
             go version
             make unit-tests
+
+  release:
+    <<: *defaults
+    steps:
+      - checkout
+      - run: curl -sL https://git.io/goreleaser | bash
+
   container-tests:
     machine:
       docker_layer_caching: true
