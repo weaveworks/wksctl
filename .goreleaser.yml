@@ -1,0 +1,40 @@
+before:
+  hooks:
+    - go mod download
+builds:
+- id: wksctl
+  main: ./cmd/wksctl
+  binary: wksctl
+  ldflags:
+    - -X main.version={{.Version}}
+    - -X main.imageTag={{.Version}}
+  env:
+    - CGO_ENABLED=0
+    - GO111MODULE=on
+  goarch:
+    - amd64
+  hooks:
+    pre: make generated
+archive:
+  name_template: "wksctl-{{ .Version }}-{{ .Os }}-{{ .Arch }}"
+  replacements:
+    386: i386
+    amd64: x86_64
+  files:
+    - examples/**/*
+changelog:
+  sort: asc
+  filters:
+    exclude:
+    - '^docs:'
+    - '^test:'
+#brew:
+#  github:
+#    owner: weaveworks
+#    name: homebrew-tap
+#  commit_author:
+#    name: weaveworksbot
+#    email: team+gitbot@weave.works
+#  folder: Formula
+#  homepage: https://github.com/weaveworks/wksctl
+#  description: Open Source Weaveworks Kubernetes
