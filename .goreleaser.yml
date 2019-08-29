@@ -7,7 +7,7 @@ builds:
   binary: wksctl
   ldflags:
     - -X main.version={{.Version}}
-    - -X main.imageTag={{.Version}}
+    - -X main.imageTag={{.Env.IMAGE_TAG}}
   env:
     - CGO_ENABLED=0
     - GO111MODULE=on

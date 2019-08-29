@@ -84,7 +84,7 @@ jobs:
     <<: *defaults
     steps:
       - checkout
-      - run: curl -sL https://git.io/goreleaser | bash
+      - run: curl -sL https://git.io/goreleaser | IMAGE_TAG=`tools/image-tag` bash
 
   container-tests:
     machine:
