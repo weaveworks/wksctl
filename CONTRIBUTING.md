@@ -36,3 +36,7 @@ We only require a single maintainer to approve your PR prior to merging it.  Whi
 
 #### Merging
 One of the maintainers will merge your PR after it is approved.
+
+## Releasing a new version
+Once the release has been created and the binaries are available, add the new version of wksctl to the checkpoint system at https://checkpoint-api.weave.works/admin
+
