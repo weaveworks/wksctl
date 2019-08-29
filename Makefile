@@ -103,7 +103,7 @@ cmd/mock-https-authz-server/server: cmd/mock-https-authz-server/*.go
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-X main.version=$(VERSION)" -o $@ cmd/mock-https-authz-server/*.go
 
 install: all
-	cp cmd/wksctl/wksctl /$$HOME/go/bin
+	cp cmd/wksctl/wksctl $(shell go env GOPATH)/bin
 
 lint:
 	@bin/go-lint
