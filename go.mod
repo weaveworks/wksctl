@@ -25,6 +25,7 @@ require (
 	github.com/google/go-github/v26 v26.1.3
 	github.com/google/go-jsonnet v0.11.2
 	github.com/gregjones/httpcache v0.0.0-20181110185634-c63ab54fda8f // indirect
+	github.com/hashicorp/go-cleanhttp v0.5.1 // indirect
 	github.com/hashicorp/go-uuid v0.0.0-20180228145832-27454136f036 // indirect
 	github.com/hashicorp/golang-lru v0.5.3 // indirect
 	github.com/howeyc/gopass v0.0.0-20170109162249-bf9dde6d0d2c
@@ -52,6 +53,7 @@ require (
 	github.com/thanhpk/randstr v0.0.0-20190104161604-ac5b2d62bffb
 	github.com/weaveworks/common v0.0.0-20180717091316-5d6891c6875f
 	github.com/weaveworks/footloose v0.0.0-20190319145146-5253a0748898
+	github.com/weaveworks/go-checkpoint v0.0.0-20170503165305-ebbb8b0518ab
 	github.com/weaveworks/launcher v0.0.0-20180824102238-59a4fcc32c9c
 	github.com/xanzy/ssh-agent v0.2.1 // indirect
 	github.com/yashtewari/glob-intersection v0.0.0-20180916065949-5c77d914dd0b // indirect
