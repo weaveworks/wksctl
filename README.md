@@ -13,7 +13,7 @@ make install
 
 ## Quick start
 
-The [examples](https://github.com/weaveworks/wksctl/tree/master/examples) folder contains guides to get you up and running with [Footloose](https://github.com/weaveworks/footloose), [Vagrant](https://www.vagrantup.com) and others!
+The [examples](examples) folder contains guides to get you up and running with [Footloose](https://github.com/weaveworks/footloose), [Vagrant](https://www.vagrantup.com) and others!
 
 ## Modes of use
 
