@@ -63,6 +63,7 @@ The following are new commandline arguments to `wksctl apply` which will result 
 - **git-url** The git repo url containing the cluster and machine yaml
 - **git-branch**  The branch within the repo to pull the cluster info from
 - **git-deploy-key** The deploy key configured for the GitHub repo
+- **git-path** Relative path to files in Git (optional)
 
 The git command line arguments will be passed instead of --cluster and --machines.
 
@@ -77,3 +78,5 @@ Using the url, branch, and deploy key, we will clone the repo - if we can't clon
 These `--git` arguments are then used to set up and configure [flux](https://www.weave.works/oss/flux/) to automate cluster management.
 
 We will rely on the user installing [fluxctl](https://github.com/weaveworks/flux/blob/master/site/fluxctl.md) to interact with flux directly instead of trying to replicate the functionality within `wksctl`
+
+To see a more detailed example combining Wksctl, [GitOps](https://www.weave.works/technologies/gitops/), [Ignite](https://ignite.readthedocs.io/en/stable/) also know as FireKube see [Firekube](examples/footloose/README.md#firekube-gitops)
