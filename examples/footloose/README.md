@@ -96,11 +96,80 @@ $ wksctl apply \
     [...]
 ```
 
+## Run a Kubernetes cluster with Firekube
+Combining wksctl + footloose + ignite
+
+### Prerequisites
+
+- `ignite` `0.5.2` (requires [Ignite](https://ignite.readthedocs.org) to be installed, and KVM functioning)
+- `footloose` `>=0.6.0` (Please carefully ensure this by running `footloose version`. Older versions silently fail to create Ignite clusters.)
+- _Optional: `hub`._ `hub` is a CLI that interacts with GitHub.
+
+### Quick Start Steps
+
+1. Choose an owner for your new GitHub repo that we'll create here. This can be your username or your GitHub organization.
+   ```bash
+   GIT_OWNER=my-github-username
+   ```
+1. Create a GitHub repo to hold your cluster confguration.
+    ```bash
+    git init ./firekube-sample
+    hub -C ./firekube-sample create $GIT_OWNER/firekube-sample
+    ```
+1. Generate a deploy key and authorize its holder to read the GitHub repository created above.
+   ```bash
+   ssh-keygen -N "" -q -f firekube-sample-deploykey
+   hub api --method POST /repos/$GIT_OWNER/firekube-sample/keys --field title=firekube-key --field key="$(cat firekube-sample-deploykey.pub)" --field readOnly=false
+   ```
+1. Clone this repository (`weaveworks/wksctl`).
+   ```bash
+   git clone git@github.com:weaveworks/wksctl.git ./wksctl
+   ```
+1. Copy `cluster.yaml machines.yaml docker-config.yaml repo-config.yaml` files from `wksctl/examples/footloose` to `firekube-sample`. Commit and push.
+   ```bash
+   cp -v wksctl/examples/footloose/{cluster,machines,docker-config,repo-config}.yaml firekube-sample/
+   git -C ./firekube-sample add {cluster,machines,docker-config,repo-config}.yaml
+   git -C ./firekube-sample commit -a -m 'Add an example cluster definition'
+   git -C ./firekube-sample push origin master
+   ```
+1. _Optional: Commit and push Kubernetes manifests with other workloads (e.g. a _Deployment_ `.yaml` file) that you'd like to be started in your cluster. You can do this later at any time._
+   ```bash
+   # Optional
+   curl \
+      https://raw.githubusercontent.com/kubernetes/dashboard/v2.0.0-beta1/aio/deploy/recommended.yaml \
+      > ./firekube-sample/kubernetes-dashboard.yaml
+   git -C ./firekube-sample add kubernetes-dashboard.yaml
+   git -C ./firekube-sample commit -a -m 'Add Kubernetes Dashboard'
+   git -C ./firekube-sample push origin master
+   ```
+1. Create a set of `ignite` VMs using `footloose`.
+   ```bash
+   footloose -c ./wksctl/examples/footloose/centos7/ignite/singlemaster.yaml create
+   ```
+1. Use `wksctl` to install Kubernetes with GitOps.
+   ```bash
+   wksctl apply \
+      -v \
+      --git-url git@github.com:$GIT_OWNER/firekube-sample.git \
+      --git-deploy-key ./firekube-sample-deploykey
+   ```
+1. Observe the pods starting and running in your cluster
+   ```bash
+   wksctl kubeconfig \
+      --git-url git@github.com:$GIT_OWNER/firekube-sample.git \
+      --git-deploy-key ./firekube-sample-deploykey
+   export KUBECONFIG=$HOME/.wks/weavek8sops/example/kubeconfig
+   kubectl get pods --all-namespaces
+
+   # If you have installed the dashboard in one of the steps above:
+   kubectl proxy
+   open http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/
+   ```
+
 ## Cleanup
 
 ```console
-$ footloose delete -c ${DISTRO}/${BACKEND}/singlemaster.yaml
-$ footloose delete -c ${DISTRO}/${BACKEND}/multimaster.yaml
+footloose -c ./wksctl/examples/footloose/centos7/ignite/singlemaster.yaml delete
 ```
 
 ## Upload development controller images
