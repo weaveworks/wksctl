@@ -128,7 +128,7 @@ Combining wksctl + footloose + ignite
 1. Copy `cluster.yaml machines.yaml docker-config.yaml repo-config.yaml` files from `wksctl/examples/footloose` to `firekube-sample`. Commit and push.
    ```bash
    cp -v wksctl/examples/footloose/{cluster,machines,docker-config,repo-config}.yaml firekube-sample/
-   git -C ./firekube-sample add *.yaml
+   git -C ./firekube-sample add {cluster,machines,docker-config,repo-config}.yaml 
    git -C ./firekube-sample commit -a -m 'Add an example cluster definition'
    git -C ./firekube-sample push origin master
    ```
@@ -169,8 +169,7 @@ Combining wksctl + footloose + ignite
 ## Cleanup
 
 ```console
-$ footloose delete -c ${DISTRO}/${BACKEND}/singlemaster.yaml
-$ footloose delete -c ${DISTRO}/${BACKEND}/multimaster.yaml
+footloose -c ./wksctl/examples/footloose/centos7/ignite/singlemaster.yaml delete
 ```
 
 ## Upload development controller images
