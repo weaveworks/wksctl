@@ -843,7 +843,7 @@ func updateControllerImage(manifest []byte, controllerImageOverride string) ([]b
 		return nil, errors.Wrap(err, "failed to unmarshal WKS controller's manifest")
 	}
 	if d.Kind != deployment {
-		return nil, fmt.Errorf("invalid kind for WKS controller's manifest: expected \"%s\" but got \"%s\"", deployment, d.Kind)
+		return nil, fmt.Errorf("invalid kind for WKS controller's manifest: expected %q but got %q", deployment, d.Kind)
 	}
 	var updatedController bool
 	for i := 0; i < len(d.Spec.Template.Spec.Containers); i++ {
