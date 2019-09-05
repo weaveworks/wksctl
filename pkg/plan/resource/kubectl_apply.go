@@ -33,6 +33,14 @@ type KubectlApply struct {
 	ManifestURL fmt.Stringer `structs:"manifestURL"`
 	// WaitCondition, if not empty, makes Apply() perform "kubectl wait --for=<value>" on the resource.
 	Namespace fmt.Stringer `structs:"namespace"`
+	// OpaqueManifest is an alternative to Manifest for a resource to
+	// apply whose content should not be exposed in a serialized plan.
+	// If this is provided, then there is no need to provide
+	// ManifestPath, but Filename should be provided in order to name
+	// the remote manifest file.
+	OpaqueManifest []byte `structs:"-" plan:"hide"`
+	// ManifestPath is the path to the manifest to apply.
+	// If this is provided, then there is no need to provide Manifest.
 	// For example, waiting for "condition=established" is required after creating a CRD - see issue #530.
 	WaitCondition string `structs:"afterApplyWaitsFor"`
 }
@@ -54,6 +62,10 @@ func (ka *KubectlApply) State() plan.State {
 func (ka *KubectlApply) content() ([]byte, error) {
 	if ka.Manifest != nil {
 		return ka.Manifest, nil
+	}
+
+	if ka.OpaqueManifest != nil {
+		return ka.OpaqueManifest, nil
 	}
 
 	if url := str(ka.ManifestURL); url != "" {

@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"text/template"
 	"time"
 
 	ssv1alpha1 "github.com/bitnami-labs/sealed-secrets/pkg/apis/sealed-secrets/v1alpha1"
@@ -56,7 +57,15 @@ const (
 )
 
 var (
-	pemKeys = []string{"certificate-authority", "client-certificate", "client-key"}
+	pemKeys            = []string{"certificate-authority", "client-certificate", "client-key"}
+	fluxSecretTemplate = `apiVersion: v1
+data:
+  identity: {{.SecretValue}}
+kind: Secret
+metadata:
+  name: flux-git-deploy
+  namespace: {{.Namespace}}
+type: Opaque`
 )
 
 // OS represents an operating system and exposes the operations required to
@@ -789,26 +798,39 @@ func (o OS) configureFlux(b *plan.Builder, params SeedNodeParams) error {
 	if gitData.GitURL == "" {
 		return nil
 	}
-	gitParams := map[string]string{
-		"gitURL":    gitData.GitURL,
-		"gitBranch": gitData.GitBranch,
-		"gitPath":   gitData.GitPath,
-		"namespace": params.Namespace}
+	manifest, err := createFluxSecretFromGitData(gitData, params)
+	if err != nil {
+		return errors.Wrap(err, "failed to generate git deploy secret manifest for flux")
+	}
+	resName := "flux-git-deploy-secret"
+	fluxSecretRsc := &resource.KubectlApply{OpaqueManifest: manifest, Filename: object.String(resName + ".yaml")}
+	b.AddResource("install:flux:"+resName, fluxSecretRsc, plan.DependOn("kubectl:apply:cluster", "kubectl:apply:machines"))
+	return nil
+}
+
+func replaceGitFields(templateBody string, gitParams map[string]string) ([]byte, error) {
+	t, err := template.New("flux-secret").Parse(templateBody)
+	if err != nil {
+		return nil, err
+	}
+	var populated bytes.Buffer
+	err = t.Execute(&populated, struct {
+		Namespace   string
+		SecretValue string
+	}{gitParams["namespace"], gitParams["gitDeployKey"]})
+	if err != nil {
+		return nil, err
+	}
+	return populated.Bytes(), nil
+}
+
+func createFluxSecretFromGitData(gitData GitParams, params SeedNodeParams) ([]byte, error) {
+	gitParams := map[string]string{"namespace": params.Namespace}
 	err := processDeployKey(gitParams, gitData.GitDeployKeyPath)
 	if err != nil {
-		return errors.Wrap(err, "failed to process the git deploy key")
+		return nil, errors.Wrap(err, "failed to process the git deploy key")
 	}
-	fluxAddon := baremetalspecv1.Addon{Name: "flux", Params: gitParams}
-	manifests, err := buildAddon(fluxAddon, params.ImageRepository, params.ClusterManifestPath, params.Namespace)
-	if err != nil {
-		return errors.Wrap(err, "failed to generate manifests for flux")
-	}
-	for i, m := range manifests {
-		resName := fmt.Sprintf("%s-%02d", "flux", i)
-		fluxRsc := &resource.KubectlApply{Manifest: m, Filename: object.String(resName + ".yaml")}
-		b.AddResource("install:flux:"+resName, fluxRsc, plan.DependOn("kubectl:apply:cluster", "kubectl:apply:machines"))
-	}
-	return nil
+	return replaceGitFields(fluxSecretTemplate, gitParams)
 }
 
 func wksControllerManifest(controllerImageOverride, namespace string) ([]byte, error) {
