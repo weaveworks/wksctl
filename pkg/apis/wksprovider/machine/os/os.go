@@ -313,7 +313,7 @@ func (o OS) CreateSeedNodeSetupPlan(params SeedNodeParams) (*plan.Plan, error) {
 	mManRsc := &resource.KubectlApply{Manifest: []byte(machinesManifest), Filename: object.String("machinesmanifest"), Namespace: object.String(params.Namespace)}
 	b.AddResource("kubectl:apply:machines", mManRsc, plan.DependOn(kubectlApplyDeps[0], kubectlApplyDeps[1:]...))
 
-	wksCtlrManifest, err := wksControllerManifest(params.ControllerImageOverride, params.Namespace)
+	wksCtlrManifest, err := wksControllerManifest(params.ControllerImageOverride, params.Namespace, params.ConfigDirectory)
 	if err != nil {
 		return nil, err
 	}
@@ -798,14 +798,61 @@ func (o OS) configureFlux(b *plan.Builder, params SeedNodeParams) error {
 	if gitData.GitURL == "" {
 		return nil
 	}
+	fluxManifestPath, err := findFluxManifest(params.ConfigDirectory)
+	if err != nil {
+		gitParams := map[string]string{"gitURL": gitData.GitURL, "gitBranch": gitData.GitBranch, "gitPath": gitData.GitPath}
+		err := processDeployKey(gitParams, gitData.GitDeployKeyPath)
+		if err != nil {
+			return errors.Wrap(err, "failed to process the git deploy key")
+		}
+		fluxAddon := baremetalspecv1.Addon{Name: "flux", Params: gitParams}
+		manifests, err := buildAddon(fluxAddon, params.ImageRepository, params.ClusterManifestPath, params.Namespace)
+		if err != nil {
+			return errors.Wrap(err, "failed to generate manifests for flux")
+		}
+		for i, m := range manifests {
+			resName := fmt.Sprintf("%s-%02d", "flux", i)
+			fluxRsc := &resource.KubectlApply{Manifest: m, Filename: object.String(resName + ".yaml")}
+			b.AddResource("install:flux:"+resName, fluxRsc, plan.DependOn("kubectl:apply:cluster", "kubectl:apply:machines"))
+		}
+		return nil
+	}
 	manifest, err := createFluxSecretFromGitData(gitData, params)
 	if err != nil {
 		return errors.Wrap(err, "failed to generate git deploy secret manifest for flux")
 	}
-	resName := "flux-git-deploy-secret"
-	fluxSecretRsc := &resource.KubectlApply{OpaqueManifest: manifest, Filename: object.String(resName + ".yaml")}
-	b.AddResource("install:flux:"+resName, fluxSecretRsc, plan.DependOn("kubectl:apply:cluster", "kubectl:apply:machines"))
+	secretResName := "flux-git-deploy-secret"
+	fluxSecretRsc := &resource.KubectlApply{OpaqueManifest: manifest, Filename: object.String(secretResName + ".yaml")}
+	b.AddResource("install:flux:"+secretResName, fluxSecretRsc, plan.DependOn("kubectl:apply:cluster", "kubectl:apply:machines"))
+	fluxRsc := &resource.KubectlApply{ManifestPath: object.String(fluxManifestPath)}
+	b.AddResource("install:flux:main", fluxRsc, plan.DependOn("install:flux:flux-git-deploy-secret"))
 	return nil
+}
+
+func findManifest(dir, name string) (string, error) {
+	result := ""
+	err := fmt.Errorf("No %q manifest found in directory: %q", name, dir)
+	filepath.Walk(dir,
+		func(path string, info os.FileInfo, _ error) error {
+			if info.Name() == ".git" {
+				return filepath.SkipDir
+			}
+			if info.Name() == name {
+				result = path
+				err = nil
+				return filepath.SkipDir
+			}
+			return nil
+		})
+	return result, err
+}
+
+func findFluxManifest(dir string) (string, error) {
+	return findManifest(dir, "flux.yaml")
+}
+
+func findControllerManifest(dir string) (string, error) {
+	return findManifest(dir, "wks-controller.yaml")
 }
 
 func replaceGitFields(templateBody string, gitParams map[string]string) ([]byte, error) {
@@ -833,12 +880,18 @@ func createFluxSecretFromGitData(gitData GitParams, params SeedNodeParams) ([]by
 	return replaceGitFields(fluxSecretTemplate, gitParams)
 }
 
-func wksControllerManifest(controllerImageOverride, namespace string) ([]byte, error) {
-	file, err := manifests.Manifests.Open("04_controller.yaml")
+func wksControllerManifest(controllerImageOverride, namespace, configDir string) ([]byte, error) {
+	var manifestbytes []byte
+	filepath, err := findControllerManifest(configDir)
 	if err != nil {
-		return nil, err
+		file, openErr := manifests.Manifests.Open("04_controller.yaml")
+		if openErr != nil {
+			return nil, openErr
+		}
+		manifestbytes, err = ioutil.ReadAll(file)
+	} else {
+		manifestbytes, err = ioutil.ReadFile(filepath)
 	}
-	manifestbytes, err := ioutil.ReadAll(file)
 	if err != nil {
 		return nil, err
 	}
