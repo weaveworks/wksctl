@@ -4,7 +4,7 @@ The `wksctl` command allows simple creation of a Kubernetes cluster given a **se
 
 ## Install
 
-`wksctl` binaries can be downloaded from the [release page][gh-release]:
+`wksctl` binaries can be downloaded from the [release page](https://github.com/weaveworks/wksctl/releases):
 
 ### Linux
 
