@@ -103,7 +103,10 @@ func (r *FootlooseRunner) makeCluster() (*cluster.Cluster, error) {
 		},
 	}
 
-	c := cluster.New(footlooseCfg)
+	c, err := cluster.New(footlooseCfg)
+	if err != nil {
+		return nil, fmt.Errorf("footloose cluster New(): %v", err)
+	}
 	if err := c.Create(); err != nil {
 		return nil, fmt.Errorf("footloose cluster Create(): %v", err)
 	}

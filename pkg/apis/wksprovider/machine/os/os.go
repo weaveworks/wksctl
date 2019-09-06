@@ -833,7 +833,10 @@ func findManifest(dir, name string) (string, error) {
 	result := ""
 	err := fmt.Errorf("No %q manifest found in directory: %q", name, dir)
 	filepath.Walk(dir,
-		func(path string, info os.FileInfo, _ error) error {
+		func(path string, info os.FileInfo, e error) error {
+			if e != nil {
+				return nil // Other files may still be okay
+			}
 			if info.Name() == ".git" {
 				return filepath.SkipDir
 			}
