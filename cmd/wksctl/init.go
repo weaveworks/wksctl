@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -32,9 +33,13 @@ type manifestUpdate struct {
 var (
 	// initCmd represents the init command
 	initCmd = &cobra.Command{
-		Use:   "init",
-		Short: "Update stored kubernetes manifests to match the local cluster environment",
-		Run:   initRun,
+		Use:           "init",
+		Short:         "Update stored kubernetes manifests to match the local cluster environment",
+		Long:          "'wksctl init' configures existing kubernetes 'flux.yaml' and 'wks-controller.yaml' manifests in a repository with information about the local GitOps repository, the preferred weave system namespace, and current container image tags. The files can be anywhere in the repository. If either file is absent, 'wksctl init' will return an error.",
+		Example:       "wksctl init --namespace=wksctl --git-url=git@github.com:haskellcurry/lambda.git --git-branch=development --git-path=src",
+		RunE:          initRun,
+		SilenceErrors: true,
+		SilenceUsage:  true,
 	}
 
 	initOptions initOptionType
@@ -85,7 +90,8 @@ func prefix(pre string) func([]byte) bool {
 
 func extension(ext string) func([]byte) bool {
 	return func(fname []byte) bool {
-		return filepath.Ext(string(fname))[1:] == ext
+		extension := filepath.Ext(string(fname))
+		return len(extension) > 0 && extension[1:] == ext
 	}
 }
 
@@ -115,7 +121,8 @@ func updateFluxManifests(contents []byte, options initOptionType) ([]byte, error
 	return withGitPath, nil
 }
 
-func updateManifests(options initOptionType) {
+func updateManifests(options initOptionType) error {
+	matches := 0
 	filepath.Walk(options.localRepoDirectory,
 		func(path string, info os.FileInfo, err error) error {
 			if err != nil {
@@ -127,6 +134,7 @@ func updateManifests(options initOptionType) {
 			fname := []byte(info.Name())
 			for _, u := range updates {
 				if u.selector(fname) {
+					matches++
 					contents, err := ioutil.ReadFile(path)
 					if err != nil {
 						return err
@@ -141,9 +149,13 @@ func updateManifests(options initOptionType) {
 			}
 			return nil
 		})
+	if matches < len(updates) {
+		return errors.New("Both 'flux.yaml' and 'wks-controller.yaml' must be present in the repository")
+	}
+	return nil
 }
 
-func initRun(cmd *cobra.Command, args []string) {
+func initRun(cmd *cobra.Command, args []string) error {
 	initOptions.version = version // from main command
-	updateManifests(initOptions)
+	return updateManifests(initOptions)
 }
