@@ -2,29 +2,22 @@
 
 The `wksctl` command allows simple creation of a Kubernetes cluster given a **set of IP addresses** and an **SSH key**. It can be run in a standalone environment but is best used via a [GitOps approach](https://www.weave.works/technologies/gitops/) in which cluster and machine descriptions are stored in Git and the state of the cluster tracks changes to the descriptions.
 
-## Install
+## Install wksctl binary 
 
-`wksctl` binaries can be downloaded from the [release page](https://github.com/weaveworks/wksctl/releases):
+1. Download the OS specific `wksctl` release package from the [release page](https://github.com/weaveworks/wksctl/releases)
+1. Unpack and add the `wksctl` binary to your path
 
-### Linux
-
-```console
-curl -Lo wksctl https://github.com/weaveworks/wksctl/releases/download/0.7.0/wksctl-0.7.0-linux-x86_64
+For example:
+```
+cd <download dir>
+tar xf wksctl-0.7.0-linux-x86_64.tar.gz
 chmod +x wksctl
 sudo mv wksctl /usr/local/bin/
 ```
 
-### macOS
-
-```console
-
-curl --silent --location https://github.com/weaveworks/wksctl/releases/download/0.7.0/wksctl-0.7.0-darwin-x86_64.tar.gz | tar xz
-mv wksctl /usr/local/bin
-```
-
 ## Quick start
 
-The [examples](examples) folder contains guides to get you up and running with [Footloose](https://github.com/weaveworks/footloose), [Vagrant](https://www.vagrantup.com) and others!
+The [examples](examples) folder (also included in the release package download) contains guides to get you up and running with [Footloose](https://github.com/weaveworks/footloose), [Vagrant](https://www.vagrantup.com) and others!
 
 ## Modes of use
 
