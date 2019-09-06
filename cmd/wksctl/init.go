@@ -20,7 +20,6 @@ type initOptionType struct {
 	gitURL             string
 	gitBranch          string
 	gitPath            string
-	gitDeployKeyPath   string
 	namespace          string
 	version            string
 }
@@ -65,9 +64,9 @@ func init() {
 	initCmd.PersistentFlags().StringVar(&initOptions.gitBranch, "git-branch", "master",
 		"Branch within git repo containing your cluster and machine information")
 	initCmd.PersistentFlags().StringVar(&initOptions.gitPath, "git-path", ".", "Relative path to files in Git")
-	initCmd.PersistentFlags().StringVar(&initOptions.gitDeployKeyPath, "git-deploy-key", "", "Path to the Git deploy key")
 	initCmd.PersistentFlags().StringVar(
 		&initOptions.namespace, "namespace", manifest.DefaultNamespace, "namespace portion of kubeconfig path")
+	initCmd.MarkPersistentFlagRequired("git-url")
 	rootCmd.AddCommand(initCmd)
 }
 
