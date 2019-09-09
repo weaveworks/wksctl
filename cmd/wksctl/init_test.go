@@ -44,7 +44,7 @@ items:
         containers:
         - args:
           - --ssh-keygen-dir=/var/fluxd/keygen
-          - --git-url=git@github.com:jrryjcksn/wkp-test.git
+          - --git-url=git@github.com:weaveworks/wkp-test.git
           - --git-branch=master
           - --git-poll-interval=30s
           - --git-path="."
@@ -122,7 +122,7 @@ items:
         containers:
         - args:
           - --ssh-keygen-dir=/var/fluxd/keygen
-          - --git-url="git@github.com:jrryjcksn/foo.bar"
+          - --git-url="git@github.com:weaveworks/foo.bar"
           - --git-branch="rickey"
           - --git-poll-interval=30s
           - --git-path="eightfold"
@@ -166,7 +166,7 @@ func TestFluxTranslate(t *testing.T) {
 	res, err := updateFluxManifests([]byte(fluxInputs),
 		initOptionType{
 			namespace: "blonskar",
-			gitURL:    "git@github.com:jrryjcksn/foo.bar",
+			gitURL:    "git@github.com:weaveworks/foo.bar",
 			gitBranch: "rickey",
 			gitPath:   "eightfold",
 		})
