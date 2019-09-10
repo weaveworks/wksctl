@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/config"
 	wksos "github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/os"
+	"github.com/weaveworks/wksctl/pkg/specs"
 	"github.com/weaveworks/wksctl/pkg/utilities/kubeadm"
 	"github.com/weaveworks/wksctl/pkg/utilities/manifest"
 	xcryptossh "golang.org/x/crypto/ssh"
@@ -160,8 +161,8 @@ func syncRepo(url, branch, deployKeyPath, relativeRoot string) (string, string, 
 
 func initiateCluster(clusterManifestPath, machinesManifestPath string, closer func()) {
 	defer closer()
-	specs := getSpecs(clusterManifestPath, machinesManifestPath)
-	sshClient, err := specs.getSSHClient(options.verbose)
+	sp := specs.NewFromPaths(clusterManifestPath, machinesManifestPath)
+	sshClient, err := sp.GetSSHClient(options.verbose)
 	if err != nil {
 		log.Fatal("Failed to create SSH client: ", err)
 	}
@@ -169,7 +170,7 @@ func initiateCluster(clusterManifestPath, machinesManifestPath string, closer fu
 	installer, err := wksos.Identify(sshClient)
 	if err != nil {
 		log.Fatalf("Failed to identify operating system for seed node (%s): %v",
-			specs.getMasterPublicAddress(), err)
+			sp.GetMasterPublicAddress(), err)
 	}
 
 	// N.B.: we generate this bootstrap token where wksctl apply is run hoping
@@ -188,20 +189,20 @@ func initiateCluster(clusterManifestPath, machinesManifestPath string, closer fu
 	}
 
 	// TODO(damien): Transform the controller image into an addon.
-	controllerImage, err := addons.UpdateImage(applyOptions.controllerImage, specs.clusterSpec.ImageRepository)
+	controllerImage, err := addons.UpdateImage(applyOptions.controllerImage, sp.ClusterSpec.ImageRepository)
 	if err != nil {
 		log.Fatal("Failed to apply the cluster's image repository to the WKS controller's image: ", err)
 	}
 	if err := installer.SetupSeedNode(wksos.SeedNodeParams{
-		PublicIP:             specs.getMasterPublicAddress(),
-		PrivateIP:            specs.getMasterPrivateAddress(),
+		PublicIP:             sp.GetMasterPublicAddress(),
+		PrivateIP:            sp.GetMasterPrivateAddress(),
 		ClusterManifestPath:  clusterManifestPath,
 		MachinesManifestPath: machinesManifestPath,
-		SSHKeyPath:           specs.getSSHKeyPath(),
+		SSHKeyPath:           sp.GetSSHKeyPath(),
 		BootstrapToken:       token,
 		KubeletConfig: config.KubeletConfig{
-			NodeIP:        specs.getMasterPrivateAddress(),
-			CloudProvider: specs.getCloudProvider(),
+			NodeIP:        sp.GetMasterPrivateAddress(),
+			CloudProvider: sp.GetCloudProvider(),
 		},
 		ControllerImageOverride: controllerImage,
 		GitData: wksos.GitParams{
@@ -213,12 +214,12 @@ func initiateCluster(clusterManifestPath, machinesManifestPath string, closer fu
 		SealedSecretKeyPath:  applyOptions.sealedSecretKeyPath,
 		SealedSecretCertPath: applyOptions.sealedSecretCertPath,
 		ConfigDirectory:      configDir,
-		ImageRepository:      specs.clusterSpec.ImageRepository,
-		ExternalLoadBalancer: specs.clusterSpec.APIServer.ExternalLoadBalancer,
-		AdditionalSANs:       specs.clusterSpec.APIServer.AdditionalSANs,
-		Namespace:            specs.getClusterNamespace(),
+		ImageRepository:      sp.ClusterSpec.ImageRepository,
+		ExternalLoadBalancer: sp.ClusterSpec.APIServer.ExternalLoadBalancer,
+		AdditionalSANs:       sp.ClusterSpec.APIServer.AdditionalSANs,
+		Namespace:            sp.GetClusterNamespace(),
 	}); err != nil {
 		log.Fatalf("Failed to set up seed node (%s): %v",
-			specs.getMasterPublicAddress(), err)
+			sp.GetMasterPublicAddress(), err)
 	}
 }

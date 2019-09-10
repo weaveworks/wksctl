@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/weaveworks/wksctl/pkg/addons"
 	"github.com/weaveworks/wksctl/pkg/kubernetes/config"
+	"github.com/weaveworks/wksctl/pkg/specs"
 
 	"github.com/weaveworks/launcher/pkg/kubectl"
 	clusterv1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
@@ -42,19 +43,19 @@ func init() {
 
 func applyAddons(cluster *clusterv1.Cluster, machines []*clusterv1.Machine, basePath string) error {
 	opts := &applyAddonsOptions
-	specs := getSpecsForClusterAndMachines(cluster, machines)
+	sp := specs.New(cluster, machines)
 	kubeconfig, err := config.NewKubeConfig(opts.artifactDirectory, machines)
 	if err != nil {
 		log.Fatal("Error generating kubeconf", err)
 	}
 
-	return applyAddonsUsingConfig(specs, basePath, kubeconfig)
+	return applyAddonsUsingConfig(sp, basePath, kubeconfig)
 }
 
-func applyAddonsUsingConfig(specs *specs, basePath, kubeconfig string) error {
+func applyAddonsUsingConfig(sp *specs.Specs, basePath, kubeconfig string) error {
 	fmt.Println("==> Applying addons (2)")
 
-	for _, addonDesc := range specs.clusterSpec.Addons {
+	for _, addonDesc := range sp.ClusterSpec.Addons {
 		log.Debugf("applying addon '%s'", addonDesc.Name)
 
 		// Generate the addon manifest.
@@ -71,7 +72,7 @@ func applyAddonsUsingConfig(specs *specs, basePath, kubeconfig string) error {
 		manifests, err := addon.Build(addons.BuildOptions{
 			OutputDirectory: tmpDir,
 			BasePath:        basePath,
-			ImageRepository: specs.clusterSpec.ImageRepository,
+			ImageRepository: sp.ClusterSpec.ImageRepository,
 			Params:          addonDesc.Params,
 		})
 		if err != nil {
@@ -99,8 +100,8 @@ func applyAddonsUsingConfig(specs *specs, basePath, kubeconfig string) error {
 
 func applyAddonsRun(cmd *cobra.Command, args []string) {
 	opts := &applyAddonsOptions
-	specs := getSpecs(opts.clusterManifestPath, opts.machinesManifestPath)
-	configPath := configPath(specs, opts.artifactDirectory)
+	sp := specs.NewFromPaths(opts.clusterManifestPath, opts.machinesManifestPath)
+	configPath := configPath(sp, opts.artifactDirectory)
 
 	if !configExists(configPath) {
 		log.Fatal(strings.Join([]string{
@@ -110,7 +111,7 @@ func applyAddonsRun(cmd *cobra.Command, args []string) {
 
 	}
 
-	if err := applyAddonsUsingConfig(specs, filepath.Dir(opts.clusterManifestPath), configPath); err != nil {
+	if err := applyAddonsUsingConfig(sp, filepath.Dir(opts.clusterManifestPath), configPath); err != nil {
 		log.Fatal("Error applying addons: ", err)
 	}
 }

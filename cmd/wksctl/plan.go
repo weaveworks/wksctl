@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/config"
 	wksos "github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/os"
+	"github.com/weaveworks/wksctl/pkg/specs"
 	"github.com/weaveworks/wksctl/pkg/utilities/manifest"
 )
 
@@ -76,8 +77,8 @@ func planRun(cmd *cobra.Command, args []string) {
 
 func displayPlan(clusterManifestPath, machinesManifestPath string, closer func()) {
 	defer closer()
-	specs := getSpecs(clusterManifestPath, machinesManifestPath)
-	sshClient, err := specs.getSSHClient(options.verbose)
+	sp := specs.NewFromPaths(clusterManifestPath, machinesManifestPath)
+	sshClient, err := sp.GetSSHClient(options.verbose)
 	if err != nil {
 		log.Fatal("Failed to create SSH client: ", err)
 	}
@@ -85,7 +86,7 @@ func displayPlan(clusterManifestPath, machinesManifestPath string, closer func()
 	installer, err := wksos.Identify(sshClient)
 	if err != nil {
 		log.Fatalf("Failed to identify operating system for seed node (%s): %v",
-			specs.getMasterPublicAddress(), err)
+			sp.GetMasterPublicAddress(), err)
 	}
 
 	// Point config dir at sync repo if using github and the user didn't override it
@@ -95,14 +96,14 @@ func displayPlan(clusterManifestPath, machinesManifestPath string, closer func()
 	}
 
 	params := wksos.SeedNodeParams{
-		PublicIP:             specs.getMasterPublicAddress(),
-		PrivateIP:            specs.getMasterPrivateAddress(),
+		PublicIP:             sp.GetMasterPublicAddress(),
+		PrivateIP:            sp.GetMasterPrivateAddress(),
 		ClusterManifestPath:  clusterManifestPath,
 		MachinesManifestPath: machinesManifestPath,
-		SSHKeyPath:           specs.getSSHKeyPath(),
+		SSHKeyPath:           sp.GetSSHKeyPath(),
 		KubeletConfig: config.KubeletConfig{
-			NodeIP:        specs.getMasterPrivateAddress(),
-			CloudProvider: specs.getCloudProvider(),
+			NodeIP:        sp.GetMasterPrivateAddress(),
+			CloudProvider: sp.GetCloudProvider(),
 		},
 		ControllerImageOverride: viewOptions.controllerImage,
 		GitData: wksos.GitParams{
