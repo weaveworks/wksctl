@@ -1,4 +1,4 @@
-package main
+package specs
 
 import (
 	"io"
@@ -19,23 +19,23 @@ import (
 // Utilities for managing cluster and machine specs.
 // Common code for commands that need to run ssh commands on master cluster nodes.
 
-type specs struct {
+type Specs struct {
 	cluster     *clusterv1.Cluster
-	clusterSpec *baremetalspecv1.BareMetalClusterProviderSpec
+	ClusterSpec *baremetalspecv1.BareMetalClusterProviderSpec
 	masterSpec  *baremetalspecv1.BareMetalMachineProviderSpec
 }
 
-// Get a "specs" object that can create an SSHClient (and retrieve useful nested fields)
-func getSpecs(clusterManifestPath, machinesManifestPath string) *specs {
+// Get a "Specs" object that can create an SSHClient (and retrieve useful nested fields)
+func NewFromPaths(clusterManifestPath, machinesManifestPath string) *Specs {
 	cluster, machines, err := parseManifests(clusterManifestPath, machinesManifestPath)
 	if err != nil {
 		log.Fatal("Error parsing manifest: ", err)
 	}
-	return getSpecsForClusterAndMachines(cluster, machines)
+	return New(cluster, machines)
 }
 
-// Get a "specs" object that can create an SSHClient (and retrieve useful nested fields)
-func getSpecsForClusterAndMachines(cluster *clusterv1.Cluster, machines []*clusterv1.Machine) *specs {
+// Get a "Specs" object that can create an SSHClient (and retrieve useful nested fields)
+func New(cluster *clusterv1.Cluster, machines []*clusterv1.Machine) *Specs {
 	master := machine.FirstMaster(machines)
 	if master == nil {
 		log.Fatal("No master provided in manifest.")
@@ -52,11 +52,11 @@ func getSpecsForClusterAndMachines(cluster *clusterv1.Cluster, machines []*clust
 	if err != nil {
 		log.Fatal("Failed to parse master: ", err)
 	}
-	return &specs{cluster, clusterSpec, masterSpec}
+	return &Specs{cluster, clusterSpec, masterSpec}
 }
 
 // Create an SSHClient to the master node referenced by the specs
-func (s *specs) getSSHClient(verbose bool) (*ssh.Client, error) {
+func (s *Specs) GetSSHClient(verbose bool) (*ssh.Client, error) {
 	var ip string
 	var port uint16
 	if s.masterSpec.Public.Address != "" {
@@ -68,10 +68,10 @@ func (s *specs) getSSHClient(verbose bool) (*ssh.Client, error) {
 		port = s.masterSpec.Port
 	}
 	return ssh.NewClient(ssh.ClientParams{
-		User:           s.clusterSpec.User,
+		User:           s.ClusterSpec.User,
 		Host:           ip,
 		Port:           port,
-		PrivateKeyPath: s.clusterSpec.SSHKeyPath,
+		PrivateKeyPath: s.ClusterSpec.SSHKeyPath,
 		Verbose:        verbose,
 	})
 }
@@ -134,15 +134,15 @@ func parseClusterManifest(file string) (*clusterv1.Cluster, error) {
 }
 
 // Getters for nested fields needed externally
-func (s *specs) getSSHKeyPath() string {
-	return s.clusterSpec.SSHKeyPath
+func (s *Specs) GetSSHKeyPath() string {
+	return s.ClusterSpec.SSHKeyPath
 }
 
-func (s *specs) getClusterName() string {
+func (s *Specs) GetClusterName() string {
 	return s.cluster.ObjectMeta.Name
 }
 
-func (s *specs) getClusterNamespace() string {
+func (s *Specs) GetClusterNamespace() string {
 	if applyOptions.useManifestNamespace {
 		return ""
 	}
@@ -158,14 +158,14 @@ func firstNonDefaultOrDefault(nses ...string) string {
 	return manifest.DefaultNamespace
 }
 
-func (s *specs) getMasterPublicAddress() string {
+func (s *Specs) GetMasterPublicAddress() string {
 	return s.masterSpec.Public.Address
 }
 
-func (s *specs) getMasterPrivateAddress() string {
+func (s *Specs) GetMasterPrivateAddress() string {
 	return s.masterSpec.Private.Address
 }
 
-func (s *specs) getCloudProvider() string {
-	return s.clusterSpec.CloudProvider
+func (s *Specs) GetCloudProvider() string {
+	return s.ClusterSpec.CloudProvider
 }
