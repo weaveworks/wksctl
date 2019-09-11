@@ -10,7 +10,6 @@ import (
 	baremetalspecv1 "github.com/weaveworks/wksctl/pkg/baremetalproviderspec/v1alpha1"
 	"github.com/weaveworks/wksctl/pkg/cluster/machine"
 	"github.com/weaveworks/wksctl/pkg/plan/runners/ssh"
-	"github.com/weaveworks/wksctl/pkg/utilities/manifest"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	clusterv1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 	apierrors "sigs.k8s.io/cluster-api/pkg/errors"
@@ -140,22 +139,6 @@ func (s *Specs) GetSSHKeyPath() string {
 
 func (s *Specs) GetClusterName() string {
 	return s.cluster.ObjectMeta.Name
-}
-
-func (s *Specs) GetClusterNamespace() string {
-	if applyOptions.useManifestNamespace {
-		return ""
-	}
-	return firstNonDefaultOrDefault(applyOptions.namespace, kubeconfigOptions.namespace)
-}
-
-func firstNonDefaultOrDefault(nses ...string) string {
-	for _, ns := range nses {
-		if ns != manifest.DefaultNamespace {
-			return ns
-		}
-	}
-	return manifest.DefaultNamespace
 }
 
 func (s *Specs) GetMasterPublicAddress() string {

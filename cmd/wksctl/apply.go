@@ -217,9 +217,25 @@ func initiateCluster(clusterManifestPath, machinesManifestPath string, closer fu
 		ImageRepository:      sp.ClusterSpec.ImageRepository,
 		ExternalLoadBalancer: sp.ClusterSpec.APIServer.ExternalLoadBalancer,
 		AdditionalSANs:       sp.ClusterSpec.APIServer.AdditionalSANs,
-		Namespace:            sp.GetClusterNamespace(),
+		Namespace:            getClusterNamespace(),
 	}); err != nil {
 		log.Fatalf("Failed to set up seed node (%s): %v",
 			sp.GetMasterPublicAddress(), err)
 	}
+}
+
+func getClusterNamespace() string {
+	if applyOptions.useManifestNamespace {
+		return ""
+	}
+	return firstNonDefaultOrDefault(applyOptions.namespace, kubeconfigOptions.namespace)
+}
+
+func firstNonDefaultOrDefault(nses ...string) string {
+	for _, ns := range nses {
+		if ns != manifest.DefaultNamespace {
+			return ns
+		}
+	}
+	return manifest.DefaultNamespace
 }
