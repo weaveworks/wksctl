@@ -7,8 +7,9 @@ import (
 	"text/tabwriter"
 
 	log "github.com/sirupsen/logrus"
-
 	"github.com/spf13/cobra"
+
+	"github.com/weaveworks/wksctl/pkg/addons"
 )
 
 var addonShowCmd = &cobra.Command{
@@ -31,7 +32,7 @@ func addonShowArgs(cmd *cobra.Command, args []string) error {
 }
 
 func addonShowRun(cmd *cobra.Command, args []string) {
-	addon, err := GetAddon(args[0])
+	addon, err := addons.Get(args[0])
 	if err != nil {
 		log.Fatal(err)
 	}

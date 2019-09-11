@@ -59,7 +59,7 @@ func applyAddonsUsingConfig(sp *specs.Specs, basePath, kubeconfig string) error 
 		log.Debugf("applying addon '%s'", addonDesc.Name)
 
 		// Generate the addon manifest.
-		addon, err := GetAddon(addonDesc.Name)
+		addon, err := addons.Get(addonDesc.Name)
 		if err != nil {
 			return err
 		}
