@@ -63,7 +63,7 @@ func init() {
 
 func configPath(sp *specs.Specs, wksHome string) string {
 	clusterName := sp.GetClusterName()
-	configDir := path.WKSResourcePath(wksHome, sp.GetClusterNamespace(), clusterName)
+	configDir := path.WKSResourcePath(wksHome, getClusterNamespace(), clusterName)
 	return filepath.Join(configDir, "kubeconfig")
 }
 
