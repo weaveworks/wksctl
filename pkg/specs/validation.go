@@ -3,7 +3,6 @@ package specs
 import (
 	"fmt"
 	"net"
-	//"net/url"
 	"os"
 	"path/filepath"
 	"strings"

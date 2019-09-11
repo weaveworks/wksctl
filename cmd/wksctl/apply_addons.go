@@ -9,11 +9,10 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"github.com/weaveworks/launcher/pkg/kubectl"
 	"github.com/weaveworks/wksctl/pkg/addons"
 	"github.com/weaveworks/wksctl/pkg/kubernetes/config"
 	"github.com/weaveworks/wksctl/pkg/specs"
-
-	"github.com/weaveworks/launcher/pkg/kubectl"
 	clusterv1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 )
 

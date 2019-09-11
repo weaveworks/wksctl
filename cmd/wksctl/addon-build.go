@@ -7,9 +7,8 @@ import (
 	"strings"
 
 	log "github.com/sirupsen/logrus"
-	"github.com/weaveworks/wksctl/pkg/addons"
-
 	"github.com/spf13/cobra"
+	"github.com/weaveworks/wksctl/pkg/addons"
 )
 
 var addonBuildCmd = &cobra.Command{
