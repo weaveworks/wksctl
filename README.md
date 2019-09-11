@@ -11,7 +11,7 @@ For example:
 
 ```console
 cd <download dir>
-tar xf wksctl-0.7.0-linux-x86_64.tar.gz
+tar xfz wksctl-0.7.0-linux-x86_64.tar.gz
 chmod +x wksctl
 sudo mv wksctl /usr/local/bin/
 ```
