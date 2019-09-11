@@ -109,3 +109,26 @@ To disable this check, run the following before executing `wksctl`:
 ```console
 export CHECKPOINT_DISABLE=1
 ```
+
+
+## Contributing
+
+Please see [CONTRIBUTING.md](CONTRIBUTING.md) and our [Code Of Conduct](CODE_OF_CONDUCT.md).
+
+Other interesting resources include:
+
+- [The issue tracker](https://github.com/weaveworks/wksctl/issues)
+
+## Getting Help
+
+If you have any questions about, feedback for or problems with `wksctl`:
+
+- Invite yourself to the <a href="https://slack.weave.works/" target="_blank">Weave Users Slack</a>.
+- Ask a question on the [#general](https://weave-community.slack.com/messages/general/) slack channel.
+- [File an issue](https://github.com/weaveworks/wksctl/issues/new).
+
+Your feedback is always welcome!
+
+## License
+
+[Apache 2.0](LICENSE.md)
