@@ -66,7 +66,7 @@ func makeParams(input []string) (map[string]string, error) {
 func addonBuildRun(cmd *cobra.Command, args []string) {
 	opts := &addonBuildOptions
 
-	addon, err := GetAddon(args[0])
+	addon, err := addons.Get(args[0])
 	if err != nil {
 		log.Fatal(err)
 	}

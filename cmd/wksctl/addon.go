@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/spf13/cobra"
+
 	"github.com/weaveworks/wksctl/pkg/addons"
 )
 
@@ -22,11 +23,6 @@ func ListAddons() []addons.Addon {
 	}
 
 	return results
-}
-
-// GetAddon looks up for the Addon object by name
-func GetAddon(shortName string) (addons.Addon, error) {
-	return addons.Get(shortName)
 }
 
 func init() {

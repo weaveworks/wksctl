@@ -234,7 +234,7 @@ func validateAddons(cluster *clusterv1.Cluster, manifestPath string) field.Error
 
 	// Validate addons and their parameters.
 	for i, addonDesc := range spec.Addons {
-		addon, err := GetAddon(addonDesc.Name)
+		addon, err := addons.Get(addonDesc.Name)
 		if err != nil {
 			return field.ErrorList{
 				field.Invalid(addonPath(i, addonDesc.Name), addonDesc.Name, err.Error()),
