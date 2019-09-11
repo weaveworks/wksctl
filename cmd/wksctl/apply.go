@@ -6,10 +6,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/weaveworks/wksctl/pkg/addons"
-
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"github.com/weaveworks/wksctl/pkg/addons"
 	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/config"
 	wksos "github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/os"
 	"github.com/weaveworks/wksctl/pkg/specs"
