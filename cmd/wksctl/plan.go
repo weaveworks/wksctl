@@ -71,8 +71,9 @@ func planRun(cmd *cobra.Command, args []string) {
 		viewOptions.sealedSecretKeyPath = viewOptions.gitDeployKeyPath
 	}
 
-	displayPlan(getManifests(qualifyPath(viewOptions.clusterManifestPath), qualifyPath(viewOptions.machinesManifestPath), viewOptions.gitURL,
-		viewOptions.gitBranch, viewOptions.gitDeployKeyPath, viewOptions.gitPath))
+	cpath := filepath.Join(viewOptions.gitPath, viewOptions.clusterManifestPath)
+	mpath := filepath.Join(viewOptions.gitPath, viewOptions.machinesManifestPath)
+	displayPlan(getManifests(cpath, mpath, viewOptions.gitURL, viewOptions.gitBranch, viewOptions.gitDeployKeyPath, viewOptions.gitPath))
 }
 
 func displayPlan(clusterManifestPath, machinesManifestPath string, closer func()) {

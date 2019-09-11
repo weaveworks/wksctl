@@ -68,15 +68,9 @@ func applyRun(cmd *cobra.Command, args []string) {
 		applyOptions.sealedSecretKeyPath = applyOptions.gitDeployKeyPath
 	}
 
-	initiateCluster(getManifests(qualifyPath(applyOptions.clusterManifestPath), qualifyPath(applyOptions.machinesManifestPath),
-		applyOptions.gitURL, applyOptions.gitBranch, applyOptions.gitDeployKeyPath, applyOptions.gitPath))
-}
-
-func qualifyPath(path string) string {
-	if applyOptions.gitPath != "" {
-		return filepath.Join(applyOptions.gitPath, path)
-	}
-	return path
+	cpath := filepath.Join(applyOptions.gitPath, applyOptions.clusterManifestPath)
+	mpath := filepath.Join(applyOptions.gitPath, applyOptions.machinesManifestPath)
+	initiateCluster(getManifests(cpath, mpath, applyOptions.gitURL, applyOptions.gitBranch, applyOptions.gitDeployKeyPath, applyOptions.gitPath))
 }
 
 func getManifests(clusterOption, machinesOption, gitURL, gitBranch, gitDeployKeyPath, gitPath string) (string, string, func()) {
