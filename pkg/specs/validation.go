@@ -19,12 +19,6 @@ import (
 	clusterv1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 )
 
-func printValidationErrors(errors field.ErrorList) {
-	for _, e := range errors {
-		log.Errorf("%v\n", e)
-	}
-}
-
 func clusterPath(args ...string) *field.Path {
 	return field.NewPath("cluster", args...)
 }

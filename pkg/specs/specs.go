@@ -10,6 +10,7 @@ import (
 	baremetalspecv1 "github.com/weaveworks/wksctl/pkg/baremetalproviderspec/v1alpha1"
 	"github.com/weaveworks/wksctl/pkg/cluster/machine"
 	"github.com/weaveworks/wksctl/pkg/plan/runners/ssh"
+	"github.com/weaveworks/wksctl/pkg/utilities"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	clusterv1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 	apierrors "sigs.k8s.io/cluster-api/pkg/errors"
@@ -84,14 +85,14 @@ func parseManifests(clusterManifestPath, machinesManifestPath string) (*clusterv
 
 	validationErrors := validateCluster(cluster, clusterManifestPath)
 	if len(validationErrors) > 0 {
-		printValidationErrors(validationErrors)
+		utilities.PrintErrors(validationErrors)
 		return nil, nil, apierrors.InvalidMachineConfiguration(
 			"%s failed validation, use --skip-validation to force the operation", clusterManifestPath)
 	}
 
 	errorsHandler := func(machines []*clusterv1.Machine, errors field.ErrorList) ([]*clusterv1.Machine, error) {
 		if len(errors) > 0 {
-			printValidationErrors(errors)
+			utilities.PrintErrors(validationErrors)
 			return nil, apierrors.InvalidMachineConfiguration(
 				"%s failed validation, use --skip-validation to force the operation", machinesManifestPath)
 		}
