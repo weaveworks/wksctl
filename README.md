@@ -2,13 +2,14 @@
 
 The `wksctl` command allows simple creation of a Kubernetes cluster given a **set of IP addresses** and an **SSH key**. It can be run in a standalone environment but is best used via a [GitOps approach](https://www.weave.works/technologies/gitops/) in which cluster and machine descriptions are stored in Git and the state of the cluster tracks changes to the descriptions.
 
-## Install wksctl binary 
+## Install wksctl binary
 
 1. Download the OS specific `wksctl` release package from the [release page](https://github.com/weaveworks/wksctl/releases)
 1. Unpack and add the `wksctl` binary to your path
 
 For example:
-```
+
+```console
 cd <download dir>
 tar xf wksctl-0.7.0-linux-x86_64.tar.gz
 chmod +x wksctl
@@ -52,6 +53,7 @@ wksctl apply \
   --git-branch dev \
   --git-deloy-key-path ./deploy-key
 ```
+
 Using the url, branch, and deploy key, we will clone the repo - if we can't clone the repo we will error out.
 
 These `--git` arguments are then used to set up and configure [flux](https://www.weave.works/oss/flux/) to automate cluster management.
@@ -95,21 +97,23 @@ docker push quay.io/wksctl/build:$(tools/image-tag)
 
 - Update `.circleci/config.yml` to use the newly pushed image.
 - Push this change, get it reviewed, and merge it to `master`.
-# Checkpoint
+
+## Checkpoint
 
 `wksctl` contacts Weaveworks servers for available versions. When a new version is available, `wksctl` will print out a message along with a URL to download it.
 
 The information sent in this check is:
+
 - wksctl version
-- Machine Architecture 
+- Machine Architecture
 - Operating System
 - Host UUID hash
 
 To disable this check, run the following before executing `wksctl`:
+
 ```console
 export CHECKPOINT_DISABLE=1
 ```
-
 
 ## Contributing
 

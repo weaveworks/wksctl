@@ -1,4 +1,4 @@
-## Instructions (wksctl apply)
+# Instructions (wksctl apply)
 
 ```console
 $ make install
