@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/config"
 	wksos "github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/os"
+	"github.com/weaveworks/wksctl/pkg/manifests"
 	"github.com/weaveworks/wksctl/pkg/specs"
 	"github.com/weaveworks/wksctl/pkg/utilities/manifest"
 )
@@ -73,7 +74,7 @@ func planRun(cmd *cobra.Command, args []string) {
 
 	cpath := filepath.Join(viewOptions.gitPath, viewOptions.clusterManifestPath)
 	mpath := filepath.Join(viewOptions.gitPath, viewOptions.machinesManifestPath)
-	displayPlan(getManifests(cpath, mpath, viewOptions.gitURL, viewOptions.gitBranch, viewOptions.gitDeployKeyPath, viewOptions.gitPath))
+	displayPlan(manifests.Get(cpath, mpath, viewOptions.gitURL, viewOptions.gitBranch, viewOptions.gitDeployKeyPath, viewOptions.gitPath))
 }
 
 func displayPlan(clusterManifestPath, machinesManifestPath string, closer func()) {

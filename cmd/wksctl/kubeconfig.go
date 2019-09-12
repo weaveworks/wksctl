@@ -8,6 +8,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/weaveworks/wksctl/pkg/kubernetes/config"
+	"github.com/weaveworks/wksctl/pkg/manifests"
 	"github.com/weaveworks/wksctl/pkg/plan/runners/sudo"
 	"github.com/weaveworks/wksctl/pkg/specs"
 	"github.com/weaveworks/wksctl/pkg/utilities/manifest"
@@ -97,7 +98,7 @@ func generateConfig(sp *specs.Specs, configPath string) string {
 }
 
 func kubeconfigRun(cmd *cobra.Command, args []string) {
-	clusterManifestPath, machinesManifestPath, closer := getManifests(kubeconfigOptions.clusterManifestPath,
+	clusterManifestPath, machinesManifestPath, closer := manifests.Get(kubeconfigOptions.clusterManifestPath,
 		kubeconfigOptions.machinesManifestPath, kubeconfigOptions.gitURL, kubeconfigOptions.gitBranch, kubeconfigOptions.gitDeployKeyPath,
 		kubeconfigOptions.gitPath)
 	defer closer()
