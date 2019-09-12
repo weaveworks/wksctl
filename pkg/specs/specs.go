@@ -1,4 +1,4 @@
-package main
+package specs
 
 import (
 	"io"
@@ -10,7 +10,7 @@ import (
 	baremetalspecv1 "github.com/weaveworks/wksctl/pkg/baremetalproviderspec/v1alpha1"
 	"github.com/weaveworks/wksctl/pkg/cluster/machine"
 	"github.com/weaveworks/wksctl/pkg/plan/runners/ssh"
-	"github.com/weaveworks/wksctl/pkg/utilities/manifest"
+	"github.com/weaveworks/wksctl/pkg/utilities"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	clusterv1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 	apierrors "sigs.k8s.io/cluster-api/pkg/errors"
@@ -19,23 +19,23 @@ import (
 // Utilities for managing cluster and machine specs.
 // Common code for commands that need to run ssh commands on master cluster nodes.
 
-type specs struct {
+type Specs struct {
 	cluster     *clusterv1.Cluster
-	clusterSpec *baremetalspecv1.BareMetalClusterProviderSpec
+	ClusterSpec *baremetalspecv1.BareMetalClusterProviderSpec
 	masterSpec  *baremetalspecv1.BareMetalMachineProviderSpec
 }
 
-// Get a "specs" object that can create an SSHClient (and retrieve useful nested fields)
-func getSpecs(clusterManifestPath, machinesManifestPath string) *specs {
+// Get a "Specs" object that can create an SSHClient (and retrieve useful nested fields)
+func NewFromPaths(clusterManifestPath, machinesManifestPath string) *Specs {
 	cluster, machines, err := parseManifests(clusterManifestPath, machinesManifestPath)
 	if err != nil {
 		log.Fatal("Error parsing manifest: ", err)
 	}
-	return getSpecsForClusterAndMachines(cluster, machines)
+	return New(cluster, machines)
 }
 
-// Get a "specs" object that can create an SSHClient (and retrieve useful nested fields)
-func getSpecsForClusterAndMachines(cluster *clusterv1.Cluster, machines []*clusterv1.Machine) *specs {
+// Get a "Specs" object that can create an SSHClient (and retrieve useful nested fields)
+func New(cluster *clusterv1.Cluster, machines []*clusterv1.Machine) *Specs {
 	master := machine.FirstMaster(machines)
 	if master == nil {
 		log.Fatal("No master provided in manifest.")
@@ -52,11 +52,11 @@ func getSpecsForClusterAndMachines(cluster *clusterv1.Cluster, machines []*clust
 	if err != nil {
 		log.Fatal("Failed to parse master: ", err)
 	}
-	return &specs{cluster, clusterSpec, masterSpec}
+	return &Specs{cluster, clusterSpec, masterSpec}
 }
 
 // Create an SSHClient to the master node referenced by the specs
-func (s *specs) getSSHClient(verbose bool) (*ssh.Client, error) {
+func (s *Specs) GetSSHClient(verbose bool) (*ssh.Client, error) {
 	var ip string
 	var port uint16
 	if s.masterSpec.Public.Address != "" {
@@ -68,10 +68,10 @@ func (s *specs) getSSHClient(verbose bool) (*ssh.Client, error) {
 		port = s.masterSpec.Port
 	}
 	return ssh.NewClient(ssh.ClientParams{
-		User:           s.clusterSpec.User,
+		User:           s.ClusterSpec.User,
 		Host:           ip,
 		Port:           port,
-		PrivateKeyPath: s.clusterSpec.SSHKeyPath,
+		PrivateKeyPath: s.ClusterSpec.SSHKeyPath,
 		Verbose:        verbose,
 	})
 }
@@ -85,14 +85,14 @@ func parseManifests(clusterManifestPath, machinesManifestPath string) (*clusterv
 
 	validationErrors := validateCluster(cluster, clusterManifestPath)
 	if len(validationErrors) > 0 {
-		printValidationErrors(validationErrors)
+		utilities.PrintErrors(validationErrors)
 		return nil, nil, apierrors.InvalidMachineConfiguration(
 			"%s failed validation, use --skip-validation to force the operation", clusterManifestPath)
 	}
 
 	errorsHandler := func(machines []*clusterv1.Machine, errors field.ErrorList) ([]*clusterv1.Machine, error) {
 		if len(errors) > 0 {
-			printValidationErrors(errors)
+			utilities.PrintErrors(validationErrors)
 			return nil, apierrors.InvalidMachineConfiguration(
 				"%s failed validation, use --skip-validation to force the operation", machinesManifestPath)
 		}
@@ -134,38 +134,22 @@ func parseClusterManifest(file string) (*clusterv1.Cluster, error) {
 }
 
 // Getters for nested fields needed externally
-func (s *specs) getSSHKeyPath() string {
-	return s.clusterSpec.SSHKeyPath
+func (s *Specs) GetSSHKeyPath() string {
+	return s.ClusterSpec.SSHKeyPath
 }
 
-func (s *specs) getClusterName() string {
+func (s *Specs) GetClusterName() string {
 	return s.cluster.ObjectMeta.Name
 }
 
-func (s *specs) getClusterNamespace() string {
-	if applyOptions.useManifestNamespace {
-		return ""
-	}
-	return firstNonDefaultOrDefault(applyOptions.namespace, kubeconfigOptions.namespace)
-}
-
-func firstNonDefaultOrDefault(nses ...string) string {
-	for _, ns := range nses {
-		if ns != manifest.DefaultNamespace {
-			return ns
-		}
-	}
-	return manifest.DefaultNamespace
-}
-
-func (s *specs) getMasterPublicAddress() string {
+func (s *Specs) GetMasterPublicAddress() string {
 	return s.masterSpec.Public.Address
 }
 
-func (s *specs) getMasterPrivateAddress() string {
+func (s *Specs) GetMasterPrivateAddress() string {
 	return s.masterSpec.Private.Address
 }
 
-func (s *specs) getCloudProvider() string {
-	return s.clusterSpec.CloudProvider
+func (s *Specs) GetCloudProvider() string {
+	return s.ClusterSpec.CloudProvider
 }

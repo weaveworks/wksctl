@@ -7,9 +7,8 @@ import (
 	"strings"
 
 	log "github.com/sirupsen/logrus"
-	"github.com/weaveworks/wksctl/pkg/addons"
-
 	"github.com/spf13/cobra"
+	"github.com/weaveworks/wksctl/pkg/addons"
 )
 
 var addonBuildCmd = &cobra.Command{
@@ -66,7 +65,7 @@ func makeParams(input []string) (map[string]string, error) {
 func addonBuildRun(cmd *cobra.Command, args []string) {
 	opts := &addonBuildOptions
 
-	addon, err := GetAddon(args[0])
+	addon, err := addons.Get(args[0])
 	if err != nil {
 		log.Fatal(err)
 	}

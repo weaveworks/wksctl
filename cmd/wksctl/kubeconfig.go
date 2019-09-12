@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/weaveworks/wksctl/pkg/kubernetes/config"
 	"github.com/weaveworks/wksctl/pkg/plan/runners/sudo"
+	"github.com/weaveworks/wksctl/pkg/specs"
 	"github.com/weaveworks/wksctl/pkg/utilities/manifest"
 	"github.com/weaveworks/wksctl/pkg/utilities/path"
 )
@@ -60,15 +61,15 @@ func init() {
 	rootCmd.AddCommand(kubeconfigCmd)
 }
 
-func configPath(specs *specs, wksHome string) string {
-	clusterName := specs.getClusterName()
-	configDir := path.WKSResourcePath(wksHome, specs.getClusterNamespace(), clusterName)
+func configPath(sp *specs.Specs, wksHome string) string {
+	clusterName := sp.GetClusterName()
+	configDir := path.WKSResourcePath(wksHome, kubeconfigOptions.namespace, clusterName)
 	return filepath.Join(configDir, "kubeconfig")
 }
 
 // TODO this should be refactored into a common place - i.e. pkg/cluster
-func generateConfig(specs *specs, configPath string) string {
-	sshClient, err := specs.getSSHClient(options.verbose)
+func generateConfig(sp *specs.Specs, configPath string) string {
+	sshClient, err := sp.GetSSHClient(options.verbose)
 	if err != nil {
 		log.Fatal("Failed to create SSH client: ", err)
 	}
@@ -80,9 +81,9 @@ func generateConfig(specs *specs, configPath string) string {
 		log.Fatalf("Failed to retrieve Kubernetes configuration: %v", err)
 	}
 
-	endpoint := specs.getMasterPublicAddress()
-	if specs.clusterSpec.APIServer.ExternalLoadBalancer != "" {
-		endpoint = specs.clusterSpec.APIServer.ExternalLoadBalancer
+	endpoint := sp.GetMasterPublicAddress()
+	if sp.ClusterSpec.APIServer.ExternalLoadBalancer != "" {
+		endpoint = sp.ClusterSpec.APIServer.ExternalLoadBalancer
 	}
 
 	configStr, err = config.Sanitize(configStr, config.Params{
@@ -105,20 +106,20 @@ func kubeconfigRun(cmd *cobra.Command, args []string) {
 	if err != nil {
 		log.Fatalf("Failed to create WKS home directory: %v", err)
 	}
-	specs := getSpecs(clusterManifestPath, machinesManifestPath)
+	sp := specs.NewFromPaths(clusterManifestPath, machinesManifestPath)
 
-	configPath := configPath(specs, wksHome)
+	configPath := configPath(sp, wksHome)
 
 	_, err = path.CreateDirectory(filepath.Dir(configPath))
 	if err != nil {
 		log.Fatalf("Failed to create configuration directory: %v", err)
 	}
 
-	configStr := generateConfig(specs, configPath)
+	configStr := generateConfig(sp, configPath)
 
 	err = ioutil.WriteFile(configPath, []byte(configStr), 0644)
 	if err != nil {
 		log.Fatalf("Failed to write Kubernetes configuration locally: %v", err)
 	}
-	fmt.Printf("To use kubectl with the %s cluster, enter:\n$ export KUBECONFIG=%s\n", specs.getClusterName(), configPath)
+	fmt.Printf("To use kubectl with the %s cluster, enter:\n$ export KUBECONFIG=%s\n", sp.GetClusterName(), configPath)
 }

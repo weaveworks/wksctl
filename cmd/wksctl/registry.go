@@ -10,6 +10,7 @@ import (
 	"github.com/weaveworks/wksctl/pkg/kubernetes"
 	"github.com/weaveworks/wksctl/pkg/quay"
 	"github.com/weaveworks/wksctl/pkg/registry"
+	"github.com/weaveworks/wksctl/pkg/utilities"
 	v "github.com/weaveworks/wksctl/pkg/utilities/version"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	clusterv1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
@@ -103,7 +104,7 @@ func kubernetesVersionsRange() string {
 func extractKubernetesVersionFromMachines(machinesManifestPath string) (string, error) {
 	errorsHandler := func(machines []*clusterv1.Machine, errors field.ErrorList) ([]*clusterv1.Machine, error) {
 		if len(errors) > 0 {
-			printValidationErrors(errors)
+			utilities.PrintErrors(errors)
 			return nil, apierrors.InvalidMachineConfiguration("%s failed validation", machinesManifestPath)
 		}
 		return machines, nil

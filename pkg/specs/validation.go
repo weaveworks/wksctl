@@ -1,9 +1,8 @@
-package main
+package specs
 
 import (
 	"fmt"
 	"net"
-	//"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -18,12 +17,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	clusterv1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 )
-
-func printValidationErrors(errors field.ErrorList) {
-	for _, e := range errors {
-		log.Errorf("%v\n", e)
-	}
-}
 
 func clusterPath(args ...string) *field.Path {
 	return field.NewPath("cluster", args...)
@@ -234,7 +227,7 @@ func validateAddons(cluster *clusterv1.Cluster, manifestPath string) field.Error
 
 	// Validate addons and their parameters.
 	for i, addonDesc := range spec.Addons {
-		addon, err := GetAddon(addonDesc.Name)
+		addon, err := addons.Get(addonDesc.Name)
 		if err != nil {
 			return field.ErrorList{
 				field.Invalid(addonPath(i, addonDesc.Name), addonDesc.Name, err.Error()),
