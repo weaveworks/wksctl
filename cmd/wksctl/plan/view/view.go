@@ -1,32 +1,24 @@
-package main
+package view
 
 import (
 	"fmt"
+	"log"
 	"path/filepath"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/config"
-	wksos "github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/os"
+	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/os"
+	"github.com/weaveworks/wksctl/pkg/manifests"
 	"github.com/weaveworks/wksctl/pkg/specs"
 	"github.com/weaveworks/wksctl/pkg/utilities/manifest"
+	"github.com/weaveworks/wksctl/pkg/version"
 )
 
-// planCmd represents the plan command
-var planCmd = &cobra.Command{
-	Use:    "plan",
-	Hidden: true,
-	Short:  "Debugging commands for the cluster plan.",
-	// PreRun: globalPreRun,
-	// Run:    planRun,
-}
-
-// viewCmd represents the plan view command
-var viewCmd = &cobra.Command{
+// Cmd represents the plan view command
+var Cmd = &cobra.Command{
 	Use:    "view",
 	Hidden: false,
 	Short:  "View a cluster plan.",
-	PreRun: globalPreRun,
 	Run:    planRun,
 }
 
@@ -42,27 +34,30 @@ var viewOptions struct {
 	sealedSecretKeyPath  string
 	sealedSecretCertPath string
 	configDirectory      string
+	verbose              bool
 }
 
 func init() {
-	viewCmd.Flags().StringVarP(&viewOptions.output, "output", "o", "dot", "Output format (dot|json)")
-	viewCmd.PersistentFlags().StringVar(&viewOptions.clusterManifestPath, "cluster", "cluster.yaml", "Location of cluster manifest")
-	viewCmd.PersistentFlags().StringVar(&viewOptions.machinesManifestPath, "machines", "machines.yaml", "Location of machines manifest")
-	viewCmd.PersistentFlags().StringVar(&viewOptions.controllerImage, "controller-image", "quay.io/wksctl/controller:"+imageTag, "Controller image override")
-	viewCmd.PersistentFlags().StringVar(&viewOptions.gitURL, "git-url", "", "Git repo containing your cluster and machine information")
-	viewCmd.PersistentFlags().StringVar(&viewOptions.gitBranch, "git-branch", "master", "Git branch WKS should use to read your cluster")
-	viewCmd.PersistentFlags().StringVar(&viewOptions.gitPath, "git-path", ".", "Relative path to files in Git")
-	viewCmd.PersistentFlags().StringVar(&viewOptions.gitDeployKeyPath, "git-deploy-key", "", "Path to the Git deploy key")
-	viewCmd.PersistentFlags().StringVar(&viewOptions.sealedSecretKeyPath, "sealed-secret-key", "", "Path to a key used to decrypt sealed secrets")
-	viewCmd.PersistentFlags().StringVar(&viewOptions.sealedSecretCertPath, "sealed-secret-cert", "", "Path to a certificate used to encrypt sealed secrets")
-	viewCmd.PersistentFlags().StringVar(&viewOptions.configDirectory, "config-directory", ".", "Directory containing configuration information for the cluster")
+	Cmd.Flags().StringVarP(&viewOptions.output, "output", "o", "dot", "Output format (dot|json)")
+	Cmd.PersistentFlags().StringVar(&viewOptions.clusterManifestPath, "cluster", "cluster.yaml", "Location of cluster manifest")
+	Cmd.PersistentFlags().StringVar(&viewOptions.machinesManifestPath, "machines", "machines.yaml", "Location of machines manifest")
+	Cmd.PersistentFlags().StringVar(&viewOptions.controllerImage, "controller-image", "quay.io/wksctl/controller:"+version.ImageTag, "Controller image override")
+	Cmd.PersistentFlags().StringVar(&viewOptions.gitURL, "git-url", "", "Git repo containing your cluster and machine information")
+	Cmd.PersistentFlags().StringVar(&viewOptions.gitBranch, "git-branch", "master", "Git branch WKS should use to read your cluster")
+	Cmd.PersistentFlags().StringVar(&viewOptions.gitPath, "git-path", ".", "Relative path to files in Git")
+	Cmd.PersistentFlags().StringVar(&viewOptions.gitDeployKeyPath, "git-deploy-key", "", "Path to the Git deploy key")
+	Cmd.PersistentFlags().StringVar(&viewOptions.sealedSecretKeyPath, "sealed-secret-key", "", "Path to a key used to decrypt sealed secrets")
+	Cmd.PersistentFlags().StringVar(&viewOptions.sealedSecretCertPath, "sealed-secret-cert", "", "Path to a certificate used to encrypt sealed secrets")
+	Cmd.PersistentFlags().StringVar(&viewOptions.configDirectory, "config-directory", ".", "Directory containing configuration information for the cluster")
+
+	// Intentionally shadows the globally defined --verbose flag.
+	Cmd.Flags().BoolVar(&viewOptions.verbose, "verbose", false, "Enable verbose output")
+
 	// Default to using the git deploy key to decrypt sealed secrets
+	// BUG: CLI flags are not evaluated yet at this point!
 	if viewOptions.sealedSecretKeyPath == "" && viewOptions.gitDeployKeyPath != "" {
 		viewOptions.sealedSecretKeyPath = viewOptions.gitDeployKeyPath
 	}
-
-	planCmd.AddCommand(viewCmd)
-	rootCmd.AddCommand(planCmd)
 }
 
 func planRun(cmd *cobra.Command, args []string) {
@@ -71,19 +66,20 @@ func planRun(cmd *cobra.Command, args []string) {
 		viewOptions.sealedSecretKeyPath = viewOptions.gitDeployKeyPath
 	}
 
-	displayPlan(getManifests(qualifyPath(viewOptions.clusterManifestPath), qualifyPath(viewOptions.machinesManifestPath), viewOptions.gitURL,
-		viewOptions.gitBranch, viewOptions.gitDeployKeyPath, viewOptions.gitPath))
+	cpath := filepath.Join(viewOptions.gitPath, viewOptions.clusterManifestPath)
+	mpath := filepath.Join(viewOptions.gitPath, viewOptions.machinesManifestPath)
+	displayPlan(manifests.Get(cpath, mpath, viewOptions.gitURL, viewOptions.gitBranch, viewOptions.gitDeployKeyPath, viewOptions.gitPath))
 }
 
 func displayPlan(clusterManifestPath, machinesManifestPath string, closer func()) {
 	defer closer()
 	sp := specs.NewFromPaths(clusterManifestPath, machinesManifestPath)
-	sshClient, err := sp.GetSSHClient(options.verbose)
+	sshClient, err := sp.GetSSHClient(viewOptions.verbose)
 	if err != nil {
 		log.Fatal("Failed to create SSH client: ", err)
 	}
 	defer sshClient.Close()
-	installer, err := wksos.Identify(sshClient)
+	installer, err := os.Identify(sshClient)
 	if err != nil {
 		log.Fatalf("Failed to identify operating system for seed node (%s): %v",
 			sp.GetMasterPublicAddress(), err)
@@ -95,7 +91,7 @@ func displayPlan(clusterManifestPath, machinesManifestPath string, closer func()
 		configDir = filepath.Dir(clusterManifestPath)
 	}
 
-	params := wksos.SeedNodeParams{
+	params := os.SeedNodeParams{
 		PublicIP:             sp.GetMasterPublicAddress(),
 		PrivateIP:            sp.GetMasterPrivateAddress(),
 		ClusterManifestPath:  clusterManifestPath,
@@ -106,7 +102,7 @@ func displayPlan(clusterManifestPath, machinesManifestPath string, closer func()
 			CloudProvider: sp.GetCloudProvider(),
 		},
 		ControllerImageOverride: viewOptions.controllerImage,
-		GitData: wksos.GitParams{
+		GitData: os.GitParams{
 			GitURL:           viewOptions.gitURL,
 			GitBranch:        viewOptions.gitBranch,
 			GitPath:          viewOptions.gitPath,

@@ -1,4 +1,4 @@
-package main
+package manifests
 
 import (
 	"crypto/rand"

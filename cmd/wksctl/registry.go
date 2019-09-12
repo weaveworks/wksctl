@@ -18,11 +18,10 @@ import (
 )
 
 var registrySyncCmd = &cobra.Command{
-	Use:    "registry-sync-commands",
-	Short:  "Synchronize container images to an internal registry",
-	Long:   "Generate docker commands to STDOUT to pull, tag, and push the WKS container images to the provided destination organization and registry.",
-	PreRun: globalPreRun,
-	Run:    registrySyncRun,
+	Use:   "registry-sync-commands",
+	Short: "Synchronize container images to an internal registry",
+	Long:  "Generate docker commands to STDOUT to pull, tag, and push the WKS container images to the provided destination organization and registry.",
+	Run:   registrySyncRun,
 }
 
 var registrySyncOptions struct {

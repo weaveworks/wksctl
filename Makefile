@@ -87,7 +87,7 @@ generated: pkg/addons/assets/assets_vfsdata.go pkg/apis/wksprovider/controller/m
 
 cmd/wksctl/wksctl: $(DEPS) generated
 cmd/wksctl/wksctl: cmd/wksctl/*.go
-	CGO_ENABLED=0 GOARCH=amd64 go build -ldflags "-X main.version=$(VERSION) -X main.imageTag=$(IMAGE_TAG)" -o $@ cmd/wksctl/*.go
+	CGO_ENABLED=0 GOARCH=amd64 go build -ldflags "-X github.com/weaveworks/wksctl/pkg/version.Version=$(VERSION) -X github.com/weaveworks/wksctl/pkg/version.ImageTag=$(IMAGE_TAG)" -o $@ cmd/wksctl/*.go
 
 cmd/controller/.uptodate: cmd/controller/controller cmd/controller/Dockerfile
 cmd/controller/controller: $(DEPS) generated
