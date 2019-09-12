@@ -1,4 +1,4 @@
-package main
+package plan
 
 import (
 	"fmt"
@@ -14,8 +14,8 @@ import (
 	"github.com/weaveworks/wksctl/pkg/version"
 )
 
-// planCmd represents the plan command
-var planCmd = &cobra.Command{
+// Cmd represents the plan command
+var Cmd = &cobra.Command{
 	Use:    "plan",
 	Hidden: true,
 	Short:  "Debugging commands for the cluster plan.",
@@ -41,6 +41,7 @@ var viewOptions struct {
 	sealedSecretKeyPath  string
 	sealedSecretCertPath string
 	configDirectory      string
+	verbose              bool
 }
 
 func init() {
@@ -55,13 +56,16 @@ func init() {
 	viewCmd.PersistentFlags().StringVar(&viewOptions.sealedSecretKeyPath, "sealed-secret-key", "", "Path to a key used to decrypt sealed secrets")
 	viewCmd.PersistentFlags().StringVar(&viewOptions.sealedSecretCertPath, "sealed-secret-cert", "", "Path to a certificate used to encrypt sealed secrets")
 	viewCmd.PersistentFlags().StringVar(&viewOptions.configDirectory, "config-directory", ".", "Directory containing configuration information for the cluster")
+
+	// Intentionally shadows the globally defined --verbose flag.
+	viewCmd.Flags().BoolVar(&viewOptions.verbose, "verbose", false, "Enable verbose output")
+
 	// Default to using the git deploy key to decrypt sealed secrets
 	if viewOptions.sealedSecretKeyPath == "" && viewOptions.gitDeployKeyPath != "" {
 		viewOptions.sealedSecretKeyPath = viewOptions.gitDeployKeyPath
 	}
 
-	planCmd.AddCommand(viewCmd)
-	rootCmd.AddCommand(planCmd)
+	Cmd.AddCommand(viewCmd)
 }
 
 func planRun(cmd *cobra.Command, args []string) {
@@ -78,7 +82,7 @@ func planRun(cmd *cobra.Command, args []string) {
 func displayPlan(clusterManifestPath, machinesManifestPath string, closer func()) {
 	defer closer()
 	sp := specs.NewFromPaths(clusterManifestPath, machinesManifestPath)
-	sshClient, err := sp.GetSSHClient(options.verbose)
+	sshClient, err := sp.GetSSHClient(viewOptions.verbose)
 	if err != nil {
 		log.Fatal("Failed to create SSH client: ", err)
 	}
