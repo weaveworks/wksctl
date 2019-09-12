@@ -9,7 +9,6 @@ var addonCmd = &cobra.Command{
 	Use:     "addon",
 	Aliases: []string{"addons"},
 	Short:   "Manipulate addons",
-	PreRun:  globalPreRun,
 }
 
 // ListAddons lists all addons

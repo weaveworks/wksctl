@@ -4,11 +4,7 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-)
-
-var (
-	version  = "undefined"
-	imageTag = "latest"
+	"github.com/weaveworks/wksctl/pkg/version"
 )
 
 var versionCmd = &cobra.Command{
@@ -22,5 +18,5 @@ func init() {
 }
 
 func versionRun(cmd *cobra.Command, args []string) {
-	fmt.Println(version)
+	fmt.Println(version.Version)
 }

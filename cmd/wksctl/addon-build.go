@@ -12,11 +12,10 @@ import (
 )
 
 var addonBuildCmd = &cobra.Command{
-	Use:    "build",
-	Short:  "Build addon manifests",
-	PreRun: globalPreRun,
-	Args:   addonBuildArgs,
-	Run:    addonBuildRun,
+	Use:   "build",
+	Short: "Build addon manifests",
+	Args:  addonBuildArgs,
+	Run:   addonBuildRun,
 }
 
 var addonBuildOptions struct {
