@@ -1,4 +1,4 @@
-package main
+package apply
 
 import (
 	"path/filepath"
