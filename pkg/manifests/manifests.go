@@ -1,7 +1,6 @@
 package manifests
 
 import (
-	"context"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -34,9 +33,8 @@ func syncRepo(url, branch, deployKeyPath, relativeRoot string) (string, string, 
 		os.RemoveAll(srcDir)
 	}
 	lCtx := log.WithField("repo", url)
-	ctx := context.Background()
 	opt := cloneOptions(url, deployKeyPath, branch)
-	r, err := gogit.PlainCloneContext(ctx, srcDir, false, &opt)
+	r, err := gogit.PlainClone(srcDir, false, &opt)
 
 	if err != nil {
 		closer()
