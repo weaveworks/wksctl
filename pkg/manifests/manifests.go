@@ -38,7 +38,7 @@ func syncRepo(url, branch, deployKeyPath, relativeRoot string) (string, string, 
 
 	if err != nil {
 		closer()
-		lCtx.Fatal(err)
+		lCtx.Fatalf("Failed to clone repository: %v", err)
 	}
 	lCtx.WithField("config", r.Config).Debug("cloned")
 
