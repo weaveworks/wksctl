@@ -1,11 +1,10 @@
-package main
+package specs
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
-
-	"path/filepath"
 
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/util/validation/field"
