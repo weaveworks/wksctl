@@ -11,6 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/weaveworks/wksctl/pkg/utilities/manifest"
+	"github.com/weaveworks/wksctl/pkg/version"
 )
 
 // A command that initializes a user's cloned git repository with a correct image tag for wks-controller and
@@ -156,6 +157,6 @@ func updateManifests(options initOptionType) error {
 }
 
 func initRun(cmd *cobra.Command, args []string) error {
-	initOptions.version = version // from main command
+	initOptions.version = version.Version // from main command
 	return updateManifests(initOptions)
 }

@@ -7,6 +7,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/weaveworks/go-checkpoint"
+	"github.com/weaveworks/wksctl/pkg/version"
 )
 
 var rootCmd = &cobra.Command{
@@ -34,7 +35,7 @@ func main() {
 
 	if checkResponse, err := checkpoint.Check(&checkpoint.CheckParams{
 		Product: "wksctl",
-		Version: version,
+		Version: version.Version,
 	}); err == nil && checkResponse.Outdated {
 		log.Infof("wksctl version %s is available; please update at %s",
 			checkResponse.CurrentVersion, checkResponse.CurrentDownloadURL)
