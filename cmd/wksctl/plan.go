@@ -18,8 +18,6 @@ var planCmd = &cobra.Command{
 	Use:    "plan",
 	Hidden: true,
 	Short:  "Debugging commands for the cluster plan.",
-	// PreRun: globalPreRun,
-	// Run:    planRun,
 }
 
 // viewCmd represents the plan view command
@@ -27,7 +25,6 @@ var viewCmd = &cobra.Command{
 	Use:    "view",
 	Hidden: false,
 	Short:  "View a cluster plan.",
-	PreRun: globalPreRun,
 	Run:    planRun,
 }
 

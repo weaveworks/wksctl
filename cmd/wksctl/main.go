@@ -12,13 +12,15 @@ import (
 var rootCmd = &cobra.Command{
 	Use:   "wksctl",
 	Short: "Weave Enterprise Kubernetes Subscription CLI",
+
+	PersistentPreRun: configureLogger,
 }
 
 var options struct {
 	verbose bool
 }
 
-func globalPreRun(cmd *cobra.Command, args []string) {
+func configureLogger(cmd *cobra.Command, args []string) {
 	log.SetFormatter(&log.TextFormatter{
 		FullTimestamp: true,
 	})

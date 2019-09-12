@@ -12,11 +12,10 @@ import (
 )
 
 var addonShowCmd = &cobra.Command{
-	Use:    "show",
-	Short:  "Show details about an addon",
-	PreRun: globalPreRun,
-	Args:   addonShowArgs,
-	Run:    addonShowRun,
+	Use:   "show",
+	Short: "Show details about an addon",
+	Args:  addonShowArgs,
+	Run:   addonShowRun,
 }
 
 func init() {

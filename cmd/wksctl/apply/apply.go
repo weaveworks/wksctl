@@ -16,10 +16,9 @@ import (
 
 // applyCmd represents the apply command
 var applyCmd = &cobra.Command{
-	Use:    "apply",
-	Short:  "Create or update a Kubernetes cluster",
-	PreRun: globalPreRun,
-	Run:    applyRun,
+	Use:   "apply",
+	Short: "Create or update a Kubernetes cluster",
+	Run:   applyRun,
 }
 
 var applyOptions struct {
