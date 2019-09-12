@@ -59,8 +59,10 @@ const (
 var (
 	pemKeys            = []string{"certificate-authority", "client-certificate", "client-key"}
 	fluxSecretTemplate = `apiVersion: v1
+{{ if .SecretValue }}
 data:
   identity: {{.SecretValue}}
+{{ end }}
 kind: Secret
 metadata:
   name: flux-git-deploy
@@ -800,6 +802,7 @@ func (o OS) configureFlux(b *plan.Builder, params SeedNodeParams) error {
 	}
 	fluxManifestPath, err := findFluxManifest(params.ConfigDirectory)
 	if err != nil {
+		// We haven't found a flux.yaml manifest in the git repository, use the flux addon.
 		gitParams := map[string]string{"gitURL": gitData.GitURL, "gitBranch": gitData.GitBranch, "gitPath": gitData.GitPath}
 		err := processDeployKey(gitParams, gitData.GitDeployKeyPath)
 		if err != nil {
@@ -817,6 +820,8 @@ func (o OS) configureFlux(b *plan.Builder, params SeedNodeParams) error {
 		}
 		return nil
 	}
+
+	// Use flux.yaml from the git repository.
 	manifest, err := createFluxSecretFromGitData(gitData, params)
 	if err != nil {
 		return errors.Wrap(err, "failed to generate git deploy secret manifest for flux")
@@ -824,6 +829,7 @@ func (o OS) configureFlux(b *plan.Builder, params SeedNodeParams) error {
 	secretResName := "flux-git-deploy-secret"
 	fluxSecretRsc := &resource.KubectlApply{OpaqueManifest: manifest, Filename: object.String(secretResName + ".yaml")}
 	b.AddResource("install:flux:"+secretResName, fluxSecretRsc, plan.DependOn("kubectl:apply:cluster", "kubectl:apply:machines"))
+
 	fluxRsc := &resource.KubectlApply{ManifestPath: object.String(fluxManifestPath)}
 	b.AddResource("install:flux:main", fluxRsc, plan.DependOn("install:flux:flux-git-deploy-secret"))
 	return nil
