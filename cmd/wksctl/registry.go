@@ -6,6 +6,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"github.com/weaveworks/wksctl/pkg/addons"
 	"github.com/weaveworks/wksctl/pkg/cluster/machine"
 	"github.com/weaveworks/wksctl/pkg/kubernetes"
 	"github.com/weaveworks/wksctl/pkg/quay"
@@ -52,7 +53,7 @@ func registrySyncRun(cmd *cobra.Command, args []string) {
 	}
 
 	// Get addons' images:
-	for _, addon := range ListAddons() {
+	for _, addon := range addons.List() {
 		addonImages, err := addon.ListImages()
 		if err != nil {
 			log.WithField("error", err).WithField("addon", addon.Name).Fatal("Failed to get addon's images.")
