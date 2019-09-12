@@ -42,21 +42,21 @@ var globalParams Params
 
 func init() {
 	// Intentionally shadows the globally defined --verbose flag.
-	Cmd.PersistentFlags().BoolVar(&globalParams.verbose, "verbose", false, "Enable verbose output")
-	Cmd.PersistentFlags().StringVar(&globalParams.clusterManifestPath, "cluster", "cluster.yaml", "Location of cluster manifest")
-	Cmd.PersistentFlags().StringVar(&globalParams.machinesManifestPath, "machines", "machines.yaml", "Location of machines manifest")
-	Cmd.PersistentFlags().StringVar(&globalParams.controllerImage, "controller-image", "quay.io/wksctl/controller:"+version.ImageTag, "Controller image override")
-	Cmd.PersistentFlags().StringVar(&globalParams.gitURL, "git-url", "", "Git repo containing your cluster and machine information")
-	Cmd.PersistentFlags().StringVar(&globalParams.gitBranch, "git-branch", "master", "Git branch WKS should use to sync with your cluster")
-	Cmd.PersistentFlags().StringVar(&globalParams.gitPath, "git-path", ".", "Relative path to files in Git")
-	Cmd.PersistentFlags().StringVar(&globalParams.gitDeployKeyPath, "git-deploy-key", "", "Path to the Git deploy key")
-	Cmd.PersistentFlags().StringVar(&globalParams.sealedSecretKeyPath, "sealed-secret-key", "", "Path to a key used to decrypt sealed secrets")
-	Cmd.PersistentFlags().StringVar(&globalParams.sealedSecretCertPath, "sealed-secret-cert", "", "Path to a certificate used to encrypt sealed secrets")
-	Cmd.PersistentFlags().StringVar(&globalParams.configDirectory, "config-directory", ".", "Directory containing configuration information for the cluster")
-	Cmd.PersistentFlags().StringVar(&globalParams.namespace, "namespace", manifest.DefaultNamespace, "namespace override for WKS components")
-	Cmd.PersistentFlags().BoolVar(&globalParams.useManifestNamespace, "use-manifest-namespace", false, "use namespaces from supplied manifests (overriding any --namespace argument)")
+	Cmd.Flags().BoolVar(&globalParams.verbose, "verbose", false, "Enable verbose output")
+	Cmd.Flags().StringVar(&globalParams.clusterManifestPath, "cluster", "cluster.yaml", "Location of cluster manifest")
+	Cmd.Flags().StringVar(&globalParams.machinesManifestPath, "machines", "machines.yaml", "Location of machines manifest")
+	Cmd.Flags().StringVar(&globalParams.controllerImage, "controller-image", "quay.io/wksctl/controller:"+version.ImageTag, "Controller image override")
+	Cmd.Flags().StringVar(&globalParams.gitURL, "git-url", "", "Git repo containing your cluster and machine information")
+	Cmd.Flags().StringVar(&globalParams.gitBranch, "git-branch", "master", "Git branch WKS should use to sync with your cluster")
+	Cmd.Flags().StringVar(&globalParams.gitPath, "git-path", ".", "Relative path to files in Git")
+	Cmd.Flags().StringVar(&globalParams.gitDeployKeyPath, "git-deploy-key", "", "Path to the Git deploy key")
+	Cmd.Flags().StringVar(&globalParams.sealedSecretKeyPath, "sealed-secret-key", "", "Path to a key used to decrypt sealed secrets")
+	Cmd.Flags().StringVar(&globalParams.sealedSecretCertPath, "sealed-secret-cert", "", "Path to a certificate used to encrypt sealed secrets")
+	Cmd.Flags().StringVar(&globalParams.configDirectory, "config-directory", ".", "Directory containing configuration information for the cluster")
+	Cmd.Flags().StringVar(&globalParams.namespace, "namespace", manifest.DefaultNamespace, "namespace override for WKS components")
+	Cmd.Flags().BoolVar(&globalParams.useManifestNamespace, "use-manifest-namespace", false, "use namespaces from supplied manifests (overriding any --namespace argument)")
 	// Hide controller-image flag as it is a helper/debug flag.
-	Cmd.PersistentFlags().MarkHidden("controller-image")
+	Cmd.Flags().MarkHidden("controller-image")
 }
 
 type Applier struct {
