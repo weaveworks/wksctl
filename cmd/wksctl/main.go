@@ -7,6 +7,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/weaveworks/go-checkpoint"
+	"github.com/weaveworks/wksctl/cmd/wksctl/apply"
 	"github.com/weaveworks/wksctl/pkg/version"
 )
 
@@ -32,6 +33,8 @@ func configureLogger(cmd *cobra.Command, args []string) {
 
 func main() {
 	rootCmd.PersistentFlags().BoolVarP(&options.verbose, "verbose", "v", false, "Enable verbose output")
+
+	rootCmd.AddCommand(apply.Cmd)
 
 	if checkResponse, err := checkpoint.Check(&checkpoint.CheckParams{
 		Product: "wksctl",

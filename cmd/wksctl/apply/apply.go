@@ -15,14 +15,14 @@ import (
 	"github.com/weaveworks/wksctl/pkg/version"
 )
 
-// applyCmd represents the apply command
-var applyCmd = &cobra.Command{
+// Cmd represents the apply command
+var Cmd = &cobra.Command{
 	Use:   "apply",
 	Short: "Create or update a Kubernetes cluster",
-	Run:   applyRun,
+	Run:   func(_ *cobra.Command, _ []string) { a := Applier{&globalParams}; a.Apply() },
 }
 
-var applyOptions struct {
+type Params struct {
 	clusterManifestPath  string
 	machinesManifestPath string
 	controllerImage      string
@@ -35,42 +35,49 @@ var applyOptions struct {
 	configDirectory      string
 	namespace            string
 	useManifestNamespace bool
+	verbose              bool
 }
+
+var globalParams Params
 
 func init() {
-	applyCmd.PersistentFlags().StringVar(&applyOptions.clusterManifestPath, "cluster", "cluster.yaml", "Location of cluster manifest")
-	applyCmd.PersistentFlags().StringVar(&applyOptions.machinesManifestPath, "machines", "machines.yaml", "Location of machines manifest")
-	applyCmd.PersistentFlags().StringVar(&applyOptions.controllerImage, "controller-image", "quay.io/wksctl/controller:"+version.ImageTag, "Controller image override")
-	applyCmd.PersistentFlags().StringVar(&applyOptions.gitURL, "git-url", "", "Git repo containing your cluster and machine information")
-	applyCmd.PersistentFlags().StringVar(&applyOptions.gitBranch, "git-branch", "master", "Git branch WKS should use to sync with your cluster")
-	applyCmd.PersistentFlags().StringVar(&applyOptions.gitPath, "git-path", ".", "Relative path to files in Git")
-	applyCmd.PersistentFlags().StringVar(&applyOptions.gitDeployKeyPath, "git-deploy-key", "", "Path to the Git deploy key")
-	applyCmd.PersistentFlags().StringVar(&applyOptions.sealedSecretKeyPath, "sealed-secret-key", "", "Path to a key used to decrypt sealed secrets")
-	applyCmd.PersistentFlags().StringVar(&applyOptions.sealedSecretCertPath, "sealed-secret-cert", "", "Path to a certificate used to encrypt sealed secrets")
-	applyCmd.PersistentFlags().StringVar(&applyOptions.configDirectory, "config-directory", ".", "Directory containing configuration information for the cluster")
-	applyCmd.PersistentFlags().StringVar(&applyOptions.namespace, "namespace", manifest.DefaultNamespace, "namespace override for WKS components")
-	applyCmd.PersistentFlags().BoolVar(&applyOptions.useManifestNamespace, "use-manifest-namespace", false, "use namespaces from supplied manifests (overriding any --namespace argument)")
+	// Intentionally shadows the globally defined --verbose flag.
+	Cmd.PersistentFlags().BoolVar(&globalParams.verbose, "verbose", false, "Enable verbose output")
+	Cmd.PersistentFlags().StringVar(&globalParams.clusterManifestPath, "cluster", "cluster.yaml", "Location of cluster manifest")
+	Cmd.PersistentFlags().StringVar(&globalParams.machinesManifestPath, "machines", "machines.yaml", "Location of machines manifest")
+	Cmd.PersistentFlags().StringVar(&globalParams.controllerImage, "controller-image", "quay.io/wksctl/controller:"+version.ImageTag, "Controller image override")
+	Cmd.PersistentFlags().StringVar(&globalParams.gitURL, "git-url", "", "Git repo containing your cluster and machine information")
+	Cmd.PersistentFlags().StringVar(&globalParams.gitBranch, "git-branch", "master", "Git branch WKS should use to sync with your cluster")
+	Cmd.PersistentFlags().StringVar(&globalParams.gitPath, "git-path", ".", "Relative path to files in Git")
+	Cmd.PersistentFlags().StringVar(&globalParams.gitDeployKeyPath, "git-deploy-key", "", "Path to the Git deploy key")
+	Cmd.PersistentFlags().StringVar(&globalParams.sealedSecretKeyPath, "sealed-secret-key", "", "Path to a key used to decrypt sealed secrets")
+	Cmd.PersistentFlags().StringVar(&globalParams.sealedSecretCertPath, "sealed-secret-cert", "", "Path to a certificate used to encrypt sealed secrets")
+	Cmd.PersistentFlags().StringVar(&globalParams.configDirectory, "config-directory", ".", "Directory containing configuration information for the cluster")
+	Cmd.PersistentFlags().StringVar(&globalParams.namespace, "namespace", manifest.DefaultNamespace, "namespace override for WKS components")
+	Cmd.PersistentFlags().BoolVar(&globalParams.useManifestNamespace, "use-manifest-namespace", false, "use namespaces from supplied manifests (overriding any --namespace argument)")
 	// Hide controller-image flag as it is a helper/debug flag.
-	applyCmd.PersistentFlags().MarkHidden("controller-image")
-
-	rootCmd.AddCommand(applyCmd)
+	Cmd.PersistentFlags().MarkHidden("controller-image")
 }
 
-func applyRun(cmd *cobra.Command, args []string) {
+type Applier struct {
+	Params *Params
+}
+
+func (a *Applier) Apply() {
 	// Default to using the git deploy key to decrypt sealed secrets
-	if applyOptions.sealedSecretKeyPath == "" && applyOptions.gitDeployKeyPath != "" {
-		applyOptions.sealedSecretKeyPath = applyOptions.gitDeployKeyPath
+	if a.Params.sealedSecretKeyPath == "" && a.Params.gitDeployKeyPath != "" {
+		a.Params.sealedSecretKeyPath = a.Params.gitDeployKeyPath
 	}
 
-	cpath := filepath.Join(applyOptions.gitPath, applyOptions.clusterManifestPath)
-	mpath := filepath.Join(applyOptions.gitPath, applyOptions.machinesManifestPath)
-	initiateCluster(manifests.Get(cpath, mpath, applyOptions.gitURL, applyOptions.gitBranch, applyOptions.gitDeployKeyPath, applyOptions.gitPath))
+	cpath := filepath.Join(a.Params.gitPath, a.Params.clusterManifestPath)
+	mpath := filepath.Join(a.Params.gitPath, a.Params.machinesManifestPath)
+	a.initiateCluster(manifests.Get(cpath, mpath, a.Params.gitURL, a.Params.gitBranch, a.Params.gitDeployKeyPath, a.Params.gitPath))
 }
 
-func initiateCluster(clusterManifestPath, machinesManifestPath string, closer func()) {
+func (a *Applier) initiateCluster(clusterManifestPath, machinesManifestPath string, closer func()) {
 	defer closer()
 	sp := specs.NewFromPaths(clusterManifestPath, machinesManifestPath)
-	sshClient, err := sp.GetSSHClient(options.verbose)
+	sshClient, err := sp.GetSSHClient(a.Params.verbose)
 	if err != nil {
 		log.Fatal("Failed to create SSH client: ", err)
 	}
@@ -91,18 +98,18 @@ func initiateCluster(clusterManifestPath, machinesManifestPath string, closer fu
 	}
 
 	// Point config dir at sync repo if using github and the user didn't override it
-	configDir := applyOptions.configDirectory
-	if configDir == "." && applyOptions.gitURL != "" {
+	configDir := a.Params.configDirectory
+	if configDir == "." && a.Params.gitURL != "" {
 		configDir = filepath.Dir(clusterManifestPath)
 	}
 
 	ns := ""
-	if !applyOptions.useManifestNamespace {
-		ns = applyOptions.namespace
+	if !a.Params.useManifestNamespace {
+		ns = a.Params.namespace
 	}
 
 	// TODO(damien): Transform the controller image into an addon.
-	controllerImage, err := addons.UpdateImage(applyOptions.controllerImage, sp.ClusterSpec.ImageRepository)
+	controllerImage, err := addons.UpdateImage(a.Params.controllerImage, sp.ClusterSpec.ImageRepository)
 	if err != nil {
 		log.Fatal("Failed to apply the cluster's image repository to the WKS controller's image: ", err)
 	}
@@ -119,13 +126,13 @@ func initiateCluster(clusterManifestPath, machinesManifestPath string, closer fu
 		},
 		ControllerImageOverride: controllerImage,
 		GitData: wksos.GitParams{
-			GitURL:           applyOptions.gitURL,
-			GitBranch:        applyOptions.gitBranch,
-			GitPath:          applyOptions.gitPath,
-			GitDeployKeyPath: applyOptions.gitDeployKeyPath,
+			GitURL:           a.Params.gitURL,
+			GitBranch:        a.Params.gitBranch,
+			GitPath:          a.Params.gitPath,
+			GitDeployKeyPath: a.Params.gitDeployKeyPath,
 		},
-		SealedSecretKeyPath:  applyOptions.sealedSecretKeyPath,
-		SealedSecretCertPath: applyOptions.sealedSecretCertPath,
+		SealedSecretKeyPath:  a.Params.sealedSecretKeyPath,
+		SealedSecretCertPath: a.Params.sealedSecretCertPath,
 		ConfigDirectory:      configDir,
 		ImageRepository:      sp.ClusterSpec.ImageRepository,
 		ExternalLoadBalancer: sp.ClusterSpec.APIServer.ExternalLoadBalancer,
