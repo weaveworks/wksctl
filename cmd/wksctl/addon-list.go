@@ -9,10 +9,9 @@ import (
 )
 
 var addonListCmd = &cobra.Command{
-	Use:    "list",
-	Short:  "List addons",
-	PreRun: globalPreRun,
-	Run:    addonListRun,
+	Use:   "list",
+	Short: "List addons",
+	Run:   addonListRun,
 }
 
 func init() {

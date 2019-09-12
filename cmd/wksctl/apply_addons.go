@@ -20,7 +20,6 @@ var applyAddonsCmd = &cobra.Command{
 	Use:    "apply-addons",
 	Short:  "Apply Addons",
 	Hidden: true,
-	PreRun: globalPreRun,
 	Run:    applyAddonsRun,
 }
 
