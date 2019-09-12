@@ -12,6 +12,7 @@ import (
 	"github.com/weaveworks/wksctl/pkg/specs"
 	"github.com/weaveworks/wksctl/pkg/utilities/kubeadm"
 	"github.com/weaveworks/wksctl/pkg/utilities/manifest"
+	"github.com/weaveworks/wksctl/pkg/version"
 )
 
 // applyCmd represents the apply command
@@ -39,7 +40,7 @@ var applyOptions struct {
 func init() {
 	applyCmd.PersistentFlags().StringVar(&applyOptions.clusterManifestPath, "cluster", "cluster.yaml", "Location of cluster manifest")
 	applyCmd.PersistentFlags().StringVar(&applyOptions.machinesManifestPath, "machines", "machines.yaml", "Location of machines manifest")
-	applyCmd.PersistentFlags().StringVar(&applyOptions.controllerImage, "controller-image", "quay.io/wksctl/controller:"+imageTag, "Controller image override")
+	applyCmd.PersistentFlags().StringVar(&applyOptions.controllerImage, "controller-image", "quay.io/wksctl/controller:"+version.ImageTag, "Controller image override")
 	applyCmd.PersistentFlags().StringVar(&applyOptions.gitURL, "git-url", "", "Git repo containing your cluster and machine information")
 	applyCmd.PersistentFlags().StringVar(&applyOptions.gitBranch, "git-branch", "master", "Git branch WKS should use to sync with your cluster")
 	applyCmd.PersistentFlags().StringVar(&applyOptions.gitPath, "git-path", ".", "Relative path to files in Git")
