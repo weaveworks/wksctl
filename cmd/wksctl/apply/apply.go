@@ -41,11 +41,8 @@ type Params struct {
 var globalParams Params
 
 func init() {
-	// Intentionally shadows the globally defined --verbose flag.
-	Cmd.Flags().BoolVar(&globalParams.verbose, "verbose", false, "Enable verbose output")
 	Cmd.Flags().StringVar(&globalParams.clusterManifestPath, "cluster", "cluster.yaml", "Location of cluster manifest")
 	Cmd.Flags().StringVar(&globalParams.machinesManifestPath, "machines", "machines.yaml", "Location of machines manifest")
-	Cmd.Flags().StringVar(&globalParams.controllerImage, "controller-image", "quay.io/wksctl/controller:"+version.ImageTag, "Controller image override")
 	Cmd.Flags().StringVar(&globalParams.gitURL, "git-url", "", "Git repo containing your cluster and machine information")
 	Cmd.Flags().StringVar(&globalParams.gitBranch, "git-branch", "master", "Git branch WKS should use to sync with your cluster")
 	Cmd.Flags().StringVar(&globalParams.gitPath, "git-path", ".", "Relative path to files in Git")
@@ -55,7 +52,12 @@ func init() {
 	Cmd.Flags().StringVar(&globalParams.configDirectory, "config-directory", ".", "Directory containing configuration information for the cluster")
 	Cmd.Flags().StringVar(&globalParams.namespace, "namespace", manifest.DefaultNamespace, "namespace override for WKS components")
 	Cmd.Flags().BoolVar(&globalParams.useManifestNamespace, "use-manifest-namespace", false, "use namespaces from supplied manifests (overriding any --namespace argument)")
+
+	// Intentionally shadows the globally defined --verbose flag.
+	Cmd.Flags().BoolVar(&globalParams.verbose, "verbose", false, "Enable verbose output")
+
 	// Hide controller-image flag as it is a helper/debug flag.
+	Cmd.Flags().StringVar(&globalParams.controllerImage, "controller-image", "quay.io/wksctl/controller:"+version.ImageTag, "Controller image override")
 	Cmd.Flags().MarkHidden("controller-image")
 }
 
