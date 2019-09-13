@@ -122,10 +122,10 @@ items:
         containers:
         - args:
           - --ssh-keygen-dir=/var/fluxd/keygen
-          - --git-url="git@github.com:weaveworks/foo.bar"
-          - --git-branch="rickey"
+          - --git-url=git@github.com:weaveworks/foo.bar
+          - --git-branch=rickey
           - --git-poll-interval=30s
-          - --git-path="eightfold"
+          - --git-path=eightfold
           - --memcached-hostname=memcached.weavek8sops.svc.cluster.local
           - --memcached-service=memcached
           - --listen-metrics=:3031
