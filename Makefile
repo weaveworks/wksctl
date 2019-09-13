@@ -108,7 +108,7 @@ else
   WKSCTL_INSTALL_PATH=$(shell go env GOPATH)/bin
 endif
 
-install:
+install: cmd/wksctl/wksctl
 	cp cmd/wksctl/wksctl $(WKSCTL_INSTALL_PATH)
 
 lint:
