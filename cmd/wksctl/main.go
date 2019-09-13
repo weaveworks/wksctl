@@ -10,6 +10,7 @@ import (
 	"github.com/weaveworks/wksctl/cmd/wksctl/addon"
 	"github.com/weaveworks/wksctl/cmd/wksctl/apply"
 	"github.com/weaveworks/wksctl/cmd/wksctl/plan"
+	"github.com/weaveworks/wksctl/cmd/wksctl/registrysynccommands"
 	"github.com/weaveworks/wksctl/pkg/version"
 )
 
@@ -39,6 +40,7 @@ func main() {
 	rootCmd.AddCommand(addon.Cmd)
 	rootCmd.AddCommand(apply.Cmd)
 	rootCmd.AddCommand(plan.Cmd)
+	rootCmd.AddCommand(registrysynccommands.Cmd)
 
 	if checkResponse, err := checkpoint.Check(&checkpoint.CheckParams{
 		Product: "wksctl",
