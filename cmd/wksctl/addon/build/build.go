@@ -1,4 +1,4 @@
-package main
+package build
 
 import (
 	"errors"
@@ -11,7 +11,7 @@ import (
 	"github.com/weaveworks/wksctl/pkg/addons"
 )
 
-var addonBuildCmd = &cobra.Command{
+var Cmd = &cobra.Command{
 	Use:   "build",
 	Short: "Build addon manifests",
 	Args:  addonBuildArgs,
@@ -25,10 +25,9 @@ var addonBuildOptions struct {
 }
 
 func init() {
-	addonBuildCmd.PersistentFlags().StringVarP(&addonBuildOptions.outputDirectory, "output-directory", "o", "", "manifest output directory")
-	addonBuildCmd.PersistentFlags().StringVarP(&addonBuildOptions.imageRepository, "image-repository", "r", "", "use this container repository for addon images")
-	addonBuildCmd.PersistentFlags().StringArrayVarP(&addonBuildOptions.params, "params", "p", nil, "addon input parameters e.g. --params foo=bar --params baz=qux")
-	addonCmd.AddCommand(addonBuildCmd)
+	Cmd.PersistentFlags().StringVarP(&addonBuildOptions.outputDirectory, "output-directory", "o", "", "manifest output directory")
+	Cmd.PersistentFlags().StringVarP(&addonBuildOptions.imageRepository, "image-repository", "r", "", "use this container repository for addon images")
+	Cmd.PersistentFlags().StringArrayVarP(&addonBuildOptions.params, "params", "p", nil, "addon input parameters e.g. --params foo=bar --params baz=qux")
 }
 
 func addonBuildArgs(cmd *cobra.Command, args []string) error {

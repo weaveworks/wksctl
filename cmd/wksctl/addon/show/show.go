@@ -1,4 +1,4 @@
-package main
+package show
 
 import (
 	"errors"
@@ -11,15 +11,11 @@ import (
 	"github.com/weaveworks/wksctl/pkg/addons"
 )
 
-var addonShowCmd = &cobra.Command{
+var Cmd = &cobra.Command{
 	Use:   "show",
 	Short: "Show details about an addon",
 	Args:  addonShowArgs,
 	Run:   addonShowRun,
-}
-
-func init() {
-	addonCmd.AddCommand(addonShowCmd)
 }
 
 func addonShowArgs(cmd *cobra.Command, args []string) error {
@@ -35,6 +31,7 @@ func addonShowRun(cmd *cobra.Command, args []string) {
 		log.Fatal(err)
 	}
 
+	const tabWidth = 4
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, tabWidth, ' ', 0)
 
 	fmt.Fprintf(w, "Name\t%s\n", addon.Name)
