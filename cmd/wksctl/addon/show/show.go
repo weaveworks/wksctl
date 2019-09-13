@@ -35,6 +35,7 @@ func addonShowRun(cmd *cobra.Command, args []string) {
 		log.Fatal(err)
 	}
 
+	const tabWidth = 4
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, tabWidth, ' ', 0)
 
 	fmt.Fprintf(w, "Name\t%s\n", addon.Name)
