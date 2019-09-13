@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"path/filepath"
 
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/weaveworks/wksctl/pkg/kubernetes/config"
@@ -22,7 +23,7 @@ import (
 var kubeconfigCmd = &cobra.Command{
 	Use:   "kubeconfig",
 	Short: "Generate a kubeconfig file for the cluster",
-	Run:   kubeconfigRun,
+	RunE:  kubeconfigRun,
 }
 
 var kubeconfigOptions struct {
@@ -69,17 +70,17 @@ func configPath(sp *specs.Specs, wksHome string) string {
 }
 
 // TODO this should be refactored into a common place - i.e. pkg/cluster
-func generateConfig(sp *specs.Specs, configPath string) string {
+func generateConfig(sp *specs.Specs, configPath string) (string, error) {
 	sshClient, err := sp.GetSSHClient(options.verbose)
 	if err != nil {
-		log.Fatal("Failed to create SSH client: ", err)
+		return "", errors.Wrap(err, "failed to create SSH client: ")
 	}
 	defer sshClient.Close()
 
 	runner := sudo.Runner{Runner: sshClient}
 	configStr, err := runner.RunCommand("cat /etc/kubernetes/admin.conf", nil)
 	if err != nil {
-		log.Fatalf("Failed to retrieve Kubernetes configuration: %v", err)
+		return "", errors.Wrap(err, "failed to retrieve Kubernetes configuration")
 	}
 
 	endpoint := sp.GetMasterPublicAddress()
@@ -94,18 +95,23 @@ func generateConfig(sp *specs.Specs, configPath string) string {
 	if err != nil {
 		log.Fatal(err)
 	}
-	return configStr
+	return configStr, nil
 }
 
-func kubeconfigRun(cmd *cobra.Command, args []string) {
-	clusterManifestPath, machinesManifestPath, closer := manifests.Get(kubeconfigOptions.clusterManifestPath,
+func kubeconfigRun(cmd *cobra.Command, args []string) error {
+	clusterManifestPath, machinesManifestPath, closer, err := manifests.Get(kubeconfigOptions.clusterManifestPath,
 		kubeconfigOptions.machinesManifestPath, kubeconfigOptions.gitURL, kubeconfigOptions.gitBranch, kubeconfigOptions.gitDeployKeyPath,
 		kubeconfigOptions.gitPath)
-	defer closer()
+	if closer != nil {
+		defer closer()
+	}
+	if err != nil {
+		return err
+	}
 	wksHome, err := path.CreateDirectory(
 		path.WKSHome(kubeconfigOptions.artifactDirectory))
 	if err != nil {
-		log.Fatalf("Failed to create WKS home directory: %v", err)
+		return errors.Wrapf(err, "failed to create WKS home directory")
 	}
 	sp := specs.NewFromPaths(clusterManifestPath, machinesManifestPath)
 
@@ -113,14 +119,18 @@ func kubeconfigRun(cmd *cobra.Command, args []string) {
 
 	_, err = path.CreateDirectory(filepath.Dir(configPath))
 	if err != nil {
-		log.Fatalf("Failed to create configuration directory: %v", err)
+		return errors.Wrapf(err, "failed to create configuration directory")
 	}
 
-	configStr := generateConfig(sp, configPath)
+	configStr, err := generateConfig(sp, configPath)
+	if err != nil {
+		return nil
+	}
 
 	err = ioutil.WriteFile(configPath, []byte(configStr), 0644)
 	if err != nil {
-		log.Fatalf("Failed to write Kubernetes configuration locally: %v", err)
+		return errors.Wrapf(err, "failed to write Kubernetes configuration locally")
 	}
 	fmt.Printf("To use kubectl with the %s cluster, enter:\n$ export KUBECONFIG=%s\n", sp.GetClusterName(), configPath)
+	return nil
 }

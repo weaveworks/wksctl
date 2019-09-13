@@ -16,7 +16,9 @@ import (
 )
 
 func TestNoDeployKey(t *testing.T) {
-	assert.Equal(t, gogit.CloneOptions{URL: "foo"}, cloneOptions("foo", "", ""))
+	co, err := cloneOptions("foo", "", "")
+	assert.NoError(t, err)
+	assert.Equal(t, gogit.CloneOptions{URL: "foo"}, co)
 
 }
 
@@ -32,12 +34,13 @@ func TestSSHDeployKey(t *testing.T) {
 	})
 	f.Write(keyPem)
 	f.Close()
-	co := cloneOptions("url", f.Name(), "")
+	co, err := cloneOptions("url", f.Name(), "")
+	assert.NoError(t, err)
 	assert.NotNil(t, co.Auth)
 }
 
 func TestBranchClone(t *testing.T) {
-	assert.Equal(t, gogit.CloneOptions{URL: "foo", SingleBranch: true, ReferenceName: plumbing.NewBranchReferenceName("develop")},
-		cloneOptions("foo", "", "develop"))
-
+	co, err := cloneOptions("foo", "", "develop")
+	assert.NoError(t, err)
+	assert.Equal(t, gogit.CloneOptions{URL: "foo", SingleBranch: true, ReferenceName: plumbing.NewBranchReferenceName("develop")}, co)
 }
