@@ -1,4 +1,4 @@
-package main
+package registrysynccommands
 
 import (
 	"fmt"
@@ -6,6 +6,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"github.com/weaveworks/wksctl/pkg/addons"
 	"github.com/weaveworks/wksctl/pkg/cluster/machine"
 	"github.com/weaveworks/wksctl/pkg/kubernetes"
 	"github.com/weaveworks/wksctl/pkg/quay"
@@ -17,7 +18,7 @@ import (
 	apierrors "sigs.k8s.io/cluster-api/pkg/errors"
 )
 
-var registrySyncCmd = &cobra.Command{
+var Cmd = &cobra.Command{
 	Use:   "registry-sync-commands",
 	Short: "Synchronize container images to an internal registry",
 	Long:  "Generate docker commands to STDOUT to pull, tag, and push the WKS container images to the provided destination organization and registry.",
@@ -32,11 +33,10 @@ var registrySyncOptions struct {
 }
 
 func init() {
-	registrySyncCmd.PersistentFlags().StringVar(&registrySyncOptions.destRegistry, "dest-registry", "localhost:1337", "Destination registry that will be used to push images to")
-	registrySyncCmd.PersistentFlags().StringVar(&registrySyncOptions.destOrganization, "dest-organization", "wks", "Destination organization that will be used to push images to")
-	registrySyncCmd.PersistentFlags().StringVar(&registrySyncOptions.machinesManifestPath, "machines", "", "Location of machines manifest")
-	registrySyncCmd.PersistentFlags().StringVar(&registrySyncOptions.versionsRange, "versions", "", "Range of Kubernetes semantic versions, e.g.: \""+kubernetes.DefaultVersionsRange+"\"")
-	rootCmd.AddCommand(registrySyncCmd)
+	Cmd.PersistentFlags().StringVar(&registrySyncOptions.destRegistry, "dest-registry", "localhost:1337", "Destination registry that will be used to push images to")
+	Cmd.PersistentFlags().StringVar(&registrySyncOptions.destOrganization, "dest-organization", "wks", "Destination organization that will be used to push images to")
+	Cmd.PersistentFlags().StringVar(&registrySyncOptions.machinesManifestPath, "machines", "", "Location of machines manifest")
+	Cmd.PersistentFlags().StringVar(&registrySyncOptions.versionsRange, "versions", "", "Range of Kubernetes semantic versions, e.g.: \""+kubernetes.DefaultVersionsRange+"\"")
 }
 
 func registrySyncRun(cmd *cobra.Command, args []string) {
@@ -52,7 +52,7 @@ func registrySyncRun(cmd *cobra.Command, args []string) {
 	}
 
 	// Get addons' images:
-	for _, addon := range ListAddons() {
+	for _, addon := range addons.List() {
 		addonImages, err := addon.ListImages()
 		if err != nil {
 			log.WithField("error", err).WithField("addon", addon.Name).Fatal("Failed to get addon's images.")
