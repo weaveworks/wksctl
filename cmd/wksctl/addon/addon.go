@@ -1,4 +1,4 @@
-package main
+package addon
 
 import (
 	"github.com/spf13/cobra"
