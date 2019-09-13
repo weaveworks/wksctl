@@ -40,7 +40,7 @@ ENV GOMETALINTER_VERSION 2.0.11
 ENV ARCH amd64
 RUN curl -fsSLo gometalinter.tar.gz --compressed "https://github.com/alecthomas/gometalinter/releases/download/v$GOMETALINTER_VERSION/gometalinter-$GOMETALINTER_VERSION-linux-$ARCH.tar.gz" && \
     echo "97d8bd0a4d024740964c7fc2ae41276cf5f839ccf0749528ca900942f656d201 gometalinter.tar.gz" | sha256sum -c && \
-    tar -xf gometalinter.tar.gz -C /usr/bin --strip-components=1 --no-same-owner && \
+    tar xf gometalinter.tar.gz -C /usr/bin --strip-components=1 --no-same-owner && \
     rm gometalinter.tar.gz
 
 ARG revision
