@@ -18,7 +18,7 @@ import (
 	apierrors "sigs.k8s.io/cluster-api/pkg/errors"
 )
 
-var registrySyncCmd = &cobra.Command{
+var Cmd = &cobra.Command{
 	Use:   "registry-sync-commands",
 	Short: "Synchronize container images to an internal registry",
 	Long:  "Generate docker commands to STDOUT to pull, tag, and push the WKS container images to the provided destination organization and registry.",
@@ -33,11 +33,10 @@ var registrySyncOptions struct {
 }
 
 func init() {
-	registrySyncCmd.PersistentFlags().StringVar(&registrySyncOptions.destRegistry, "dest-registry", "localhost:1337", "Destination registry that will be used to push images to")
-	registrySyncCmd.PersistentFlags().StringVar(&registrySyncOptions.destOrganization, "dest-organization", "wks", "Destination organization that will be used to push images to")
-	registrySyncCmd.PersistentFlags().StringVar(&registrySyncOptions.machinesManifestPath, "machines", "", "Location of machines manifest")
-	registrySyncCmd.PersistentFlags().StringVar(&registrySyncOptions.versionsRange, "versions", "", "Range of Kubernetes semantic versions, e.g.: \""+kubernetes.DefaultVersionsRange+"\"")
-	rootCmd.AddCommand(registrySyncCmd)
+	Cmd.PersistentFlags().StringVar(&registrySyncOptions.destRegistry, "dest-registry", "localhost:1337", "Destination registry that will be used to push images to")
+	Cmd.PersistentFlags().StringVar(&registrySyncOptions.destOrganization, "dest-organization", "wks", "Destination organization that will be used to push images to")
+	Cmd.PersistentFlags().StringVar(&registrySyncOptions.machinesManifestPath, "machines", "", "Location of machines manifest")
+	Cmd.PersistentFlags().StringVar(&registrySyncOptions.versionsRange, "versions", "", "Range of Kubernetes semantic versions, e.g.: \""+kubernetes.DefaultVersionsRange+"\"")
 }
 
 func registrySyncRun(cmd *cobra.Command, args []string) {
