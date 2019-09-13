@@ -9,14 +9,10 @@ import (
 	"github.com/weaveworks/wksctl/pkg/addons"
 )
 
-var addonListCmd = &cobra.Command{
+var Cmd = &cobra.Command{
 	Use:   "list",
 	Short: "List addons",
 	Run:   addonListRun,
-}
-
-func init() {
-	addonCmd.AddCommand(addonListCmd)
 }
 
 func addonListRun(cmd *cobra.Command, args []string) {
