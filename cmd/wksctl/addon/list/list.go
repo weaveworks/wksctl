@@ -20,6 +20,7 @@ func init() {
 }
 
 func addonListRun(cmd *cobra.Command, args []string) {
+	const tabWidth = 4
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, tabWidth, ' ', 0)
 
 	addons := addons.List()
