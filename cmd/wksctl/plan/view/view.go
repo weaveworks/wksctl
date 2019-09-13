@@ -2,9 +2,9 @@ package view
 
 import (
 	"fmt"
-	"log"
 	"path/filepath"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/config"
 	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/os"
@@ -19,7 +19,7 @@ var Cmd = &cobra.Command{
 	Use:    "view",
 	Hidden: false,
 	Short:  "View a cluster plan.",
-	Run:    planRun,
+	RunE:   planRun,
 }
 
 var viewOptions struct {
@@ -60,29 +60,35 @@ func init() {
 	}
 }
 
-func planRun(cmd *cobra.Command, args []string) {
+func planRun(cmd *cobra.Command, args []string) error {
 	// Default to using the git deploy key to decrypt sealed secrets
 	if viewOptions.sealedSecretKeyPath == "" && viewOptions.gitDeployKeyPath != "" {
 		viewOptions.sealedSecretKeyPath = viewOptions.gitDeployKeyPath
 	}
 
+	var closer func()
+	var err error
 	cpath := filepath.Join(viewOptions.gitPath, viewOptions.clusterManifestPath)
 	mpath := filepath.Join(viewOptions.gitPath, viewOptions.machinesManifestPath)
-	displayPlan(manifests.Get(cpath, mpath, viewOptions.gitURL, viewOptions.gitBranch, viewOptions.gitDeployKeyPath, viewOptions.gitPath))
+
+	cpath, mpath, closer, err = manifests.Get(cpath, mpath, viewOptions.gitURL, viewOptions.gitBranch, viewOptions.gitDeployKeyPath, viewOptions.gitPath)
+	if err != nil {
+		errors.Wrap(err, "failed to retrieve manifests")
+	}
+	return displayPlan(cpath, mpath, closer)
 }
 
-func displayPlan(clusterManifestPath, machinesManifestPath string, closer func()) {
+func displayPlan(clusterManifestPath, machinesManifestPath string, closer func()) error {
 	defer closer()
 	sp := specs.NewFromPaths(clusterManifestPath, machinesManifestPath)
 	sshClient, err := sp.GetSSHClient(viewOptions.verbose)
 	if err != nil {
-		log.Fatal("Failed to create SSH client: ", err)
+		return errors.Wrap(err, "failed to create SSH client: ")
 	}
 	defer sshClient.Close()
 	installer, err := os.Identify(sshClient)
 	if err != nil {
-		log.Fatalf("Failed to identify operating system for seed node (%s): %v",
-			sp.GetMasterPublicAddress(), err)
+		return errors.Wrapf(err, "failed to identify operating system for seed node (%s)", sp.GetMasterPublicAddress())
 	}
 
 	// Point config dir at sync repo if using github and the user didn't override it
@@ -114,8 +120,7 @@ func displayPlan(clusterManifestPath, machinesManifestPath string, closer func()
 	}
 	plan, err := installer.CreateSeedNodeSetupPlan(params)
 	if err != nil {
-		fmt.Printf("Could not generate plan: %v\n", err)
-		return
+		return errors.Wrap(err, "could not generate plan")
 	}
 	switch viewOptions.output {
 	case "dot":
@@ -123,4 +128,5 @@ func displayPlan(clusterManifestPath, machinesManifestPath string, closer func()
 	case "json":
 		fmt.Println(plan.ToJSON())
 	}
+	return nil
 }
