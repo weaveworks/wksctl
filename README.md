@@ -18,7 +18,11 @@ sudo mv wksctl /usr/local/bin/
 
 ## Quick start
 
-The [examples](examples) folder (also included in the release package download) contains guides to get you up and running with [Footloose](https://github.com/weaveworks/footloose), [Vagrant](https://www.vagrantup.com) and others!
+We put together a couple of guides to get you up and running with WKS in combination with [Footloose](https://github.com/weaveworks/footloose), [Vagrant](https://www.vagrantup.com) and others!
+
+- [WKS and Footloose](docs/wks-and-footloose.md) - this includes the Firekube approach (WKS+Footloose+Ignite)
+- [WKS and Vagrant](docs/wks-and-vagrant.md)
+- [WKS on GCE](docs/wks-on-gce.md)
 
 ## Modes of use
 
@@ -71,7 +75,7 @@ Other interesting resources include:
 - [The issue tracker](https://github.com/weaveworks/wksctl/issues)
 - [Developing `wksctl`](docs/development.md)
 
-## Documentation
+## More Documentation
 
 - [Frequently asked questions](docs/faq.md)
 - [Developing `wksctl`](docs/development.md)
