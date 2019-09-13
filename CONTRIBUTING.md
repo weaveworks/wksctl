@@ -1,5 +1,7 @@
 # Contributing to the project
 
+Our doc on [developing `wksctl`](docs/development.md) will be helpful when getting started contributing as well.
+
 ## Typical workflow
 
 1. Choose an issue from the backlog

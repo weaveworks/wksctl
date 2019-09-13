@@ -62,42 +62,6 @@ We will rely on the user installing [fluxctl](https://docs.fluxcd.io/en/latest/r
 
 To see a more detailed example combining Wksctl, [GitOps](https://www.weave.works/technologies/gitops/), [Ignite](https://ignite.readthedocs.io/en/stable/) also know as FireKube see [Firekube](examples/footloose/README.md#firekube-gitops)
 
-## Development
-
-### Build
-
-```console
-make
-```
-
-#### Upgrading the build image
-
-- Update `build/Dockerfile` as required.
-- Test the build locally:
-
-```console
-rm build/.uptodate
-make !$
-```
-
-- Push this change, get it reviewed, and merge it to `master`.
-- Run:
-
-```console
-git checkout master ; git fetch origin master ; git merge --ff-only master
-rm build/.uptodate
-make !$
-> [...]
-> Successfully built deadbeefcafe
-> Successfully tagged quay.io/wksctl/build:latest
-> docker tag quay.io/wks/build quay.io/wksctl/build:master-XXXXXXX
-> touch build/.uptodate
-docker push quay.io/wksctl/build:$(tools/image-tag)
-```
-
-- Update `.circleci/config.yml` to use the newly pushed image.
-- Push this change, get it reviewed, and merge it to `master`.
-
 ## Contributing
 
 Please see [CONTRIBUTING.md](CONTRIBUTING.md) and our [Code Of Conduct](CODE_OF_CONDUCT.md).
@@ -105,6 +69,12 @@ Please see [CONTRIBUTING.md](CONTRIBUTING.md) and our [Code Of Conduct](CODE_OF_
 Other interesting resources include:
 
 - [The issue tracker](https://github.com/weaveworks/wksctl/issues)
+- [Developing `wksctl`](docs/development.md)
+
+## Documentation
+
+- [Frequently asked questions](docs/faq.md)
+- [Developing `wksctl`](docs/development.md)
 
 ## Getting Help
 
