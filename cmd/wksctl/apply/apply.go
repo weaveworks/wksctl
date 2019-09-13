@@ -3,7 +3,7 @@ package apply
 import (
 	"path/filepath"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/weaveworks/wksctl/pkg/addons"
 	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/config"
@@ -19,7 +19,7 @@ import (
 var Cmd = &cobra.Command{
 	Use:   "apply",
 	Short: "Create or update a Kubernetes cluster",
-	Run:   func(_ *cobra.Command, _ []string) { a := Applier{&globalParams}; a.Apply() },
+	RunE:  func(_ *cobra.Command, _ []string) error { a := Applier{&globalParams}; return a.Apply() },
 }
 
 type Params struct {
@@ -65,29 +65,35 @@ type Applier struct {
 	Params *Params
 }
 
-func (a *Applier) Apply() {
+func (a *Applier) Apply() error {
 	// Default to using the git deploy key to decrypt sealed secrets
 	if a.Params.sealedSecretKeyPath == "" && a.Params.gitDeployKeyPath != "" {
 		a.Params.sealedSecretKeyPath = a.Params.gitDeployKeyPath
 	}
 
+	var closer func()
+	var err error
 	cpath := filepath.Join(a.Params.gitPath, a.Params.clusterManifestPath)
 	mpath := filepath.Join(a.Params.gitPath, a.Params.machinesManifestPath)
-	a.initiateCluster(manifests.Get(cpath, mpath, a.Params.gitURL, a.Params.gitBranch, a.Params.gitDeployKeyPath, a.Params.gitPath))
+
+	cpath, mpath, closer, err = manifests.Get(cpath, mpath, a.Params.gitURL, a.Params.gitBranch, a.Params.gitDeployKeyPath, a.Params.gitPath)
+	if err != nil {
+		return err
+	}
+	return a.initiateCluster(cpath, mpath, closer)
 }
 
-func (a *Applier) initiateCluster(clusterManifestPath, machinesManifestPath string, closer func()) {
+func (a *Applier) initiateCluster(clusterManifestPath, machinesManifestPath string, closer func()) error {
 	defer closer()
 	sp := specs.NewFromPaths(clusterManifestPath, machinesManifestPath)
 	sshClient, err := sp.GetSSHClient(a.Params.verbose)
 	if err != nil {
-		log.Fatal("Failed to create SSH client: ", err)
+		return errors.Wrap(err, "failed to create SSH client")
 	}
 	defer sshClient.Close()
 	installer, err := wksos.Identify(sshClient)
 	if err != nil {
-		log.Fatalf("Failed to identify operating system for seed node (%s): %v",
-			sp.GetMasterPublicAddress(), err)
+		return errors.Wrapf(err, "failed to identify operating system for seed node (%s)", sp.GetMasterPublicAddress())
 	}
 
 	// N.B.: we generate this bootstrap token where wksctl apply is run hoping
@@ -96,7 +102,7 @@ func (a *Applier) initiateCluster(clusterManifestPath, machinesManifestPath stri
 	// potentially newly created VM which doesn't have much entropy yet.
 	token, err := kubeadm.GenerateBootstrapToken()
 	if err != nil {
-		log.Fatal("Failed to generate bootstrap token: ", err)
+		return errors.Wrap(err, "failed to generate bootstrap token")
 	}
 
 	// Point config dir at sync repo if using github and the user didn't override it
@@ -113,7 +119,7 @@ func (a *Applier) initiateCluster(clusterManifestPath, machinesManifestPath stri
 	// TODO(damien): Transform the controller image into an addon.
 	controllerImage, err := addons.UpdateImage(a.Params.controllerImage, sp.ClusterSpec.ImageRepository)
 	if err != nil {
-		log.Fatal("Failed to apply the cluster's image repository to the WKS controller's image: ", err)
+		errors.Wrap(err, "failed to apply the cluster's image repository to the WKS controller's image")
 	}
 	if err := installer.SetupSeedNode(wksos.SeedNodeParams{
 		PublicIP:             sp.GetMasterPublicAddress(),
@@ -141,7 +147,8 @@ func (a *Applier) initiateCluster(clusterManifestPath, machinesManifestPath stri
 		AdditionalSANs:       sp.ClusterSpec.APIServer.AdditionalSANs,
 		Namespace:            ns,
 	}); err != nil {
-		log.Fatalf("Failed to set up seed node (%s): %v",
-			sp.GetMasterPublicAddress(), err)
+		return errors.Wrapf(err, "failed to set up seed node (%s)", sp.GetMasterPublicAddress())
 	}
+
+	return nil
 }
