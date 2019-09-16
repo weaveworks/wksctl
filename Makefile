@@ -149,7 +149,7 @@ build-docs:
 	@cd docs && docker build -t wksctl-docs .
 
 test-docs: build-docs
-	@docker run -it flux-docs /usr/bin/linkchecker _build/html/index.html
+	@docker run -it wksctl-docs /usr/bin/linkchecker _build/html/index.html
 
 serve-docs: build-docs
 	@echo Stating docs website on http://localhost:${DOCS_PORT}/_build/html/index.html
