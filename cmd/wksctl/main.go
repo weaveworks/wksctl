@@ -11,6 +11,7 @@ import (
 	"github.com/weaveworks/wksctl/cmd/wksctl/apply"
 	"github.com/weaveworks/wksctl/cmd/wksctl/applyaddons"
 	"github.com/weaveworks/wksctl/cmd/wksctl/bashcompletions"
+	initpkg "github.com/weaveworks/wksctl/cmd/wksctl/init"
 	"github.com/weaveworks/wksctl/cmd/wksctl/kubeconfig"
 	"github.com/weaveworks/wksctl/cmd/wksctl/plan"
 	"github.com/weaveworks/wksctl/cmd/wksctl/registrysynccommands"
@@ -45,6 +46,7 @@ func main() {
 	rootCmd.AddCommand(addon.Cmd)
 	rootCmd.AddCommand(apply.Cmd)
 	rootCmd.AddCommand(applyaddons.Cmd)
+	rootCmd.AddCommand(initpkg.Cmd)
 	rootCmd.AddCommand(kubeconfig.Cmd)
 	rootCmd.AddCommand(plan.Cmd)
 	rootCmd.AddCommand(registrysynccommands.Cmd)
