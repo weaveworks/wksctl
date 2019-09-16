@@ -1,4 +1,6 @@
-Contributing to the project
+# Contributing to the project
+
+Our doc on [developing `wksctl`](docs/development.md) will be helpful when getting started contributing as well.
 
 ## Typical workflow
 
@@ -31,12 +33,14 @@ When opening the PR, put a description of the feature/functionality along with `
 
 GitHub will add x of y to the issue when it is displayed in the project board.
 
-#### Reviews
-We only require a single maintainer to approve your PR prior to merging it.  While you can identify multiple maintainers, it is assumed you **require** everyone listed to review the PR.  If you just want to make sure other engineers take a look, use the GitHub [mentions](https://guides.github.com/features/mastering-markdown/#GitHub-flavored-markdown) @<username> within a comment and they will receive a notification about your PR.
+### Reviews
 
-#### Merging
+We only require a single maintainer to approve your PR prior to merging it.  While you can identify multiple maintainers, it is assumed you **require** everyone listed to review the PR.  If you just want to make sure other engineers take a look, use the GitHub [mentions](https://guides.github.com/features/mastering-markdown/#GitHub-flavored-markdown) `@<username>` within a comment and they will receive a notification about your PR.
+
+### Merging
+
 One of the maintainers will merge your PR after it is approved.
 
 ## Releasing a new version
-Once the release has been created and the binaries are available, add the new version of wksctl to the checkpoint system at https://checkpoint-api.weave.works/admin
 
+Once the release has been created and the binaries are available, add the new version of wksctl to the checkpoint system at <https://checkpoint-api.weave.works/admin>
