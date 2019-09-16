@@ -2,7 +2,6 @@ package config
 
 import (
 	"fmt"
-	log "github.com/sirupsen/logrus"
 	"net/url"
 	"regexp"
 
@@ -94,12 +93,8 @@ func GetRemoteKubeconfig(sp *specs.Specs, configPath string, verbose, skipTLSVer
 		endpoint = sp.ClusterSpec.APIServer.ExternalLoadBalancer
 	}
 
-	configStr, err = Sanitize(configStr, Params{
+	return Sanitize(configStr, Params{
 		APIServerExternalEndpoint: endpoint,
 		SkipTLSVerify:             skipTLSVerify,
 	})
-	if err != nil {
-		log.Fatal(err)
-	}
-	return configStr, nil
 }
