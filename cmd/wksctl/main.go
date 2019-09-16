@@ -11,7 +11,8 @@ import (
 	"github.com/weaveworks/wksctl/cmd/wksctl/apply"
 	"github.com/weaveworks/wksctl/cmd/wksctl/plan"
 	"github.com/weaveworks/wksctl/cmd/wksctl/registrysynccommands"
-	"github.com/weaveworks/wksctl/pkg/version"
+	"github.com/weaveworks/wksctl/cmd/wksctl/version"
+	v "github.com/weaveworks/wksctl/pkg/version"
 )
 
 var rootCmd = &cobra.Command{
@@ -41,10 +42,11 @@ func main() {
 	rootCmd.AddCommand(apply.Cmd)
 	rootCmd.AddCommand(plan.Cmd)
 	rootCmd.AddCommand(registrysynccommands.Cmd)
+	rootCmd.AddCommand(version.Cmd)
 
 	if checkResponse, err := checkpoint.Check(&checkpoint.CheckParams{
 		Product: "wksctl",
-		Version: version.Version,
+		Version: v.Version,
 	}); err == nil && checkResponse.Outdated {
 		log.Infof("wksctl version %s is available; please update at %s",
 			checkResponse.CurrentVersion, checkResponse.CurrentDownloadURL)
