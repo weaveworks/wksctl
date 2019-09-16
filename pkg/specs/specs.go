@@ -20,9 +20,11 @@ import (
 // Common code for commands that need to run ssh commands on master cluster nodes.
 
 type Specs struct {
-	cluster     *clusterv1.Cluster
-	ClusterSpec *baremetalspecv1.BareMetalClusterProviderSpec
-	masterSpec  *baremetalspecv1.BareMetalMachineProviderSpec
+	cluster      *clusterv1.Cluster
+	ClusterSpec  *baremetalspecv1.BareMetalClusterProviderSpec
+	masterSpec   *baremetalspecv1.BareMetalMachineProviderSpec
+	machineCount int
+	masterCount  int
 }
 
 // Get a "Specs" object that can create an SSHClient (and retrieve useful nested fields)
@@ -52,7 +54,20 @@ func New(cluster *clusterv1.Cluster, machines []*clusterv1.Machine) *Specs {
 	if err != nil {
 		log.Fatal("Failed to parse master: ", err)
 	}
-	return &Specs{cluster, clusterSpec, masterSpec}
+	masterCount := 0
+	for _, m := range machines {
+		if m.Labels["set"] == "master" {
+			masterCount++
+		}
+	}
+	return &Specs{
+		cluster:     cluster,
+		ClusterSpec: clusterSpec,
+		masterSpec:  masterSpec,
+
+		machineCount: len(machines),
+		masterCount:  masterCount,
+	}
 }
 
 // Create an SSHClient to the master node referenced by the specs
@@ -92,7 +107,7 @@ func parseManifests(clusterManifestPath, machinesManifestPath string) (*clusterv
 
 	errorsHandler := func(machines []*clusterv1.Machine, errors field.ErrorList) ([]*clusterv1.Machine, error) {
 		if len(errors) > 0 {
-			utilities.PrintErrors(validationErrors)
+			utilities.PrintErrors(errors)
 			return nil, apierrors.InvalidMachineConfiguration(
 				"%s failed validation, use --skip-validation to force the operation", machinesManifestPath)
 		}
@@ -152,4 +167,12 @@ func (s *Specs) GetMasterPrivateAddress() string {
 
 func (s *Specs) GetCloudProvider() string {
 	return s.ClusterSpec.CloudProvider
+}
+
+func (s *Specs) GetMachineCount() int {
+	return s.machineCount
+}
+
+func (s *Specs) GetMasterCount() int {
+	return s.masterCount
 }
