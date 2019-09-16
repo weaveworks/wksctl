@@ -63,9 +63,9 @@ func init() {
 	rootCmd.AddCommand(kubeconfigCmd)
 }
 
-func configPath(sp *specs.Specs, wksHome string) string {
+func configPath(sp *specs.Specs, ns, wksHome string) string {
 	clusterName := sp.GetClusterName()
-	configDir := path.WKSResourcePath(wksHome, kubeconfigOptions.namespace, clusterName)
+	configDir := path.WKSResourcePath(wksHome, ns, clusterName)
 	return filepath.Join(configDir, "kubeconfig")
 }
 
@@ -115,7 +115,7 @@ func kubeconfigRun(cmd *cobra.Command, args []string) error {
 	}
 	sp := specs.NewFromPaths(clusterManifestPath, machinesManifestPath)
 
-	configPath := configPath(sp, wksHome)
+	configPath := configPath(sp, kubeconfigOptions.namespace, wksHome)
 
 	_, err = path.CreateDirectory(filepath.Dir(configPath))
 	if err != nil {
