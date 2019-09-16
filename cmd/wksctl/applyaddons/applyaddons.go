@@ -1,4 +1,4 @@
-package main
+package applyaddons
 
 import (
 	"fmt"
@@ -13,10 +13,12 @@ import (
 	"github.com/weaveworks/wksctl/pkg/addons"
 	"github.com/weaveworks/wksctl/pkg/kubernetes/config"
 	"github.com/weaveworks/wksctl/pkg/specs"
+	"github.com/weaveworks/wksctl/pkg/utilities/manifest"
+	"github.com/weaveworks/wksctl/pkg/utilities/path"
 	clusterv1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 )
 
-var applyAddonsCmd = &cobra.Command{
+var Cmd = &cobra.Command{
 	Use:    "apply-addons",
 	Short:  "Apply Addons",
 	Hidden: true,
@@ -27,16 +29,17 @@ var applyAddonsOptions struct {
 	clusterManifestPath  string
 	machinesManifestPath string
 	artifactDirectory    string
+	namespace            string
 }
 
 func init() {
 	opts := &applyAddonsOptions
-	applyAddonsCmd.PersistentFlags().StringVar(&opts.clusterManifestPath, "cluster", "cluster.yaml", "Location of cluster manifest")
-	applyAddonsCmd.PersistentFlags().StringVar(&opts.machinesManifestPath, "machines", "machines.yaml", "Location of machines manifest")
-	applyAddonsCmd.PersistentFlags().StringVar(
+	Cmd.Flags().StringVar(&opts.clusterManifestPath, "cluster", "cluster.yaml", "Location of cluster manifest")
+	Cmd.Flags().StringVar(&opts.machinesManifestPath, "machines", "machines.yaml", "Location of machines manifest")
+	Cmd.Flags().StringVar(
 		&opts.artifactDirectory, "artifact-directory", "", "Location of WKS artifacts ")
-
-	rootCmd.AddCommand(applyAddonsCmd)
+	Cmd.Flags().StringVar(
+		&applyAddonsOptions.namespace, "namespace", manifest.DefaultNamespace, "namespace portion of kubeconfig path")
 }
 
 func applyAddons(cluster *clusterv1.Cluster, machines []*clusterv1.Machine, basePath string) error {
@@ -99,7 +102,7 @@ func applyAddonsUsingConfig(sp *specs.Specs, basePath, kubeconfig string) error 
 func applyAddonsRun(cmd *cobra.Command, args []string) {
 	opts := &applyAddonsOptions
 	sp := specs.NewFromPaths(opts.clusterManifestPath, opts.machinesManifestPath)
-	configPath := configPath(sp, opts.artifactDirectory)
+	configPath := path.Kubeconfig(opts.artifactDirectory, applyAddonsOptions.namespace, sp.GetClusterName())
 
 	if !configExists(configPath) {
 		log.Fatal(strings.Join([]string{

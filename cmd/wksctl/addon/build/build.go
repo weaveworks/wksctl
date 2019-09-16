@@ -25,9 +25,9 @@ var addonBuildOptions struct {
 }
 
 func init() {
-	Cmd.PersistentFlags().StringVarP(&addonBuildOptions.outputDirectory, "output-directory", "o", "", "manifest output directory")
-	Cmd.PersistentFlags().StringVarP(&addonBuildOptions.imageRepository, "image-repository", "r", "", "use this container repository for addon images")
-	Cmd.PersistentFlags().StringArrayVarP(&addonBuildOptions.params, "params", "p", nil, "addon input parameters e.g. --params foo=bar --params baz=qux")
+	Cmd.Flags().StringVarP(&addonBuildOptions.outputDirectory, "output-directory", "o", "", "manifest output directory")
+	Cmd.Flags().StringVarP(&addonBuildOptions.imageRepository, "image-repository", "r", "", "use this container repository for addon images")
+	Cmd.Flags().StringArrayVarP(&addonBuildOptions.params, "params", "p", nil, "addon input parameters e.g. --params foo=bar --params baz=qux")
 }
 
 func addonBuildArgs(cmd *cobra.Command, args []string) error {
