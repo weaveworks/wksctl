@@ -6,11 +6,9 @@ import (
 	"path/filepath"
 
 	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/weaveworks/wksctl/pkg/kubernetes/config"
 	"github.com/weaveworks/wksctl/pkg/manifests"
-	"github.com/weaveworks/wksctl/pkg/plan/runners/sudo"
 	"github.com/weaveworks/wksctl/pkg/specs"
 	"github.com/weaveworks/wksctl/pkg/utilities/manifest"
 	"github.com/weaveworks/wksctl/pkg/utilities/path"
@@ -65,35 +63,6 @@ func init() {
 	Cmd.Flags().BoolVar(&kubeconfigOptions.verbose, "verbose", false, "Enable verbose output")
 }
 
-// TODO this should be refactored into a common place - i.e. pkg/cluster
-func generateConfig(sp *specs.Specs, configPath string) (string, error) {
-	sshClient, err := sp.GetSSHClient(kubeconfigOptions.verbose)
-	if err != nil {
-		return "", errors.Wrap(err, "failed to create SSH client: ")
-	}
-	defer sshClient.Close()
-
-	runner := sudo.Runner{Runner: sshClient}
-	configStr, err := runner.RunCommand("cat /etc/kubernetes/admin.conf", nil)
-	if err != nil {
-		return "", errors.Wrap(err, "failed to retrieve Kubernetes configuration")
-	}
-
-	endpoint := sp.GetMasterPublicAddress()
-	if sp.ClusterSpec.APIServer.ExternalLoadBalancer != "" {
-		endpoint = sp.ClusterSpec.APIServer.ExternalLoadBalancer
-	}
-
-	configStr, err = config.Sanitize(configStr, config.Params{
-		APIServerExternalEndpoint: endpoint,
-		SkipTLSVerify:             kubeconfigOptions.skipTLSVerify,
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
-	return configStr, nil
-}
-
 func kubeconfigRun(cmd *cobra.Command, args []string) error {
 	clusterManifestPath, machinesManifestPath, closer, err := manifests.Get(kubeconfigOptions.clusterManifestPath,
 		kubeconfigOptions.machinesManifestPath, kubeconfigOptions.gitURL, kubeconfigOptions.gitBranch, kubeconfigOptions.gitDeployKeyPath,
@@ -118,7 +87,7 @@ func kubeconfigRun(cmd *cobra.Command, args []string) error {
 		return errors.Wrapf(err, "failed to create configuration directory")
 	}
 
-	configStr, err := generateConfig(sp, configPath)
+	configStr, err := config.GetRemoteKubeconfig(sp, configPath, kubeconfigOptions.verbose, kubeconfigOptions.skipTLSVerify)
 	if err != nil {
 		return nil
 	}
