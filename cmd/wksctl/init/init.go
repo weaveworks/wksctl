@@ -1,4 +1,4 @@
-package main
+package init
 
 import (
 	"errors"
@@ -32,8 +32,8 @@ type manifestUpdate struct {
 }
 
 var (
-	// initCmd represents the init command
-	initCmd = &cobra.Command{
+	// Cmd represents the init command
+	Cmd = &cobra.Command{
 		Use:           "init",
 		Short:         "Update stored kubernetes manifests to match the local cluster environment",
 		Long:          "'wksctl init' configures existing kubernetes 'flux.yaml' and 'wks-controller.yaml' manifests in a repository with information about the local GitOps repository, the preferred weave system namespace, and current container image tags. The files can be anywhere in the repository. If either file is absent, 'wksctl init' will return an error.",
@@ -63,17 +63,16 @@ func multiLineRegexp(pattern string) *regexp.Regexp {
 }
 
 func init() {
-	initCmd.PersistentFlags().StringVar(
+	Cmd.Flags().StringVar(
 		&initOptions.localRepoDirectory, "gitk8s-clone", ".", "Local location of cloned git repository")
-	initCmd.PersistentFlags().StringVar(&initOptions.gitURL, "git-url", "",
+	Cmd.Flags().StringVar(&initOptions.gitURL, "git-url", "",
 		"Git repo containing your cluster and machine information")
-	initCmd.PersistentFlags().StringVar(&initOptions.gitBranch, "git-branch", "master",
+	Cmd.Flags().StringVar(&initOptions.gitBranch, "git-branch", "master",
 		"Branch within git repo containing your cluster and machine information")
-	initCmd.PersistentFlags().StringVar(&initOptions.gitPath, "git-path", ".", "Relative path to files in Git")
-	initCmd.PersistentFlags().StringVar(
+	Cmd.Flags().StringVar(&initOptions.gitPath, "git-path", ".", "Relative path to files in Git")
+	Cmd.Flags().StringVar(
 		&initOptions.namespace, "namespace", manifest.DefaultNamespace, "namespace portion of kubeconfig path")
-	initCmd.MarkPersistentFlagRequired("git-url")
-	rootCmd.AddCommand(initCmd)
+	Cmd.MarkPersistentFlagRequired("git-url")
 }
 
 // selectors

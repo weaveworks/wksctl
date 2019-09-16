@@ -1,18 +1,19 @@
-package main
+package zshcompletions
 
 import (
 	"log"
 	"os"
 
 	"github.com/spf13/cobra"
+	"github.com/weaveworks/wksctl/pkg/utilities"
 )
 
 var (
-	Output                string
+	output                string
 	zshCompletionFileName = "wksctl_zsh_completions.sh"
 )
 
-var zshCompletionCmd = &cobra.Command{
+var Cmd = &cobra.Command{
 	Use:   "zsh-completions",
 	Short: "Generate zsh completion scripts",
 	Long: `To load completion run
@@ -22,20 +23,19 @@ wksctl zsh-completions [-o <completions_file|directory>]
 and follow instructions for your OS to configure/install the completion file.
 `,
 	Run: func(cmd *cobra.Command, args []string) {
-		if Output != "" {
-			outfile, err := CreateFile(Output, zshCompletionFileName)
+		if output != "" {
+			outfile, err := utilities.CreateFile(output, zshCompletionFileName)
 			if err != nil {
 				log.Fatal(err)
 			}
-			rootCmd.GenZshCompletion(outfile)
+			cmd.Root().GenZshCompletion(outfile)
 		} else {
-			rootCmd.GenZshCompletion(os.Stdout)
+			cmd.Root().GenZshCompletion(os.Stdout)
 		}
 	}}
 
 func init() {
-	zshCompletionCmd.Flags().StringVarP(
-		&Output, "output", "o", "",
+	Cmd.Flags().StringVarP(
+		&output, "output", "o", "",
 		"completion filename or directory (default stdout)")
-	rootCmd.AddCommand(zshCompletionCmd)
 }

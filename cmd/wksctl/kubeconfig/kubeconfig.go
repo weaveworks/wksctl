@@ -1,4 +1,4 @@
-package main
+package kubeconfig
 
 import (
 	"fmt"
@@ -19,8 +19,8 @@ import (
 // A new version of the kubeconfig command that retrieves the config from
 // /etc/kubernetes/admin.conf on a cluster master node
 
-// kubeconfigCmd represents the kubeconfig command
-var kubeconfigCmd = &cobra.Command{
+// Cmd represents the kubeconfig command
+var Cmd = &cobra.Command{
 	Use:   "kubeconfig",
 	Short: "Generate a kubeconfig file for the cluster",
 	RunE:  kubeconfigRun,
@@ -38,40 +38,36 @@ var kubeconfigOptions struct {
 	skipTLSVerify        bool
 	useLocalhost         bool
 	usePublicAddress     bool
+	verbose              bool
 }
 
 func init() {
-	kubeconfigCmd.PersistentFlags().StringVar(
+	Cmd.Flags().StringVar(
 		&kubeconfigOptions.clusterManifestPath, "cluster", "cluster.yaml", "Location of cluster manifest")
-	kubeconfigCmd.PersistentFlags().StringVar(
+	Cmd.Flags().StringVar(
 		&kubeconfigOptions.machinesManifestPath, "machines", "machines.yaml", "Location of machines manifest")
-	kubeconfigCmd.PersistentFlags().StringVar(&kubeconfigOptions.gitURL, "git-url", "",
+	Cmd.Flags().StringVar(&kubeconfigOptions.gitURL, "git-url", "",
 		"Git repo containing your cluster and machine information")
-	kubeconfigCmd.PersistentFlags().StringVar(&kubeconfigOptions.gitBranch, "git-branch", "master",
+	Cmd.Flags().StringVar(&kubeconfigOptions.gitBranch, "git-branch", "master",
 		"Branch within git repo containing your cluster and machine information")
-	kubeconfigCmd.PersistentFlags().StringVar(&kubeconfigOptions.gitPath, "git-path", ".", "Relative path to files in Git")
-	kubeconfigCmd.PersistentFlags().StringVar(&kubeconfigOptions.gitDeployKeyPath, "git-deploy-key", "", "Path to the Git deploy key")
-	kubeconfigCmd.PersistentFlags().StringVar(
+	Cmd.Flags().StringVar(&kubeconfigOptions.gitPath, "git-path", ".", "Relative path to files in Git")
+	Cmd.Flags().StringVar(&kubeconfigOptions.gitDeployKeyPath, "git-deploy-key", "", "Path to the Git deploy key")
+	Cmd.Flags().StringVar(
 		&kubeconfigOptions.artifactDirectory, "artifact-directory", "", "Write output files in the specified directory")
-	kubeconfigCmd.PersistentFlags().StringVar(
+	Cmd.Flags().StringVar(
 		&kubeconfigOptions.namespace, "namespace", manifest.DefaultNamespace, "namespace portion of kubeconfig path")
-	kubeconfigCmd.PersistentFlags().BoolVar(
+	Cmd.Flags().BoolVar(
 		&kubeconfigOptions.skipTLSVerify, "insecure-skip-tls-verify", false,
 		"Enables kubectl to communicate with the API w/o verifying the certificate")
-	kubeconfigCmd.PersistentFlags().MarkHidden("insecure-skip-tls-verify")
+	Cmd.Flags().MarkHidden("insecure-skip-tls-verify")
 
-	rootCmd.AddCommand(kubeconfigCmd)
-}
-
-func configPath(sp *specs.Specs, wksHome string) string {
-	clusterName := sp.GetClusterName()
-	configDir := path.WKSResourcePath(wksHome, kubeconfigOptions.namespace, clusterName)
-	return filepath.Join(configDir, "kubeconfig")
+	// Intentionally shadows the globally defined --verbose flag.
+	Cmd.Flags().BoolVar(&kubeconfigOptions.verbose, "verbose", false, "Enable verbose output")
 }
 
 // TODO this should be refactored into a common place - i.e. pkg/cluster
 func generateConfig(sp *specs.Specs, configPath string) (string, error) {
-	sshClient, err := sp.GetSSHClient(options.verbose)
+	sshClient, err := sp.GetSSHClient(kubeconfigOptions.verbose)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to create SSH client: ")
 	}
@@ -115,7 +111,7 @@ func kubeconfigRun(cmd *cobra.Command, args []string) error {
 	}
 	sp := specs.NewFromPaths(clusterManifestPath, machinesManifestPath)
 
-	configPath := configPath(sp, wksHome)
+	configPath := path.Kubeconfig(wksHome, kubeconfigOptions.namespace, sp.GetClusterName())
 
 	_, err = path.CreateDirectory(filepath.Dir(configPath))
 	if err != nil {

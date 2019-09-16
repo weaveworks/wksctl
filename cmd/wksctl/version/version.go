@@ -1,4 +1,4 @@
-package main
+package version
 
 import (
 	"fmt"
@@ -7,14 +7,10 @@ import (
 	"github.com/weaveworks/wksctl/pkg/version"
 )
 
-var versionCmd = &cobra.Command{
+var Cmd = &cobra.Command{
 	Use:   "version",
 	Short: "Display wksctl version",
 	Run:   versionRun,
-}
-
-func init() {
-	rootCmd.AddCommand(versionCmd)
 }
 
 func versionRun(cmd *cobra.Command, args []string) {
