@@ -42,24 +42,24 @@ var kubeconfigOptions struct {
 }
 
 func init() {
-	Cmd.PersistentFlags().StringVar(
+	Cmd.Flags().StringVar(
 		&kubeconfigOptions.clusterManifestPath, "cluster", "cluster.yaml", "Location of cluster manifest")
-	Cmd.PersistentFlags().StringVar(
+	Cmd.Flags().StringVar(
 		&kubeconfigOptions.machinesManifestPath, "machines", "machines.yaml", "Location of machines manifest")
-	Cmd.PersistentFlags().StringVar(&kubeconfigOptions.gitURL, "git-url", "",
+	Cmd.Flags().StringVar(&kubeconfigOptions.gitURL, "git-url", "",
 		"Git repo containing your cluster and machine information")
-	Cmd.PersistentFlags().StringVar(&kubeconfigOptions.gitBranch, "git-branch", "master",
+	Cmd.Flags().StringVar(&kubeconfigOptions.gitBranch, "git-branch", "master",
 		"Branch within git repo containing your cluster and machine information")
-	Cmd.PersistentFlags().StringVar(&kubeconfigOptions.gitPath, "git-path", ".", "Relative path to files in Git")
-	Cmd.PersistentFlags().StringVar(&kubeconfigOptions.gitDeployKeyPath, "git-deploy-key", "", "Path to the Git deploy key")
-	Cmd.PersistentFlags().StringVar(
+	Cmd.Flags().StringVar(&kubeconfigOptions.gitPath, "git-path", ".", "Relative path to files in Git")
+	Cmd.Flags().StringVar(&kubeconfigOptions.gitDeployKeyPath, "git-deploy-key", "", "Path to the Git deploy key")
+	Cmd.Flags().StringVar(
 		&kubeconfigOptions.artifactDirectory, "artifact-directory", "", "Write output files in the specified directory")
-	Cmd.PersistentFlags().StringVar(
+	Cmd.Flags().StringVar(
 		&kubeconfigOptions.namespace, "namespace", manifest.DefaultNamespace, "namespace portion of kubeconfig path")
-	Cmd.PersistentFlags().BoolVar(
+	Cmd.Flags().BoolVar(
 		&kubeconfigOptions.skipTLSVerify, "insecure-skip-tls-verify", false,
 		"Enables kubectl to communicate with the API w/o verifying the certificate")
-	Cmd.PersistentFlags().MarkHidden("insecure-skip-tls-verify")
+	Cmd.Flags().MarkHidden("insecure-skip-tls-verify")
 
 	// Intentionally shadows the globally defined --verbose flag.
 	Cmd.Flags().BoolVar(&kubeconfigOptions.verbose, "verbose", false, "Enable verbose output")

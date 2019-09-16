@@ -33,10 +33,10 @@ var registrySyncOptions struct {
 }
 
 func init() {
-	Cmd.PersistentFlags().StringVar(&registrySyncOptions.destRegistry, "dest-registry", "localhost:1337", "Destination registry that will be used to push images to")
-	Cmd.PersistentFlags().StringVar(&registrySyncOptions.destOrganization, "dest-organization", "wks", "Destination organization that will be used to push images to")
-	Cmd.PersistentFlags().StringVar(&registrySyncOptions.machinesManifestPath, "machines", "", "Location of machines manifest")
-	Cmd.PersistentFlags().StringVar(&registrySyncOptions.versionsRange, "versions", "", "Range of Kubernetes semantic versions, e.g.: \""+kubernetes.DefaultVersionsRange+"\"")
+	Cmd.Flags().StringVar(&registrySyncOptions.destRegistry, "dest-registry", "localhost:1337", "Destination registry that will be used to push images to")
+	Cmd.Flags().StringVar(&registrySyncOptions.destOrganization, "dest-organization", "wks", "Destination organization that will be used to push images to")
+	Cmd.Flags().StringVar(&registrySyncOptions.machinesManifestPath, "machines", "", "Location of machines manifest")
+	Cmd.Flags().StringVar(&registrySyncOptions.versionsRange, "versions", "", "Range of Kubernetes semantic versions, e.g.: \""+kubernetes.DefaultVersionsRange+"\"")
 }
 
 func registrySyncRun(cmd *cobra.Command, args []string) {

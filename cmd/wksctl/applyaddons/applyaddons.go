@@ -34,11 +34,11 @@ var applyAddonsOptions struct {
 
 func init() {
 	opts := &applyAddonsOptions
-	Cmd.PersistentFlags().StringVar(&opts.clusterManifestPath, "cluster", "cluster.yaml", "Location of cluster manifest")
-	Cmd.PersistentFlags().StringVar(&opts.machinesManifestPath, "machines", "machines.yaml", "Location of machines manifest")
-	Cmd.PersistentFlags().StringVar(
+	Cmd.Flags().StringVar(&opts.clusterManifestPath, "cluster", "cluster.yaml", "Location of cluster manifest")
+	Cmd.Flags().StringVar(&opts.machinesManifestPath, "machines", "machines.yaml", "Location of machines manifest")
+	Cmd.Flags().StringVar(
 		&opts.artifactDirectory, "artifact-directory", "", "Location of WKS artifacts ")
-	Cmd.PersistentFlags().StringVar(
+	Cmd.Flags().StringVar(
 		&applyAddonsOptions.namespace, "namespace", manifest.DefaultNamespace, "namespace portion of kubeconfig path")
 }
 

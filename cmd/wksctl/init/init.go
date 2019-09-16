@@ -63,14 +63,14 @@ func multiLineRegexp(pattern string) *regexp.Regexp {
 }
 
 func init() {
-	Cmd.PersistentFlags().StringVar(
+	Cmd.Flags().StringVar(
 		&initOptions.localRepoDirectory, "gitk8s-clone", ".", "Local location of cloned git repository")
-	Cmd.PersistentFlags().StringVar(&initOptions.gitURL, "git-url", "",
+	Cmd.Flags().StringVar(&initOptions.gitURL, "git-url", "",
 		"Git repo containing your cluster and machine information")
-	Cmd.PersistentFlags().StringVar(&initOptions.gitBranch, "git-branch", "master",
+	Cmd.Flags().StringVar(&initOptions.gitBranch, "git-branch", "master",
 		"Branch within git repo containing your cluster and machine information")
-	Cmd.PersistentFlags().StringVar(&initOptions.gitPath, "git-path", ".", "Relative path to files in Git")
-	Cmd.PersistentFlags().StringVar(
+	Cmd.Flags().StringVar(&initOptions.gitPath, "git-path", ".", "Relative path to files in Git")
+	Cmd.Flags().StringVar(
 		&initOptions.namespace, "namespace", manifest.DefaultNamespace, "namespace portion of kubeconfig path")
 	Cmd.MarkPersistentFlagRequired("git-url")
 }
