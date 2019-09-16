@@ -2,12 +2,15 @@ package config
 
 import (
 	"fmt"
+	log "github.com/sirupsen/logrus"
 	"net/url"
 	"regexp"
 
 	yaml "github.com/ghodss/yaml"
 	"github.com/pkg/errors"
 	"github.com/weaveworks/wksctl/pkg/cluster/machine"
+	"github.com/weaveworks/wksctl/pkg/plan/runners/sudo"
+	"github.com/weaveworks/wksctl/pkg/specs"
 	"github.com/weaveworks/wksctl/pkg/utilities/path"
 	clientcmdv1 "k8s.io/client-go/tools/clientcmd/api/v1"
 	clusterv1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
@@ -69,6 +72,34 @@ func Sanitize(configStr string, params Params) (string, error) {
 			return "", errors.Wrap(err, "Failed to parse the updated config file: ")
 		}
 		configStr = string(y)
+	}
+	return configStr, nil
+}
+
+func GetRemoteKubeconfig(sp *specs.Specs, configPath string, verbose, skipTLSVerify bool) (string, error) {
+	sshClient, err := sp.GetSSHClient(verbose)
+	if err != nil {
+		return "", errors.Wrap(err, "failed to create SSH client: ")
+	}
+	defer sshClient.Close()
+
+	runner := sudo.Runner{Runner: sshClient}
+	configStr, err := runner.RunCommand("cat /etc/kubernetes/admin.conf", nil)
+	if err != nil {
+		return "", errors.Wrap(err, "failed to retrieve Kubernetes configuration")
+	}
+
+	endpoint := sp.GetMasterPublicAddress()
+	if sp.ClusterSpec.APIServer.ExternalLoadBalancer != "" {
+		endpoint = sp.ClusterSpec.APIServer.ExternalLoadBalancer
+	}
+
+	configStr, err = Sanitize(configStr, Params{
+		APIServerExternalEndpoint: endpoint,
+		SkipTLSVerify:             skipTLSVerify,
+	})
+	if err != nil {
+		log.Fatal(err)
 	}
 	return configStr, nil
 }
