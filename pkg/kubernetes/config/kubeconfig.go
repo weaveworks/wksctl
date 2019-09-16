@@ -75,7 +75,7 @@ func Sanitize(configStr string, params Params) (string, error) {
 	return configStr, nil
 }
 
-func GetRemoteKubeconfig(sp *specs.Specs, configPath string, verbose, skipTLSVerify bool) (string, error) {
+func GetRemoteKubeconfig(sp *specs.Specs, verbose, skipTLSVerify bool) (string, error) {
 	sshClient, err := sp.GetSSHClient(verbose)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to create SSH client: ")

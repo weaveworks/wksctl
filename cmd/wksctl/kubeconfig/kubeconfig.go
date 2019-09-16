@@ -80,16 +80,16 @@ func kubeconfigRun(cmd *cobra.Command, args []string) error {
 	}
 	sp := specs.NewFromPaths(clusterManifestPath, machinesManifestPath)
 
+	configStr, err := config.GetRemoteKubeconfig(sp, kubeconfigOptions.verbose, kubeconfigOptions.skipTLSVerify)
+	if err != nil {
+		return errors.Wrapf(err, "GetRemoteKubeconfig")
+	}
+
 	configPath := path.Kubeconfig(wksHome, kubeconfigOptions.namespace, sp.GetClusterName())
 
 	_, err = path.CreateDirectory(filepath.Dir(configPath))
 	if err != nil {
 		return errors.Wrapf(err, "failed to create configuration directory")
-	}
-
-	configStr, err := config.GetRemoteKubeconfig(sp, configPath, kubeconfigOptions.verbose, kubeconfigOptions.skipTLSVerify)
-	if err != nil {
-		return nil
 	}
 
 	err = ioutil.WriteFile(configPath, []byte(configStr), 0644)
