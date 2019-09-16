@@ -9,9 +9,11 @@ import (
 	"github.com/weaveworks/go-checkpoint"
 	"github.com/weaveworks/wksctl/cmd/wksctl/addon"
 	"github.com/weaveworks/wksctl/cmd/wksctl/apply"
+	"github.com/weaveworks/wksctl/cmd/wksctl/bashcompletions"
 	"github.com/weaveworks/wksctl/cmd/wksctl/plan"
 	"github.com/weaveworks/wksctl/cmd/wksctl/registrysynccommands"
 	"github.com/weaveworks/wksctl/cmd/wksctl/version"
+	"github.com/weaveworks/wksctl/cmd/wksctl/zshcompletions"
 	v "github.com/weaveworks/wksctl/pkg/version"
 )
 
@@ -43,6 +45,9 @@ func main() {
 	rootCmd.AddCommand(plan.Cmd)
 	rootCmd.AddCommand(registrysynccommands.Cmd)
 	rootCmd.AddCommand(version.Cmd)
+
+	rootCmd.AddCommand(bashcompletions.Cmd)
+	rootCmd.AddCommand(zshcompletions.Cmd)
 
 	if checkResponse, err := checkpoint.Check(&checkpoint.CheckParams{
 		Product: "wksctl",
