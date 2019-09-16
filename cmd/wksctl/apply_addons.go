@@ -13,6 +13,7 @@ import (
 	"github.com/weaveworks/wksctl/pkg/addons"
 	"github.com/weaveworks/wksctl/pkg/kubernetes/config"
 	"github.com/weaveworks/wksctl/pkg/specs"
+	"github.com/weaveworks/wksctl/pkg/utilities/manifest"
 	clusterv1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 )
 
@@ -27,6 +28,7 @@ var applyAddonsOptions struct {
 	clusterManifestPath  string
 	machinesManifestPath string
 	artifactDirectory    string
+	namespace            string
 }
 
 func init() {
@@ -35,6 +37,8 @@ func init() {
 	applyAddonsCmd.PersistentFlags().StringVar(&opts.machinesManifestPath, "machines", "machines.yaml", "Location of machines manifest")
 	applyAddonsCmd.PersistentFlags().StringVar(
 		&opts.artifactDirectory, "artifact-directory", "", "Location of WKS artifacts ")
+	applyAddonsCmd.PersistentFlags().StringVar(
+		&applyAddonsOptions.namespace, "namespace", manifest.DefaultNamespace, "namespace portion of kubeconfig path")
 
 	rootCmd.AddCommand(applyAddonsCmd)
 }
@@ -99,7 +103,7 @@ func applyAddonsUsingConfig(sp *specs.Specs, basePath, kubeconfig string) error 
 func applyAddonsRun(cmd *cobra.Command, args []string) {
 	opts := &applyAddonsOptions
 	sp := specs.NewFromPaths(opts.clusterManifestPath, opts.machinesManifestPath)
-	configPath := configPath(sp, opts.artifactDirectory)
+	configPath := configPath(sp, applyAddonsOptions.namespace, opts.artifactDirectory)
 
 	if !configExists(configPath) {
 		log.Fatal(strings.Join([]string{
