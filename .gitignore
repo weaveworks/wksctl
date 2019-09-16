@@ -27,3 +27,6 @@ terraform.tfstate
 terraform.tfstate.backup
 .terraform.tfstate.lock.info
 tf.json
+
+# Docs
+docs/_build
