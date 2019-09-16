@@ -63,12 +63,6 @@ func init() {
 	rootCmd.AddCommand(kubeconfigCmd)
 }
 
-func configPath(sp *specs.Specs, ns, wksHome string) string {
-	clusterName := sp.GetClusterName()
-	configDir := path.WKSResourcePath(wksHome, ns, clusterName)
-	return filepath.Join(configDir, "kubeconfig")
-}
-
 // TODO this should be refactored into a common place - i.e. pkg/cluster
 func generateConfig(sp *specs.Specs, configPath string) (string, error) {
 	sshClient, err := sp.GetSSHClient(options.verbose)
@@ -115,7 +109,7 @@ func kubeconfigRun(cmd *cobra.Command, args []string) error {
 	}
 	sp := specs.NewFromPaths(clusterManifestPath, machinesManifestPath)
 
-	configPath := configPath(sp, kubeconfigOptions.namespace, wksHome)
+	configPath := path.Kubeconfig(wksHome, kubeconfigOptions.namespace, sp.GetClusterName())
 
 	_, err = path.CreateDirectory(filepath.Dir(configPath))
 	if err != nil {

@@ -77,6 +77,9 @@ func CreateDirectory(path string) (string, error) {
 			return "", fmt.Errorf("Not a directory: %v", path)
 		}
 	}
-
 	return path, nil
+}
+
+func Kubeconfig(artifactDirectory, ns, clusterName string) string {
+	return filepath.Join(WKSResourcePath(artifactDirectory, ns, clusterName), "kubeconfig")
 }

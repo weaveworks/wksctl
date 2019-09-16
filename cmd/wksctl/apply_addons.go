@@ -14,6 +14,7 @@ import (
 	"github.com/weaveworks/wksctl/pkg/kubernetes/config"
 	"github.com/weaveworks/wksctl/pkg/specs"
 	"github.com/weaveworks/wksctl/pkg/utilities/manifest"
+	"github.com/weaveworks/wksctl/pkg/utilities/path"
 	clusterv1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 )
 
@@ -103,7 +104,7 @@ func applyAddonsUsingConfig(sp *specs.Specs, basePath, kubeconfig string) error 
 func applyAddonsRun(cmd *cobra.Command, args []string) {
 	opts := &applyAddonsOptions
 	sp := specs.NewFromPaths(opts.clusterManifestPath, opts.machinesManifestPath)
-	configPath := configPath(sp, applyAddonsOptions.namespace, opts.artifactDirectory)
+	configPath := path.Kubeconfig(opts.artifactDirectory, applyAddonsOptions.namespace, sp.GetClusterName())
 
 	if !configExists(configPath) {
 		log.Fatal(strings.Join([]string{
