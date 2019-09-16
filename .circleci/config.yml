@@ -46,6 +46,11 @@ jobs:
       - setup_remote_docker
       - run: make
       - run: make lint
+      - run:
+          name: Check that generated files haven't been changed since checkout
+          command: |
+            echo "The following files have been modified since checkout or are unknown to Git:"
+            ! (git status --porcelain | grep -E '^( M)|(??)')
       - persist_to_workspace:
           root: .
           paths:
