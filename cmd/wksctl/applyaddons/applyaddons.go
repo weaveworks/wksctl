@@ -1,4 +1,4 @@
-package main
+package applyaddons
 
 import (
 	"fmt"
@@ -18,7 +18,7 @@ import (
 	clusterv1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 )
 
-var applyAddonsCmd = &cobra.Command{
+var Cmd = &cobra.Command{
 	Use:    "apply-addons",
 	Short:  "Apply Addons",
 	Hidden: true,
@@ -34,14 +34,12 @@ var applyAddonsOptions struct {
 
 func init() {
 	opts := &applyAddonsOptions
-	applyAddonsCmd.PersistentFlags().StringVar(&opts.clusterManifestPath, "cluster", "cluster.yaml", "Location of cluster manifest")
-	applyAddonsCmd.PersistentFlags().StringVar(&opts.machinesManifestPath, "machines", "machines.yaml", "Location of machines manifest")
-	applyAddonsCmd.PersistentFlags().StringVar(
+	Cmd.PersistentFlags().StringVar(&opts.clusterManifestPath, "cluster", "cluster.yaml", "Location of cluster manifest")
+	Cmd.PersistentFlags().StringVar(&opts.machinesManifestPath, "machines", "machines.yaml", "Location of machines manifest")
+	Cmd.PersistentFlags().StringVar(
 		&opts.artifactDirectory, "artifact-directory", "", "Location of WKS artifacts ")
-	applyAddonsCmd.PersistentFlags().StringVar(
+	Cmd.PersistentFlags().StringVar(
 		&applyAddonsOptions.namespace, "namespace", manifest.DefaultNamespace, "namespace portion of kubeconfig path")
-
-	rootCmd.AddCommand(applyAddonsCmd)
 }
 
 func applyAddons(cluster *clusterv1.Cluster, machines []*clusterv1.Machine, basePath string) error {
