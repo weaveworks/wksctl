@@ -31,7 +31,7 @@ The git command line arguments will be passed instead of `--cluster` and `--mach
 
 ```console
 wksctl apply \
-  --git-url git@github.com:meseeks/config-repo.git \
+  --git-url git@github.com:$YOUR_GITHUB_ORG/config-repo.git \
   --git-branch dev \
   --git-deloy-key-path ./deploy-key
 ```
