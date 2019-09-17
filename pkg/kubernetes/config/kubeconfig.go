@@ -2,7 +2,6 @@ package config
 
 import (
 	"fmt"
-	log "github.com/sirupsen/logrus"
 	"net/url"
 	"regexp"
 
@@ -76,7 +75,7 @@ func Sanitize(configStr string, params Params) (string, error) {
 	return configStr, nil
 }
 
-func GetRemoteKubeconfig(sp *specs.Specs, configPath string, verbose, skipTLSVerify bool) (string, error) {
+func GetRemoteKubeconfig(sp *specs.Specs, verbose, skipTLSVerify bool) (string, error) {
 	sshClient, err := sp.GetSSHClient(verbose)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to create SSH client: ")
@@ -94,12 +93,8 @@ func GetRemoteKubeconfig(sp *specs.Specs, configPath string, verbose, skipTLSVer
 		endpoint = sp.ClusterSpec.APIServer.ExternalLoadBalancer
 	}
 
-	configStr, err = Sanitize(configStr, Params{
+	return Sanitize(configStr, Params{
 		APIServerExternalEndpoint: endpoint,
 		SkipTLSVerify:             skipTLSVerify,
 	})
-	if err != nil {
-		log.Fatal(err)
-	}
-	return configStr, nil
 }
