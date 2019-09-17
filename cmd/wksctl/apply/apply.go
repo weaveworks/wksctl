@@ -66,11 +66,6 @@ type Applier struct {
 }
 
 func (a *Applier) Apply() error {
-	// Default to using the git deploy key to decrypt sealed secrets
-	if a.Params.sealedSecretKeyPath == "" && a.Params.gitDeployKeyPath != "" {
-		a.Params.sealedSecretKeyPath = a.Params.gitDeployKeyPath
-	}
-
 	var closer func()
 	var err error
 	cpath := filepath.Join(a.Params.gitPath, a.Params.clusterManifestPath)
@@ -117,6 +112,12 @@ func (a *Applier) initiateCluster(clusterManifestPath, machinesManifestPath stri
 		ns = a.Params.namespace
 	}
 
+	sealedSecretKeyPath := a.Params.sealedSecretKeyPath
+	if sealedSecretKeyPath == "" {
+		// Default to using the git deploy key to decrypt sealed secrets
+		sealedSecretKeyPath = a.Params.gitDeployKeyPath
+	}
+
 	// TODO(damien): Transform the controller image into an addon.
 	controllerImage, err := addons.UpdateImage(a.Params.controllerImage, sp.ClusterSpec.ImageRepository)
 	if err != nil {
@@ -140,7 +141,7 @@ func (a *Applier) initiateCluster(clusterManifestPath, machinesManifestPath stri
 			GitPath:          a.Params.gitPath,
 			GitDeployKeyPath: a.Params.gitDeployKeyPath,
 		},
-		SealedSecretKeyPath:  a.Params.sealedSecretKeyPath,
+		SealedSecretKeyPath:  sealedSecretKeyPath,
 		SealedSecretCertPath: a.Params.sealedSecretCertPath,
 		ConfigDirectory:      configDir,
 		ImageRepository:      sp.ClusterSpec.ImageRepository,
