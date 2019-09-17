@@ -56,6 +56,7 @@ func planRun(cmd *cobra.Command, args []string) error {
 	var clusterPath, machinesPath string
 
 	// TODO: deduplicate clusterPath/machinesPath evaluation between here and cmd/wksctl/apply
+	// https://github.com/weaveworks/wksctl/issues/58
 	if viewOptions.gitURL == "" {
 		// Cluster and Machine manifests come from the local filesystem.
 		clusterPath, machinesPath = viewOptions.clusterManifestPath, viewOptions.machinesManifestPath

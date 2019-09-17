@@ -68,6 +68,8 @@ type Applier struct {
 func (a *Applier) Apply() error {
 	var clusterPath, machinesPath string
 
+	// TODO: deduplicate clusterPath/machinesPath evaluation between here and other places
+	// https://github.com/weaveworks/wksctl/issues/58
 	if a.Params.gitURL == "" {
 		// Cluster and Machine manifests come from the local filesystem.
 		clusterPath, machinesPath = a.Params.clusterManifestPath, a.Params.machinesManifestPath

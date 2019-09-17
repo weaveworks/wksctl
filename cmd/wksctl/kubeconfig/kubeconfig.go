@@ -67,6 +67,7 @@ func kubeconfigRun(cmd *cobra.Command, args []string) error {
 	var clusterPath, machinesPath string
 
 	// TODO: deduplicate clusterPath/machinesPath evaluation between here and cmd/wksctl/apply
+	// https://github.com/weaveworks/wksctl/issues/58
 	if kubeconfigOptions.gitURL == "" {
 		// Cluster and Machine manifests come from the local filesystem.
 		clusterPath, machinesPath = kubeconfigOptions.clusterManifestPath, kubeconfigOptions.machinesManifestPath
