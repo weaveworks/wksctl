@@ -75,7 +75,7 @@ func (a *Applier) Apply() error {
 		// Cluster and Machine manifests come from a Git repo that we'll clone for the duration of this command.
 		repo, err := manifests.CloneClusterAPIRepo(a.Params.gitURL, a.Params.gitBranch, a.Params.gitDeployKeyPath, a.Params.gitPath)
 		if err != nil {
-			return errors.Wrap(err, "manifests.Get")
+			return errors.Wrap(err, "CloneClusterAPIRepo")
 		}
 		defer repo.Close()
 
