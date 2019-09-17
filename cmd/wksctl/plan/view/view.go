@@ -31,7 +31,6 @@ var viewOptions struct {
 	gitBranch            string
 	gitPath              string
 	gitDeployKeyPath     string
-	sealedSecretKeyPath  string
 	sealedSecretCertPath string
 	configDirectory      string
 	verbose              bool
@@ -46,26 +45,14 @@ func init() {
 	Cmd.Flags().StringVar(&viewOptions.gitBranch, "git-branch", "master", "Git branch WKS should use to read your cluster")
 	Cmd.Flags().StringVar(&viewOptions.gitPath, "git-path", ".", "Relative path to files in Git")
 	Cmd.Flags().StringVar(&viewOptions.gitDeployKeyPath, "git-deploy-key", "", "Path to the Git deploy key")
-	Cmd.Flags().StringVar(&viewOptions.sealedSecretKeyPath, "sealed-secret-key", "", "Path to a key used to decrypt sealed secrets")
 	Cmd.Flags().StringVar(&viewOptions.sealedSecretCertPath, "sealed-secret-cert", "", "Path to a certificate used to encrypt sealed secrets")
 	Cmd.Flags().StringVar(&viewOptions.configDirectory, "config-directory", ".", "Directory containing configuration information for the cluster")
 
 	// Intentionally shadows the globally defined --verbose flag.
 	Cmd.Flags().BoolVar(&viewOptions.verbose, "verbose", false, "Enable verbose output")
-
-	// Default to using the git deploy key to decrypt sealed secrets
-	// BUG: CLI flags are not evaluated yet at this point!
-	if viewOptions.sealedSecretKeyPath == "" && viewOptions.gitDeployKeyPath != "" {
-		viewOptions.sealedSecretKeyPath = viewOptions.gitDeployKeyPath
-	}
 }
 
 func planRun(cmd *cobra.Command, args []string) error {
-	// Default to using the git deploy key to decrypt sealed secrets
-	if viewOptions.sealedSecretKeyPath == "" && viewOptions.gitDeployKeyPath != "" {
-		viewOptions.sealedSecretKeyPath = viewOptions.gitDeployKeyPath
-	}
-
 	var closer func()
 	var err error
 	cpath := filepath.Join(viewOptions.gitPath, viewOptions.clusterManifestPath)
