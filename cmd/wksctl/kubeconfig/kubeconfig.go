@@ -64,21 +64,38 @@ func init() {
 }
 
 func kubeconfigRun(cmd *cobra.Command, args []string) error {
-	clusterManifestPath, machinesManifestPath, closer, err := manifests.Get(kubeconfigOptions.clusterManifestPath,
-		kubeconfigOptions.machinesManifestPath, kubeconfigOptions.gitURL, kubeconfigOptions.gitBranch, kubeconfigOptions.gitDeployKeyPath,
-		kubeconfigOptions.gitPath)
-	if closer != nil {
-		defer closer()
+	var cpath, mpath string
+
+	// TODO: deduplicate cpath/mpath evaluation between here and cmd/wksctl/apply
+	if kubeconfigOptions.gitURL == "" {
+		// Cluster and Manifests come from the local filesystem.
+		cpath, mpath = kubeconfigOptions.clusterManifestPath, kubeconfigOptions.machinesManifestPath
+	} else {
+		// Cluster and Machine manifests come from a Git repo that we'll clone for the duration of this command.
+		repo, err := manifests.CloneClusterAPIRepo(kubeconfigOptions.gitURL, kubeconfigOptions.gitBranch, kubeconfigOptions.gitDeployKeyPath, kubeconfigOptions.gitPath)
+		if err != nil {
+			return errors.Wrap(err, "CloneClusterAPIRepo")
+		}
+		defer repo.Close()
+
+		if cpath, err = repo.ClusterManifestPath(); err != nil {
+			return errors.Wrap(err, "ClusterManifestPath")
+		}
+		if mpath, err = repo.MachinesManifestPath(); err != nil {
+			return errors.Wrap(err, "MachinesManifestPath")
+		}
 	}
-	if err != nil {
-		return err
-	}
+
+	return writeKubeconfig(cpath, mpath)
+}
+
+func writeKubeconfig(cpath, mpath string) error {
 	wksHome, err := path.CreateDirectory(
 		path.WKSHome(kubeconfigOptions.artifactDirectory))
 	if err != nil {
 		return errors.Wrapf(err, "failed to create WKS home directory")
 	}
-	sp := specs.NewFromPaths(clusterManifestPath, machinesManifestPath)
+	sp := specs.NewFromPaths(cpath, mpath)
 
 	configStr, err := config.GetRemoteKubeconfig(sp, kubeconfigOptions.verbose, kubeconfigOptions.skipTLSVerify)
 	if err != nil {
