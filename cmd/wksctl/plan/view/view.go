@@ -53,20 +53,33 @@ func init() {
 }
 
 func planRun(cmd *cobra.Command, args []string) error {
-	var closer func()
-	var err error
-	cpath := filepath.Join(viewOptions.gitPath, viewOptions.clusterManifestPath)
-	mpath := filepath.Join(viewOptions.gitPath, viewOptions.machinesManifestPath)
+	var cpath, mpath string
 
-	cpath, mpath, closer, err = manifests.Get(cpath, mpath, viewOptions.gitURL, viewOptions.gitBranch, viewOptions.gitDeployKeyPath, viewOptions.gitPath)
-	if err != nil {
-		errors.Wrap(err, "failed to retrieve manifests")
+	// TODO: deduplicate cpath/mpath evaluation between here and cmd/wksctl/apply
+	if viewOptions.gitURL == "" {
+		// Cluster and Manifests come from the local filesystem.
+		cpath, mpath = viewOptions.clusterManifestPath, viewOptions.machinesManifestPath
+	} else {
+		// Cluster and Machine manifests come from a Git repo that we'll clone for the duration of this command.
+		repo, err := manifests.CloneClusterAPIRepo(viewOptions.gitURL, viewOptions.gitBranch, viewOptions.gitDeployKeyPath, viewOptions.gitPath)
+		if err != nil {
+			return errors.Wrap(err, "CloneClusterAPIRepo")
+		}
+		defer repo.Close()
+
+		if cpath, err = repo.ClusterManifestPath(); err != nil {
+			return errors.Wrap(err, "ClusterManifestPath")
+		}
+		if mpath, err = repo.MachinesManifestPath(); err != nil {
+			return errors.Wrap(err, "MachinesManifestPath")
+		}
 	}
-	return displayPlan(cpath, mpath, closer)
+
+	return displayPlan(cpath, mpath)
 }
 
-func displayPlan(clusterManifestPath, machinesManifestPath string, closer func()) error {
-	defer closer()
+func displayPlan(clusterManifestPath, machinesManifestPath string) error {
+	// TODO: reuse the actual plan created by `wksctl apply`, rather than trying to construct a similar plan and printing it.
 	sp := specs.NewFromPaths(clusterManifestPath, machinesManifestPath)
 	sshClient, err := sp.GetSSHClient(viewOptions.verbose)
 	if err != nil {
