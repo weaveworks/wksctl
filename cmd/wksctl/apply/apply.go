@@ -80,11 +80,12 @@ func (a *Applier) Apply() error {
 	if err != nil {
 		return err
 	}
-	return a.initiateCluster(cpath, mpath, closer)
+	defer closer()
+
+	return a.initiateCluster(cpath, mpath)
 }
 
-func (a *Applier) initiateCluster(clusterManifestPath, machinesManifestPath string, closer func()) error {
-	defer closer()
+func (a *Applier) initiateCluster(clusterManifestPath, machinesManifestPath string) error {
 	sp := specs.NewFromPaths(clusterManifestPath, machinesManifestPath)
 	sshClient, err := sp.GetSSHClient(a.Params.verbose)
 	if err != nil {
