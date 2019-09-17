@@ -68,7 +68,7 @@ func kubeconfigRun(cmd *cobra.Command, args []string) error {
 
 	// TODO: deduplicate cpath/mpath evaluation between here and cmd/wksctl/apply
 	if kubeconfigOptions.gitURL == "" {
-		// Cluster and Manifests come from the local filesystem.
+		// Cluster and Machine manifests come from the local filesystem.
 		cpath, mpath = kubeconfigOptions.clusterManifestPath, kubeconfigOptions.machinesManifestPath
 	} else {
 		// Cluster and Machine manifests come from a Git repo that we'll clone for the duration of this command.
