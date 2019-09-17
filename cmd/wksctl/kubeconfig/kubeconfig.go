@@ -64,12 +64,12 @@ func init() {
 }
 
 func kubeconfigRun(cmd *cobra.Command, args []string) error {
-	var cpath, mpath string
+	var clusterPath, machinesPath string
 
-	// TODO: deduplicate cpath/mpath evaluation between here and cmd/wksctl/apply
+	// TODO: deduplicate clusterPath/machinesPath evaluation between here and cmd/wksctl/apply
 	if kubeconfigOptions.gitURL == "" {
 		// Cluster and Machine manifests come from the local filesystem.
-		cpath, mpath = kubeconfigOptions.clusterManifestPath, kubeconfigOptions.machinesManifestPath
+		clusterPath, machinesPath = kubeconfigOptions.clusterManifestPath, kubeconfigOptions.machinesManifestPath
 	} else {
 		// Cluster and Machine manifests come from a Git repo that we'll clone for the duration of this command.
 		repo, err := manifests.CloneClusterAPIRepo(kubeconfigOptions.gitURL, kubeconfigOptions.gitBranch, kubeconfigOptions.gitDeployKeyPath, kubeconfigOptions.gitPath)
@@ -78,15 +78,15 @@ func kubeconfigRun(cmd *cobra.Command, args []string) error {
 		}
 		defer repo.Close()
 
-		if cpath, err = repo.ClusterManifestPath(); err != nil {
+		if clusterPath, err = repo.ClusterManifestPath(); err != nil {
 			return errors.Wrap(err, "ClusterManifestPath")
 		}
-		if mpath, err = repo.MachinesManifestPath(); err != nil {
+		if machinesPath, err = repo.MachinesManifestPath(); err != nil {
 			return errors.Wrap(err, "MachinesManifestPath")
 		}
 	}
 
-	return writeKubeconfig(cpath, mpath)
+	return writeKubeconfig(clusterPath, machinesPath)
 }
 
 func writeKubeconfig(cpath, mpath string) error {
