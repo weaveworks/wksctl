@@ -66,16 +66,26 @@ type Applier struct {
 }
 
 func (a *Applier) Apply() error {
-	var closer func()
-	var err error
-	cpath := filepath.Join(a.Params.gitPath, a.Params.clusterManifestPath)
-	mpath := filepath.Join(a.Params.gitPath, a.Params.machinesManifestPath)
+	var cpath, mpath string
 
-	cpath, mpath, closer, err = manifests.Get(cpath, mpath, a.Params.gitURL, a.Params.gitBranch, a.Params.gitDeployKeyPath, a.Params.gitPath)
-	if err != nil {
-		return err
+	if a.Params.gitURL == "" {
+		// Cluster and Manifests come from the local filesystem.
+		cpath, mpath = a.Params.clusterManifestPath, a.Params.machinesManifestPath
+	} else {
+		// Cluster and Machine manifests come from a Git repo that we'll clone for the duration of this command.
+		repo, err := manifests.CloneClusterAPIRepo(a.Params.gitURL, a.Params.gitBranch, a.Params.gitDeployKeyPath, a.Params.gitPath)
+		if err != nil {
+			return errors.Wrap(err, "manifests.Get")
+		}
+		defer repo.Close()
+
+		if cpath, err = repo.ClusterManifestPath(); err != nil {
+			return errors.Wrap(err, "ClusterManifestPath")
+		}
+		if mpath, err = repo.MachinesManifestPath(); err != nil {
+			return errors.Wrap(err, "MachinesManifestPath")
+		}
 	}
-	defer closer()
 
 	return a.initiateCluster(cpath, mpath)
 }
