@@ -31,7 +31,6 @@ var viewOptions struct {
 	gitBranch            string
 	gitPath              string
 	gitDeployKeyPath     string
-	sealedSecretKeyPath  string
 	sealedSecretCertPath string
 	configDirectory      string
 	verbose              bool
@@ -46,40 +45,42 @@ func init() {
 	Cmd.Flags().StringVar(&viewOptions.gitBranch, "git-branch", "master", "Git branch WKS should use to read your cluster")
 	Cmd.Flags().StringVar(&viewOptions.gitPath, "git-path", ".", "Relative path to files in Git")
 	Cmd.Flags().StringVar(&viewOptions.gitDeployKeyPath, "git-deploy-key", "", "Path to the Git deploy key")
-	Cmd.Flags().StringVar(&viewOptions.sealedSecretKeyPath, "sealed-secret-key", "", "Path to a key used to decrypt sealed secrets")
 	Cmd.Flags().StringVar(&viewOptions.sealedSecretCertPath, "sealed-secret-cert", "", "Path to a certificate used to encrypt sealed secrets")
 	Cmd.Flags().StringVar(&viewOptions.configDirectory, "config-directory", ".", "Directory containing configuration information for the cluster")
 
 	// Intentionally shadows the globally defined --verbose flag.
 	Cmd.Flags().BoolVar(&viewOptions.verbose, "verbose", false, "Enable verbose output")
-
-	// Default to using the git deploy key to decrypt sealed secrets
-	// BUG: CLI flags are not evaluated yet at this point!
-	if viewOptions.sealedSecretKeyPath == "" && viewOptions.gitDeployKeyPath != "" {
-		viewOptions.sealedSecretKeyPath = viewOptions.gitDeployKeyPath
-	}
 }
 
 func planRun(cmd *cobra.Command, args []string) error {
-	// Default to using the git deploy key to decrypt sealed secrets
-	if viewOptions.sealedSecretKeyPath == "" && viewOptions.gitDeployKeyPath != "" {
-		viewOptions.sealedSecretKeyPath = viewOptions.gitDeployKeyPath
+	var clusterPath, machinesPath string
+
+	// TODO: deduplicate clusterPath/machinesPath evaluation between here and cmd/wksctl/apply
+	// https://github.com/weaveworks/wksctl/issues/58
+	if viewOptions.gitURL == "" {
+		// Cluster and Machine manifests come from the local filesystem.
+		clusterPath, machinesPath = viewOptions.clusterManifestPath, viewOptions.machinesManifestPath
+	} else {
+		// Cluster and Machine manifests come from a Git repo that we'll clone for the duration of this command.
+		repo, err := manifests.CloneClusterAPIRepo(viewOptions.gitURL, viewOptions.gitBranch, viewOptions.gitDeployKeyPath, viewOptions.gitPath)
+		if err != nil {
+			return errors.Wrap(err, "CloneClusterAPIRepo")
+		}
+		defer repo.Close()
+
+		if clusterPath, err = repo.ClusterManifestPath(); err != nil {
+			return errors.Wrap(err, "ClusterManifestPath")
+		}
+		if machinesPath, err = repo.MachinesManifestPath(); err != nil {
+			return errors.Wrap(err, "MachinesManifestPath")
+		}
 	}
 
-	var closer func()
-	var err error
-	cpath := filepath.Join(viewOptions.gitPath, viewOptions.clusterManifestPath)
-	mpath := filepath.Join(viewOptions.gitPath, viewOptions.machinesManifestPath)
-
-	cpath, mpath, closer, err = manifests.Get(cpath, mpath, viewOptions.gitURL, viewOptions.gitBranch, viewOptions.gitDeployKeyPath, viewOptions.gitPath)
-	if err != nil {
-		errors.Wrap(err, "failed to retrieve manifests")
-	}
-	return displayPlan(cpath, mpath, closer)
+	return displayPlan(clusterPath, machinesPath)
 }
 
-func displayPlan(clusterManifestPath, machinesManifestPath string, closer func()) error {
-	defer closer()
+func displayPlan(clusterManifestPath, machinesManifestPath string) error {
+	// TODO: reuse the actual plan created by `wksctl apply`, rather than trying to construct a similar plan and printing it.
 	sp := specs.NewFromPaths(clusterManifestPath, machinesManifestPath)
 	sshClient, err := sp.GetSSHClient(viewOptions.verbose)
 	if err != nil {

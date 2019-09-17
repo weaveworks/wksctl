@@ -6,68 +6,72 @@ import (
 	"path/filepath"
 
 	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
 	xcryptossh "golang.org/x/crypto/ssh"
 	gogit "gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/plumbing"
 	gogitssh "gopkg.in/src-d/go-git.v4/plumbing/transport/ssh"
 )
 
-func Get(clusterOption, machinesOption, gitURL, gitBranch, gitDeployKeyPath, gitPath string) (string, string, func(), error) {
-	var closer = func() {}
-	var err error
-
-	clusterManifestPath := clusterOption
-	machinesManifestPath := machinesOption
-	if gitURL != "" {
-		clusterManifestPath, machinesManifestPath, closer, err = syncRepo(gitURL, gitBranch, gitDeployKeyPath, gitPath)
-		log.WithFields(log.Fields{"cluster": clusterManifestPath, "machines": machinesManifestPath}).Debug("manifests")
-	}
-
-	return clusterManifestPath, machinesManifestPath, closer, err
+type ClusterAPIRepo struct {
+	// worktreePath is the absolute path to the cloned worktree.
+	worktreePath string
+	// subDir is the subdirectory of worktreePath where we look for files.
+	subdir string
 }
 
-func syncRepo(url, branch, deployKeyPath, relativeRoot string) (string, string, func(), error) {
-	srcDir, err := ioutil.TempDir("", "wkp")
-	if err != nil {
-		return "", "", nil, errors.Wrap(err, "failed to create temp dir")
-	}
-	closer := func() {
-		os.RemoveAll(srcDir)
-	}
-	lCtx := log.WithField("repo", url)
-	opt, err := cloneOptions(url, deployKeyPath, branch)
-	if err != nil {
-		return "", "", nil, err
-	}
-	r, err := gogit.PlainClone(srcDir, false, &opt)
+func (r *ClusterAPIRepo) Close() error {
+	return os.RemoveAll(r.worktreePath)
+}
 
-	if err != nil {
-		closer()
-		return "", "", nil, errors.Wrapf(err, "failed to clone repository: %s", url)
+func (r *ClusterAPIRepo) ClusterManifestPath() (string, error) {
+	path := filepath.Join(r.worktreePath, r.subdir, "cluster.yaml")
+	if _, err := os.Stat(path); err != nil {
+		return "", errors.Wrap(err, "cluster manifest not readable")
 	}
-	lCtx.WithField("config", r.Config).Debug("cloned")
+	return path, nil
+}
 
-	rootDir := filepath.Join(srcDir, relativeRoot)
-	files, err := ioutil.ReadDir(rootDir)
-	if err != nil {
-		closer()
-		return "", "", nil, errors.Wrapf(err, "failed to read directory %s", rootDir)
-	}
-	var cYaml, mYaml string
-	for _, file := range files {
-		switch file.Name() {
-		case "cluster.yaml":
-			cYaml = filepath.Join(rootDir, file.Name())
-		case "machine.yaml", "machines.yaml":
-			mYaml = filepath.Join(rootDir, file.Name())
+func (r *ClusterAPIRepo) MachinesManifestPath() (string, error) {
+	candidates := []string{"machine.yaml", "machines.yaml"}
+
+	for _, c := range candidates {
+		fqCand := filepath.Join(r.worktreePath, r.subdir, c)
+		if _, err := os.Stat(fqCand); err == nil {
+			return c, nil
 		}
 	}
-	if cYaml == "" || mYaml == "" {
-		closer()
-		lCtx.WithField("repo", url).Fatal("Cluster and Machine yaml must be in repo")
+	return "", errors.New("machines manifest not found")
+}
+
+func CloneClusterAPIRepo(url, branch, keyPath, subdir string) (*ClusterAPIRepo, error) {
+	var worktreePath string
+	var err error
+
+	if worktreePath, err = ioutil.TempDir("", "wkp"); err != nil {
+		return nil, errors.Wrap(err, "TempDir")
 	}
-	return cYaml, mYaml, closer, nil
+
+	if worktreePath, err = filepath.Abs(worktreePath); err != nil {
+		return nil, errors.Wrap(err, "filepath.Abs")
+	}
+
+	r := ClusterAPIRepo{
+		worktreePath: worktreePath,
+		subdir:       subdir,
+	}
+
+	opt, err := cloneOptions(url, keyPath, branch)
+	if err != nil {
+		r.Close()
+		return nil, errors.Wrap(err, "cloneOptions")
+	}
+
+	if _, err := gogit.PlainClone(r.worktreePath, false, &opt); err != nil {
+		r.Close()
+		return nil, errors.Wrapf(err, "failed to clone repository: %s", url)
+	}
+
+	return &r, nil
 }
 
 func cloneOptions(url, deployKeyPath, branch string) (gogit.CloneOptions, error) {

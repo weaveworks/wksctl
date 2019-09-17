@@ -66,25 +66,33 @@ type Applier struct {
 }
 
 func (a *Applier) Apply() error {
-	// Default to using the git deploy key to decrypt sealed secrets
-	if a.Params.sealedSecretKeyPath == "" && a.Params.gitDeployKeyPath != "" {
-		a.Params.sealedSecretKeyPath = a.Params.gitDeployKeyPath
+	var clusterPath, machinesPath string
+
+	// TODO: deduplicate clusterPath/machinesPath evaluation between here and other places
+	// https://github.com/weaveworks/wksctl/issues/58
+	if a.Params.gitURL == "" {
+		// Cluster and Machine manifests come from the local filesystem.
+		clusterPath, machinesPath = a.Params.clusterManifestPath, a.Params.machinesManifestPath
+	} else {
+		// Cluster and Machine manifests come from a Git repo that we'll clone for the duration of this command.
+		repo, err := manifests.CloneClusterAPIRepo(a.Params.gitURL, a.Params.gitBranch, a.Params.gitDeployKeyPath, a.Params.gitPath)
+		if err != nil {
+			return errors.Wrap(err, "CloneClusterAPIRepo")
+		}
+		defer repo.Close()
+
+		if clusterPath, err = repo.ClusterManifestPath(); err != nil {
+			return errors.Wrap(err, "ClusterManifestPath")
+		}
+		if machinesPath, err = repo.MachinesManifestPath(); err != nil {
+			return errors.Wrap(err, "MachinesManifestPath")
+		}
 	}
 
-	var closer func()
-	var err error
-	cpath := filepath.Join(a.Params.gitPath, a.Params.clusterManifestPath)
-	mpath := filepath.Join(a.Params.gitPath, a.Params.machinesManifestPath)
-
-	cpath, mpath, closer, err = manifests.Get(cpath, mpath, a.Params.gitURL, a.Params.gitBranch, a.Params.gitDeployKeyPath, a.Params.gitPath)
-	if err != nil {
-		return err
-	}
-	return a.initiateCluster(cpath, mpath, closer)
+	return a.initiateCluster(clusterPath, machinesPath)
 }
 
-func (a *Applier) initiateCluster(clusterManifestPath, machinesManifestPath string, closer func()) error {
-	defer closer()
+func (a *Applier) initiateCluster(clusterManifestPath, machinesManifestPath string) error {
 	sp := specs.NewFromPaths(clusterManifestPath, machinesManifestPath)
 	sshClient, err := sp.GetSSHClient(a.Params.verbose)
 	if err != nil {
@@ -116,6 +124,12 @@ func (a *Applier) initiateCluster(clusterManifestPath, machinesManifestPath stri
 		ns = a.Params.namespace
 	}
 
+	sealedSecretKeyPath := a.Params.sealedSecretKeyPath
+	if sealedSecretKeyPath == "" {
+		// Default to using the git deploy key to decrypt sealed secrets
+		sealedSecretKeyPath = a.Params.gitDeployKeyPath
+	}
+
 	// TODO(damien): Transform the controller image into an addon.
 	controllerImage, err := addons.UpdateImage(a.Params.controllerImage, sp.ClusterSpec.ImageRepository)
 	if err != nil {
@@ -139,7 +153,7 @@ func (a *Applier) initiateCluster(clusterManifestPath, machinesManifestPath stri
 			GitPath:          a.Params.gitPath,
 			GitDeployKeyPath: a.Params.gitDeployKeyPath,
 		},
-		SealedSecretKeyPath:  a.Params.sealedSecretKeyPath,
+		SealedSecretKeyPath:  sealedSecretKeyPath,
 		SealedSecretCertPath: a.Params.sealedSecretCertPath,
 		ConfigDirectory:      configDir,
 		ImageRepository:      sp.ClusterSpec.ImageRepository,
