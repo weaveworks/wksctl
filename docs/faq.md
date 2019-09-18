@@ -1,6 +1,6 @@
 # Frequently asked questions
 
-## Checkpoint
+## Checkpoint and how to disable it
 
 `wksctl` contacts Weaveworks servers for available versions. When a new version is available, `wksctl` will print out a message along with a URL to download it.
 
