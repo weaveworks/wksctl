@@ -29,7 +29,8 @@ Check out [our Get Started doc](https://wksctl.readthedocs.io/en/latest/get-star
 
 We put together a couple of guides to get you up and running with WKS in combination with [Footloose](https://github.com/weaveworks/footloose), [Vagrant](https://www.vagrantup.com) and others!
 
-- [WKS and Footloose](https://github.com/weaveworks/wks-quickstart-firekube) - this includes the Firekube approach (WKS+Footloose+Ignite)
+- [Firekube](https://github.com/weaveworks/wks-quickstart-firekube) - use our WKS + Footloose + Ignite demo and be up and running in no time
+- [WKS and Footloose](https://wksctl.readthedocs.io/en/latest/wks-and-footloose.html)
 - [WKS and Vagrant](https://wksctl.readthedocs.io/en/latest/wks-and-vagrant.html)
 - [WKS on GCE](https://wksctl.readthedocs.io/en/latest/wks-on-gce.html)
 
