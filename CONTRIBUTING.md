@@ -1,6 +1,6 @@
 # Contributing to the project
 
-Our doc on [developing `wksctl`](docs/development.md) will be helpful when getting started contributing as well.
+Our doc on [developing `wksctl`](https://wksctl.readthedocs.io/en/latest/development.html) will be helpful when getting started contributing as well.
 
 ## Typical workflow
 
