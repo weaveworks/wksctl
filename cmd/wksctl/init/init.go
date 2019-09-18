@@ -105,7 +105,7 @@ func and(checks ...func([]byte) bool) func([]byte) bool {
 }
 
 func updatedArg(item string) []byte {
-	return []byte(fmt.Sprintf("$1=%q", item))
+	return []byte(fmt.Sprintf("$1=%s", item))
 }
 
 func updateControllerManifests(contents []byte, options initOptionType) ([]byte, error) {
