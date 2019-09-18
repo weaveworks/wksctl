@@ -9,6 +9,8 @@ GIT_REVISION := $(shell git rev-parse HEAD)
 VERSION=$(shell git describe --always)
 UPTODATE := .uptodate
 
+DOCS_PORT:=8000
+
 # Every directory with a Dockerfile in it builds an image called
 # $(IMAGE_PREFIX)<dirname>. Dependencies (i.e. things that go in the image)
 # still need to be explicitly declared.
@@ -141,3 +143,14 @@ integration-tests-container: cmd/wksctl/wksctl cmd/controller/.uptodate
 	IMAGE_TAG=$(IMAGE_TAG) go test -v -timeout 20m ./test/integration/container/...
 
 FORCE:
+
+
+build-docs:
+	@cd docs && docker build -t wksctl-docs .
+
+test-docs: build-docs
+	@docker run -it wksctl-docs /usr/bin/linkchecker _build/html/index.html
+
+serve-docs: build-docs
+	@echo Stating docs website on http://localhost:${DOCS_PORT}/_build/html/index.html
+	@docker run -i -p ${DOCS_PORT}:8000 -e USER_ID=$$UID wksctl-docs

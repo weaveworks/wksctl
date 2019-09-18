@@ -23,15 +23,16 @@ chmod +x wksctl
 sudo mv wksctl /usr/local/bin/
 ```
 
-Check out [our Get Started doc](docs/get-started.md) to dive deeper into the different ways to operate `wksctl`.
+Check out [our Get Started doc](https://wksctl.readthedocs.io/en/latest/get-started.html) to dive deeper into the different ways to operate `wksctl`.
 
 ## Quick start
 
 We put together a couple of guides to get you up and running with WKS in combination with [Footloose](https://github.com/weaveworks/footloose), [Vagrant](https://www.vagrantup.com) and others!
 
-- [WKS and Footloose](docs/wks-and-footloose.md) - this includes the Firekube approach (WKS+Footloose+Ignite)
-- [WKS and Vagrant](docs/wks-and-vagrant.md)
-- [WKS on GCE](docs/wks-on-gce.md)
+- [Firekube](https://github.com/weaveworks/wks-quickstart-firekube) - use our WKS + Footloose + Ignite demo and be up and running in no time
+- [WKS and Footloose](https://wksctl.readthedocs.io/en/latest/wks-and-footloose.html)
+- [WKS and Vagrant](https://wksctl.readthedocs.io/en/latest/wks-and-vagrant.html)
+- [WKS on GCE](https://wksctl.readthedocs.io/en/latest/wks-on-gce.html)
 
 ## Contributing
 
@@ -40,12 +41,12 @@ Please see [CONTRIBUTING.md](CONTRIBUTING.md) and our [Code Of Conduct](CODE_OF_
 Other interesting resources include:
 
 - [The issue tracker](https://github.com/weaveworks/wksctl/issues)
-- [Developing `wksctl`](docs/development.md)
+- [Developing `wksctl`](https://wksctl.readthedocs.io/en/latest/development.html)
 
 ## More Documentation
 
-- [Frequently asked questions](docs/faq.md)
-- [Developing `wksctl`](docs/development.md)
+- [Frequently asked questions](https://wksctl.readthedocs.io/en/latest/faq.html)
+- [Developing `wksctl`](https://wksctl.readthedocs.io/en/latest/development.html)
 
 ## Getting Help
 
