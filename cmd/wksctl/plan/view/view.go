@@ -48,7 +48,6 @@ func init() {
 	Cmd.Flags().StringVar(&viewOptions.sealedSecretCertPath, "sealed-secret-cert", "", "Path to a certificate used to encrypt sealed secrets")
 	Cmd.Flags().StringVar(&viewOptions.configDirectory, "config-directory", ".", "Directory containing configuration information for the cluster")
 
-	// Intentionally shadows the globally defined --verbose flag.
 	Cmd.Flags().BoolVarP(&viewOptions.verbose, "verbose", "v", false, "Enable verbose output")
 }
 

@@ -41,8 +41,6 @@ func configureLogger(cmd *cobra.Command, args []string) {
 }
 
 func main() {
-	rootCmd.PersistentFlags().BoolVarP(&options.verbose, "verbose", "v", false, "Enable verbose output")
-
 	rootCmd.AddCommand(addon.Cmd)
 	rootCmd.AddCommand(apply.Cmd)
 	rootCmd.AddCommand(applyaddons.Cmd)
