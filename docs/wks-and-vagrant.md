@@ -1,4 +1,4 @@
-# Instructions (wksctl apply)
+# WKS and Vagrant
 
 ```console
 $ make install

@@ -1,4 +1,4 @@
-# Run Kubernetes inside containers
+# WKS and Footloose
 
 1. Pick a distro of your choice:
 
