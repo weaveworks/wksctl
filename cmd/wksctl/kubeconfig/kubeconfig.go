@@ -59,6 +59,7 @@ func init() {
 		"Enables kubectl to communicate with the API w/o verifying the certificate")
 	Cmd.Flags().MarkHidden("insecure-skip-tls-verify")
 
+	// Intentionally shadows the globally defined --verbose flag.
 	Cmd.Flags().BoolVarP(&kubeconfigOptions.verbose, "verbose", "v", false, "Enable verbose output")
 }
 
