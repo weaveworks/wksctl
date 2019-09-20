@@ -908,9 +908,6 @@ func wksControllerManifest(controllerImageOverride, namespace, configDir string)
 	if err != nil {
 		return nil, err
 	}
-	if controllerImageOverride == "" {
-		return []byte(content), nil
-	}
 	return updateControllerImage([]byte(content), controllerImageOverride)
 }
 
