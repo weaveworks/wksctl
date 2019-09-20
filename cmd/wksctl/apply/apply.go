@@ -12,7 +12,6 @@ import (
 	"github.com/weaveworks/wksctl/pkg/specs"
 	"github.com/weaveworks/wksctl/pkg/utilities/kubeadm"
 	"github.com/weaveworks/wksctl/pkg/utilities/manifest"
-	"github.com/weaveworks/wksctl/pkg/version"
 )
 
 // Cmd represents the apply command
@@ -57,7 +56,7 @@ func init() {
 	Cmd.Flags().BoolVar(&globalParams.verbose, "verbose", false, "Enable verbose output")
 
 	// Hide controller-image flag as it is a helper/debug flag.
-	Cmd.Flags().StringVar(&globalParams.controllerImage, "controller-image", "quay.io/wksctl/controller:"+version.ImageTag, "Controller image override")
+	Cmd.Flags().StringVar(&globalParams.controllerImage, "controller-image", "", "Controller image override")
 	Cmd.Flags().MarkHidden("controller-image")
 }
 
