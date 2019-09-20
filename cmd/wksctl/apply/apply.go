@@ -12,6 +12,7 @@ import (
 	"github.com/weaveworks/wksctl/pkg/specs"
 	"github.com/weaveworks/wksctl/pkg/utilities/kubeadm"
 	"github.com/weaveworks/wksctl/pkg/utilities/manifest"
+	"github.com/weaveworks/wksctl/pkg/version"
 )
 
 // Cmd represents the apply command
@@ -145,7 +146,10 @@ func (a *Applier) initiateCluster(clusterManifestPath, machinesManifestPath stri
 			NodeIP:        sp.GetMasterPrivateAddress(),
 			CloudProvider: sp.GetCloudProvider(),
 		},
-		ControllerImageOverride: controllerImage,
+		Controller: wksos.ControllerParams{
+			ImageOverride: controllerImage,
+			ImageBuiltin:  "quay.io/wksctl/controller:" + version.ImageTag,
+		},
 		GitData: wksos.GitParams{
 			GitURL:           a.Params.gitURL,
 			GitBranch:        a.Params.gitBranch,
