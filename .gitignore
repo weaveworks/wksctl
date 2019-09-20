@@ -30,3 +30,6 @@ tf.json
 
 # Docs
 docs/_build
+
+# Snap images
+*.snap
