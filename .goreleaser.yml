@@ -6,8 +6,8 @@ builds:
   main: ./cmd/wksctl
   binary: wksctl
   ldflags:
-    - -X main.version={{.Version}}
-    - -X main.imageTag={{.Env.IMAGE_TAG}}
+    - -X github.com/weaveworks/wksctl/pkg/version.Version={{.Version}}
+    - -X github.com/weaveworks/wksctl/pkg/version.ImageTag={{.Env.IMAGE_TAG}}
   env:
     - CGO_ENABLED=0
     - GO111MODULE=on
