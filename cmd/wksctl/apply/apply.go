@@ -53,7 +53,7 @@ func init() {
 	Cmd.Flags().BoolVar(&globalParams.useManifestNamespace, "use-manifest-namespace", false, "use namespaces from supplied manifests (overriding any --namespace argument)")
 
 	// Intentionally shadows the globally defined --verbose flag.
-	Cmd.Flags().BoolVar(&globalParams.verbose, "verbose", false, "Enable verbose output")
+	Cmd.Flags().BoolVarP(&globalParams.verbose, "verbose", "v", false, "Enable verbose output")
 
 	// Hide controller-image flag as it is a helper/debug flag.
 	Cmd.Flags().StringVar(&globalParams.controllerImage, "controller-image", "", "Controller image override")

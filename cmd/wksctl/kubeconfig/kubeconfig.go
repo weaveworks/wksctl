@@ -60,7 +60,7 @@ func init() {
 	Cmd.Flags().MarkHidden("insecure-skip-tls-verify")
 
 	// Intentionally shadows the globally defined --verbose flag.
-	Cmd.Flags().BoolVar(&kubeconfigOptions.verbose, "verbose", false, "Enable verbose output")
+	Cmd.Flags().BoolVarP(&kubeconfigOptions.verbose, "verbose", "v", false, "Enable verbose output")
 }
 
 func kubeconfigRun(cmd *cobra.Command, args []string) error {
