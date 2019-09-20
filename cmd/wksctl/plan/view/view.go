@@ -49,7 +49,7 @@ func init() {
 	Cmd.Flags().StringVar(&viewOptions.configDirectory, "config-directory", ".", "Directory containing configuration information for the cluster")
 
 	// Intentionally shadows the globally defined --verbose flag.
-	Cmd.Flags().BoolVar(&viewOptions.verbose, "verbose", false, "Enable verbose output")
+	Cmd.Flags().BoolVarP(&viewOptions.verbose, "verbose", "v", false, "Enable verbose output")
 }
 
 func planRun(cmd *cobra.Command, args []string) error {
