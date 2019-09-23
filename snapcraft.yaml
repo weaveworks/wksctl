@@ -28,9 +28,6 @@ parts:
     build-environment:
       - GO111MODULE: 'on'
       - CGO_ENABLED: '0'
-    build-packages:
-      - gcc
-      - git
     build-snaps:
       - go/1.12/stable
 
@@ -40,7 +37,7 @@ plugs:
     read:
     - $HOME/.kube
     - $HOME/.minikube
-    - $HOME/.config/k3d  # hard-coded $XDG_CONFIG_HOME for the common case
+    - $HOME/.wks
 
 apps:
   wksctl:
