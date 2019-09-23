@@ -13,6 +13,7 @@ description: >
   * manage addons like Weave Net or Flux
   * Sealed Secret integration
 confinement: devmode
+grade: devel
 base: core18
 
 parts:
@@ -22,7 +23,8 @@ parts:
     plugin: nil
     override-build: |
       export GOBIN=$SNAPCRAFT_PART_INSTALL/bin
-      go build -o $GOBIN/wksctl ./cmd/wksctl
+      export VERSION=$(git tag -l | egrep -v '^(chart-|helm-|master-|pre-split)' | sort --version-sort | tail -n1)
+      go build -ldflags "-X github.com/weaveworks/wksctl/pkg/version.Version=$VERSION" -o $GOBIN/wksctl ./cmd/wksctl
     build-environment:
       - GO111MODULE: 'on'
       - CGO_ENABLED: '0'
