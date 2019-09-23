@@ -1,4 +1,4 @@
-# Weave Kubernetes Subscription Control - `wksctl`
+# Weave Kubernetes System Control - `wksctl`
 
 `wksctl` allows simple creation of a Kubernetes cluster given a **set of IP addresses** and an **SSH key**. It can be run in a standalone environment but is best used via a [GitOps approach](https://www.weave.works/technologies/gitops/) in which cluster and machine descriptions are stored in Git and the state of the cluster tracks changes to the descriptions.
 
