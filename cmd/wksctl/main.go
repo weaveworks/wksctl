@@ -22,7 +22,7 @@ import (
 
 var rootCmd = &cobra.Command{
 	Use:   "wksctl",
-	Short: "Weave Enterprise Kubernetes Subscription CLI",
+	Short: "Weave Kubernetes System CLI",
 
 	PersistentPreRun: configureLogger,
 }
