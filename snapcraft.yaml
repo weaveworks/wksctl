@@ -6,14 +6,11 @@ description: >
   can be run in a standalone environment but is best used via a GitOps approach in which cluster and
   machine descriptions are stored in Git and the state of the cluster tracks changes to the descriptions.
    
-  Its features include:
-  
-  * simple creation of Kubernetes clusters
-  * manage cluster and machine descriptions using Git
-  * manage addons like Weave Net or Flux
-  * Sealed Secret integration
-confinement: devmode
-grade: devel
+  Its features include: simple creation of Kubernetes clusters, manage cluster and machine descriptions using Git,
+  manage addons like Weave Net or Flux, Sealed Secret integration
+# Needs to be able to read files passed as args, e.g. wksctl apply --machines, --cluster
+confinement: classic
+grade: stable
 base: core18
 
 parts:
@@ -23,7 +20,7 @@ parts:
     plugin: nil
     override-build: |
       export GOBIN=$SNAPCRAFT_PART_INSTALL/bin
-      export VERSION=$(git tag -l | egrep -v '^(chart-|helm-|master-|pre-split)' | sort --version-sort | tail -n1)
+      export VERSION=$(git tag -l | egrep -v '^(chart-|helm-|master-|pre-split|[a-z])' | sort --version-sort | tail -n1)
       go build -ldflags "-X github.com/weaveworks/wksctl/pkg/version.Version=$VERSION" -o $GOBIN/wksctl ./cmd/wksctl
     build-environment:
       - GO111MODULE: 'on'
@@ -31,18 +28,6 @@ parts:
     build-snaps:
       - go/1.12/stable
 
-plugs:
-  kube-config:
-    interface: personal-files
-    read:
-    - $HOME/.kube
-    - $HOME/.minikube
-    - $HOME/.wks
-
 apps:
   wksctl:
     command: bin/wksctl
-    plugs:
-    - kube-config
-    - network
-    - network-bind
