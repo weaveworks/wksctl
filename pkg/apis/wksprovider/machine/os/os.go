@@ -326,7 +326,7 @@ func (o OS) CreateSeedNodeSetupPlan(params SeedNodeParams) (*plan.Plan, error) {
 	mManRsc := &resource.KubectlApply{Manifest: []byte(machinesManifest), Filename: object.String("machinesmanifest"), Namespace: object.String(params.Namespace)}
 	b.AddResource("kubectl:apply:machines", mManRsc, plan.DependOn(kubectlApplyDeps[0], kubectlApplyDeps[1:]...))
 
-	wksCtlrManifest, err := wksControllerManifest(params.Controller.ImageOverride, params.Controller.ImageBuiltin, params.Namespace, params.ConfigDirectory)
+	wksCtlrManifest, err := wksControllerManifest(params.Controller, params.Namespace, params.ConfigDirectory)
 	if err != nil {
 		return nil, err
 	}
@@ -900,7 +900,7 @@ func createFluxSecretFromGitData(gitData GitParams, params SeedNodeParams) ([]by
 	return replaceGitFields(fluxSecretTemplate, gitParams)
 }
 
-func wksControllerManifest(controllerImageOverride, ControllerImageBuiltin, namespace, configDir string) ([]byte, error) {
+func wksControllerManifest(controller ControllerParams, namespace, configDir string) ([]byte, error) {
 	var manifestbytes []byte
 
 	// The controller manifest is taken, in order:
@@ -918,8 +918,8 @@ func wksControllerManifest(controllerImageOverride, ControllerImageBuiltin, name
 			return nil, openErr
 		}
 		manifestbytes, err = ioutil.ReadAll(file)
-		if controllerImageOverride == "" {
-			controllerImageOverride = ControllerImageBuiltin
+		if controller.ImageOverride == "" {
+			controller.ImageOverride = controller.ImageBuiltin
 		}
 	} else {
 		manifestbytes, err = ioutil.ReadFile(filepath)
@@ -931,7 +931,7 @@ func wksControllerManifest(controllerImageOverride, ControllerImageBuiltin, name
 	if err != nil {
 		return nil, err
 	}
-	return updateControllerImage([]byte(content), controllerImageOverride)
+	return updateControllerImage([]byte(content), controller.ImageOverride)
 }
 
 const deployment = "Deployment"
