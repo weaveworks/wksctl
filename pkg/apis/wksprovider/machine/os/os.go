@@ -145,6 +145,17 @@ type GitParams struct {
 	GitDeployKeyPath string
 }
 
+// ControllerParams are all SeedNodeParams related to the WKS controller
+type ControllerParams struct {
+	// ImageOverride will override the WKS controller image if set. It will do so
+	// whether the controller manifest comes from a git repository or is the
+	// built-in one.
+	ImageOverride string
+	// ImageBuiltin is the WKS controller image to use when generating the WKS
+	// controller manifest from in-memory data.
+	ImageBuiltin string
+}
+
 // SeedNodeParams groups required inputs to configure a "seed" Kubernetes node.
 type SeedNodeParams struct {
 	PublicIP             string
@@ -154,17 +165,17 @@ type SeedNodeParams struct {
 	SSHKeyPath           string
 	// BootstrapToken is the token used by kubeadm init and kubeadm join
 	// to safely form new clusters.
-	BootstrapToken          *kubeadmapi.BootstrapTokenString
-	KubeletConfig           config.KubeletConfig
-	ControllerImageOverride string
-	GitData                 GitParams
-	SealedSecretKeyPath     string
-	SealedSecretCertPath    string
-	ConfigDirectory         string
-	Namespace               string
-	ImageRepository         string
-	ExternalLoadBalancer    string
-	AdditionalSANs          []string
+	BootstrapToken       *kubeadmapi.BootstrapTokenString
+	KubeletConfig        config.KubeletConfig
+	Controller           ControllerParams
+	GitData              GitParams
+	SealedSecretKeyPath  string
+	SealedSecretCertPath string
+	ConfigDirectory      string
+	Namespace            string
+	ImageRepository      string
+	ExternalLoadBalancer string
+	AdditionalSANs       []string
 }
 
 // Validate generally validates this SeedNodeParams struct, e.g. ensures it
@@ -315,7 +326,7 @@ func (o OS) CreateSeedNodeSetupPlan(params SeedNodeParams) (*plan.Plan, error) {
 	mManRsc := &resource.KubectlApply{Manifest: []byte(machinesManifest), Filename: object.String("machinesmanifest"), Namespace: object.String(params.Namespace)}
 	b.AddResource("kubectl:apply:machines", mManRsc, plan.DependOn(kubectlApplyDeps[0], kubectlApplyDeps[1:]...))
 
-	wksCtlrManifest, err := wksControllerManifest(params.ControllerImageOverride, params.Namespace, params.ConfigDirectory)
+	wksCtlrManifest, err := wksControllerManifest(params.Controller, params.Namespace, params.ConfigDirectory)
 	if err != nil {
 		return nil, err
 	}
@@ -889,8 +900,17 @@ func createFluxSecretFromGitData(gitData GitParams, params SeedNodeParams) ([]by
 	return replaceGitFields(fluxSecretTemplate, gitParams)
 }
 
-func wksControllerManifest(controllerImageOverride, namespace, configDir string) ([]byte, error) {
+func wksControllerManifest(controller ControllerParams, namespace, configDir string) ([]byte, error) {
 	var manifestbytes []byte
+
+	// The controller manifest is taken, in order:
+	// 1. from the specified git repository checkout.
+	// 2. from the YAML manifest built-in the binary.
+	//
+	// The controller image is, in priority order:
+	// 1. controllerImageOverride provided on the apply command line.
+	// 2. the image from the manifest if we have found a manifest in the git repository checkout.
+	// 3. quay.io/wksctl/controller:version.ImageTag
 	filepath, err := findControllerManifest(configDir)
 	if err != nil {
 		file, openErr := manifests.Manifests.Open("04_controller.yaml")
@@ -898,6 +918,9 @@ func wksControllerManifest(controllerImageOverride, namespace, configDir string)
 			return nil, openErr
 		}
 		manifestbytes, err = ioutil.ReadAll(file)
+		if controller.ImageOverride == "" {
+			controller.ImageOverride = controller.ImageBuiltin
+		}
 	} else {
 		manifestbytes, err = ioutil.ReadFile(filepath)
 	}
@@ -908,10 +931,7 @@ func wksControllerManifest(controllerImageOverride, namespace, configDir string)
 	if err != nil {
 		return nil, err
 	}
-	if controllerImageOverride == "" {
-		return []byte(content), nil
-	}
-	return updateControllerImage([]byte(content), controllerImageOverride)
+	return updateControllerImage([]byte(content), controller.ImageOverride)
 }
 
 const deployment = "Deployment"
