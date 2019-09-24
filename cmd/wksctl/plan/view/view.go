@@ -40,7 +40,7 @@ func init() {
 	Cmd.Flags().StringVarP(&viewOptions.output, "output", "o", "dot", "Output format (dot|json)")
 	Cmd.Flags().StringVar(&viewOptions.clusterManifestPath, "cluster", "cluster.yaml", "Location of cluster manifest")
 	Cmd.Flags().StringVar(&viewOptions.machinesManifestPath, "machines", "machines.yaml", "Location of machines manifest")
-	Cmd.Flags().StringVar(&viewOptions.controllerImage, "controller-image", "quay.io/wksctl/controller:"+version.ImageTag, "Controller image override")
+	Cmd.Flags().StringVar(&viewOptions.controllerImage, "controller-image", "", "Controller image override")
 	Cmd.Flags().StringVar(&viewOptions.gitURL, "git-url", "", "Git repo containing your cluster and machine information")
 	Cmd.Flags().StringVar(&viewOptions.gitBranch, "git-branch", "master", "Git branch WKS should use to read your cluster")
 	Cmd.Flags().StringVar(&viewOptions.gitPath, "git-path", ".", "Relative path to files in Git")
@@ -108,7 +108,10 @@ func displayPlan(clusterManifestPath, machinesManifestPath string) error {
 			NodeIP:        sp.GetMasterPrivateAddress(),
 			CloudProvider: sp.GetCloudProvider(),
 		},
-		ControllerImageOverride: viewOptions.controllerImage,
+		Controller: os.ControllerParams{
+			ImageOverride: viewOptions.controllerImage,
+			ImageBuiltin:  "quay.io/wksctl/controller:" + version.ImageTag,
+		},
 		GitData: os.GitParams{
 			GitURL:           viewOptions.gitURL,
 			GitBranch:        viewOptions.gitBranch,

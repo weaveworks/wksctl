@@ -21,6 +21,7 @@ DOCS_PORT:=8000
 
 # Get a list of directories containing Dockerfiles
 DOCKERFILES := $(shell find . \
+ -name docs         -prune -o \
  -name tools        -prune -o \
  -name rpm          -prune -o \
  -name build        -prune -o \
