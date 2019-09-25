@@ -14,7 +14,7 @@ RUN curl -fsSLo /usr/local/bin/gosu "https://github.com/tianon/gosu/releases/dow
 # Install golang so we can run our tests on macs
 ENV GO_VERSION 1.12
 RUN curl -fsSLo /tmp/gotar.tgz "https://dl.google.com/go/go$GO_VERSION.linux-$ARCH.tar.gz" \
-    && tar xzf -C /usr/local /tmp/gotar.tgz && rm /tmp/gotar.tgz
+    && tar -C /usr/local -xzf /tmp/gotar.tgz && rm /tmp/gotar.tgz
 
 ENV SRC_PATH /go/src/github.com/weaveworks/wksctl
 WORKDIR $SRC_PATH
