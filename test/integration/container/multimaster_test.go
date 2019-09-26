@@ -25,40 +25,40 @@ metadata:
   name: test-multimaster
 spec:
   clusterNetwork:
-	services:
-	  cidrBlocks: [10.96.0.0/12]
-	pods:
-	  cidrBlocks: [192.168.0.0/16]
-	serviceDomain: cluster.local
+    services:
+      cidrBlocks: [10.96.0.0/12]
+    pods:
+      cidrBlocks: [192.168.0.0/16]
+    serviceDomain: cluster.local
   providerSpec:
-	value:
-	  apiVersion: baremetalproviderspec/v1alpha1
-	  kind: BareMetalClusterProviderSpec
-	  sshKeyPath: cluster-key
-	  user: root
-	  imageRepository: %s:%d
-	  os:
-		files:
-		- source:
-			configmap: repo
-			key: kubernetes.repo
-		  destination: /etc/yum.repos.d/kubernetes.repo
-		- source:
-			configmap: repo
-			key: docker-ce.repo
-		  destination: /etc/yum.repos.d/docker-ce.repo
-		- source:
-			configmap: docker
-			key: daemon.json
-		  destination: /etc/docker/daemon.json
-		- source:
-			configmap: repo
-			key: local.repo
-		  destination: /etc/yum.repos.d/local.repo
-	  cri:
-		kind: docker
-		package: docker-ce
-		version: 18.09.7
+    value:
+      apiVersion: baremetalproviderspec/v1alpha1
+      kind: BareMetalClusterProviderSpec
+      sshKeyPath: cluster-key
+      user: root
+      imageRepository: %s:%d
+      os:
+        files:
+        - source:
+            configmap: repo
+            key: kubernetes.repo
+          destination: /etc/yum.repos.d/kubernetes.repo
+        - source:
+            configmap: repo
+            key: docker-ce.repo
+          destination: /etc/yum.repos.d/docker-ce.repo
+        - source:
+            configmap: docker
+            key: daemon.json
+          destination: /etc/docker/daemon.json
+        - source:
+            configmap: repo
+            key: local.repo
+          destination: /etc/yum.repos.d/local.repo
+      cri:
+        kind: docker
+        package: docker-ce
+        version: 18.09.7
 `
 
 const machinesYAML = `apiVersion: v1
@@ -67,71 +67,71 @@ items:
 - apiVersion: cluster.k8s.io/v1alpha1
   kind: Machine
   metadata:
-	name: master-1
-	labels:
-	  set: master
+    name: master-1
+    labels:
+      set: master
   spec:
-	providerSpec:
-	  value:
-		apiVersion: baremetalproviderspec/v1alpha1
-		kind: BareMetalMachineProviderSpec
-		public:
-		  address: 127.0.0.1
-		  port: 2222
-		private:
-		  address: %s
-		  port: 22
+    providerSpec:
+      value:
+        apiVersion: baremetalproviderspec/v1alpha1
+        kind: BareMetalMachineProviderSpec
+        public:
+          address: 127.0.0.1
+          port: 2222
+        private:
+          address: %s
+          port: 22
 - apiVersion: cluster.k8s.io/v1alpha1
   kind: Machine
   metadata:
-	name: master-2
-	labels:
-	  set: master
+    name: master-2
+    labels:
+      set: master
   spec:
-	providerSpec:
-	  value:
-		apiVersion: baremetalproviderspec/v1alpha1
-		kind: BareMetalMachineProviderSpec
-		public:
-		  address: 127.0.0.1
-		  port: 2223
-		private:
-		  address: %s
-		  port: 22
+    providerSpec:
+      value:
+        apiVersion: baremetalproviderspec/v1alpha1
+        kind: BareMetalMachineProviderSpec
+        public:
+          address: 127.0.0.1
+          port: 2223
+        private:
+          address: %s
+          port: 22
 - apiVersion: cluster.k8s.io/v1alpha1
   kind: Machine
   metadata:
-	name: master-3
-	labels:
-	  set: master
+    name: master-3
+    labels:
+      set: master
   spec:
-	providerSpec:
-	  value:
-		apiVersion: baremetalproviderspec/v1alpha1
-		kind: BareMetalMachineProviderSpec
-		public:
-		  address: 127.0.0.1
-		  port: 2224
-		private:
-		  address: %s
-		  port: 22
+    providerSpec:
+      value:
+        apiVersion: baremetalproviderspec/v1alpha1
+        kind: BareMetalMachineProviderSpec
+        public:
+          address: 127.0.0.1
+          port: 2224
+        private:
+          address: %s
+          port: 22
 - apiVersion: cluster.k8s.io/v1alpha1
   kind: Machine
   metadata:
-	name: worker-1
-	labels:
-	  set: worker
+    name: worker-1
+    labels:
+      set: worker
   spec:
-	providerSpec:
-	  value:
-		apiVersion: baremetalproviderspec/v1alpha1
-		kind: BareMetalMachineProviderSpec
-		public:
-		  address: 127.0.0.1
-		  port: 2225
-		private:
-		  address: %s
-		  port: 22
+    providerSpec:
+      value:
+        apiVersion: baremetalproviderspec/v1alpha1
+        kind: BareMetalMachineProviderSpec
+        public:
+          address: 127.0.0.1
+          port: 2225
+        private:
+          address: %s
+          port: 22
 `
 
 const dockerConfigMap = `apiVersion: v1
@@ -141,16 +141,16 @@ metadata:
   namespace: system
 data:
   daemon.json: |
-	{
-	  "insecure-registries" : ["%s:%d"],
-	  "log-driver": "json-file",
-	  "log-opts": {
-		"max-size": "100m"
-	  },
-	  "exec-opts": [
-		"native.cgroupdriver=cgroupfs"
-	  ]
-	}
+    {
+      "insecure-registries" : ["%s:%d"],
+      "log-driver": "json-file",
+      "log-opts": {
+        "max-size": "100m"
+      },
+      "exec-opts": [
+        "native.cgroupdriver=cgroupfs"
+      ]
+    }
 `
 
 const repoConfigMap = `apiVersion: v1
@@ -160,105 +160,105 @@ metadata:
   namespace: system
 data:
   kubernetes.repo: |
-	[kubernetes]
-	name=Kubernetes
-	baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-x86_64
-	enabled=1
-	gpgcheck=1
-	repo_gpgcheck=1
-	gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
-	exclude=kube*
+    [kubernetes]
+    name=Kubernetes
+    baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-x86_64
+    enabled=1
+    gpgcheck=1
+    repo_gpgcheck=1
+    gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+    exclude=kube*
   docker-ce.repo: |
-	[docker-ce-stable]
-	name=Docker CE Stable - $basearch
-	baseurl=https://download.docker.com/linux/centos/7/$basearch/stable
-	enabled=1
-	gpgcheck=1
-	gpgkey=https://download.docker.com/linux/centos/gpg
+    [docker-ce-stable]
+    name=Docker CE Stable - $basearch
+    baseurl=https://download.docker.com/linux/centos/7/$basearch/stable
+    enabled=1
+    gpgcheck=1
+    gpgkey=https://download.docker.com/linux/centos/gpg
 
-	[docker-ce-stable-debuginfo]
-	name=Docker CE Stable - Debuginfo $basearch
-	baseurl=https://download.docker.com/linux/centos/7/debug-$basearch/stable
-	enabled=0
-	gpgcheck=1
-	gpgkey=https://download.docker.com/linux/centos/gpg
+    [docker-ce-stable-debuginfo]
+    name=Docker CE Stable - Debuginfo $basearch
+    baseurl=https://download.docker.com/linux/centos/7/debug-$basearch/stable
+    enabled=0
+    gpgcheck=1
+    gpgkey=https://download.docker.com/linux/centos/gpg
 
-	[docker-ce-stable-source]
-	name=Docker CE Stable - Sources
-	baseurl=https://download.docker.com/linux/centos/7/source/stable
-	enabled=0
-	gpgcheck=1
-	gpgkey=https://download.docker.com/linux/centos/gpg
+    [docker-ce-stable-source]
+    name=Docker CE Stable - Sources
+    baseurl=https://download.docker.com/linux/centos/7/source/stable
+    enabled=0
+    gpgcheck=1
+    gpgkey=https://download.docker.com/linux/centos/gpg
 
-	[docker-ce-edge]
-	name=Docker CE Edge - $basearch
-	baseurl=https://download.docker.com/linux/centos/7/$basearch/edge
-	enabled=0
-	gpgcheck=1
-	gpgkey=https://download.docker.com/linux/centos/gpg
+    [docker-ce-edge]
+    name=Docker CE Edge - $basearch
+    baseurl=https://download.docker.com/linux/centos/7/$basearch/edge
+    enabled=0
+    gpgcheck=1
+    gpgkey=https://download.docker.com/linux/centos/gpg
 
-	[docker-ce-edge-debuginfo]
-	name=Docker CE Edge - Debuginfo $basearch
-	baseurl=https://download.docker.com/linux/centos/7/debug-$basearch/edge
-	enabled=0
-	gpgcheck=1
-	gpgkey=https://download.docker.com/linux/centos/gpg
+    [docker-ce-edge-debuginfo]
+    name=Docker CE Edge - Debuginfo $basearch
+    baseurl=https://download.docker.com/linux/centos/7/debug-$basearch/edge
+    enabled=0
+    gpgcheck=1
+    gpgkey=https://download.docker.com/linux/centos/gpg
 
-	[docker-ce-edge-source]
-	name=Docker CE Edge - Sources
-	baseurl=https://download.docker.com/linux/centos/7/source/edge
-	enabled=0
-	gpgcheck=1
-	gpgkey=https://download.docker.com/linux/centos/gpg
+    [docker-ce-edge-source]
+    name=Docker CE Edge - Sources
+    baseurl=https://download.docker.com/linux/centos/7/source/edge
+    enabled=0
+    gpgcheck=1
+    gpgkey=https://download.docker.com/linux/centos/gpg
 
-	[docker-ce-test]
-	name=Docker CE Test - $basearch
-	baseurl=https://download.docker.com/linux/centos/7/$basearch/test
-	enabled=0
-	gpgcheck=1
-	gpgkey=https://download.docker.com/linux/centos/gpg
+    [docker-ce-test]
+    name=Docker CE Test - $basearch
+    baseurl=https://download.docker.com/linux/centos/7/$basearch/test
+    enabled=0
+    gpgcheck=1
+    gpgkey=https://download.docker.com/linux/centos/gpg
 
-	[docker-ce-test-debuginfo]
-	name=Docker CE Test - Debuginfo $basearch
-	baseurl=https://download.docker.com/linux/centos/7/debug-$basearch/test
-	enabled=0
-	gpgcheck=1
-	gpgkey=https://download.docker.com/linux/centos/gpg
+    [docker-ce-test-debuginfo]
+    name=Docker CE Test - Debuginfo $basearch
+    baseurl=https://download.docker.com/linux/centos/7/debug-$basearch/test
+    enabled=0
+    gpgcheck=1
+    gpgkey=https://download.docker.com/linux/centos/gpg
 
-	[docker-ce-test-source]
-	name=Docker CE Test - Sources
-	baseurl=https://download.docker.com/linux/centos/7/source/test
-	enabled=0
-	gpgcheck=1
-	gpgkey=https://download.docker.com/linux/centos/gpg
+    [docker-ce-test-source]
+    name=Docker CE Test - Sources
+    baseurl=https://download.docker.com/linux/centos/7/source/test
+    enabled=0
+    gpgcheck=1
+    gpgkey=https://download.docker.com/linux/centos/gpg
 
-	[docker-ce-nightly]
-	name=Docker CE Nightly - $basearch
-	baseurl=https://download.docker.com/linux/centos/7/$basearch/nightly
-	enabled=0
-	gpgcheck=1
-	gpgkey=https://download.docker.com/linux/centos/gpg
+    [docker-ce-nightly]
+    name=Docker CE Nightly - $basearch
+    baseurl=https://download.docker.com/linux/centos/7/$basearch/nightly
+    enabled=0
+    gpgcheck=1
+    gpgkey=https://download.docker.com/linux/centos/gpg
 
-	[docker-ce-nightly-debuginfo]
-	name=Docker CE Nightly - Debuginfo $basearch
-	baseurl=https://download.docker.com/linux/centos/7/debug-$basearch/nightly
-	enabled=0
-	gpgcheck=1
-	gpgkey=https://download.docker.com/linux/centos/gpg
+    [docker-ce-nightly-debuginfo]
+    name=Docker CE Nightly - Debuginfo $basearch
+    baseurl=https://download.docker.com/linux/centos/7/debug-$basearch/nightly
+    enabled=0
+    gpgcheck=1
+    gpgkey=https://download.docker.com/linux/centos/gpg
 
-	[docker-ce-nightly-source]
-	name=Docker CE Nightly - Sources
-	baseurl=https://download.docker.com/linux/centos/7/source/nightly
-	enabled=0
-	gpgcheck=1
-	gpgkey=https://download.docker.com/linux/centos/gpg
+    [docker-ce-nightly-source]
+    name=Docker CE Nightly - Sources
+    baseurl=https://download.docker.com/linux/centos/7/source/nightly
+    enabled=0
+    gpgcheck=1
+    gpgkey=https://download.docker.com/linux/centos/gpg
 
   local.repo: |
-	[local]
-	name=Local
-	baseurl=http://%s
-	enabled=1
-	gpgcheck=0
+    [local]
+    name=Local
+    baseurl=http://%s
+    enabled=1
+    gpgcheck=0
 `
 
 func TestMultimasterSetup(t *testing.T) {
@@ -280,12 +280,12 @@ func TestMultimasterSetup(t *testing.T) {
 
 	// Ensure the local YUM repo is running:
 	if out := runIgnoreError(t, "docker", "inspect", "-f", "'{{.State.Running}}'", "yumrepo"); !strings.Contains(out, "true") {
-		run(t, "docker", "run", "-d", "-p", fmt.Sprintf("%d:80", repositoryPort), "--restart", "always", "--name", "yumrepo", "quay.io/wksctl/local-yum-repo:master-7b063513")
+		run(t, "docker", "run", "-d", "-p", fmt.Sprintf("%d:80", repositoryPort), "--restart", "always", "--name", "yumrepo", "weaveworks/local-yum-repo:master-7b063513")
 	}
 	yumRepoIP := sanitizeIP(run(t, "docker", "inspect", "yumrepo", "--format='{{.NetworkSettings.IPAddress}}'"))
 
 	// Start the footloose container "VMs" used for testing:
-	run(t, "footloose", "create", "-c", "../../../examples/footloose/centos7/multimaster.yaml")
+	run(t, "footloose", "create", "-c", "../../../examples/footloose/centos7/docker/multimaster.yaml")
 	node0IP := sanitizeIP(run(t, "docker", "inspect", "centos-multimaster-node0", "--format='{{.NetworkSettings.IPAddress}}'"))
 	node1IP := sanitizeIP(run(t, "docker", "inspect", "centos-multimaster-node1", "--format='{{.NetworkSettings.IPAddress}}'"))
 	node2IP := sanitizeIP(run(t, "docker", "inspect", "centos-multimaster-node2", "--format='{{.NetworkSettings.IPAddress}}'"))
@@ -325,7 +325,7 @@ func TestMultimasterSetup(t *testing.T) {
 
 	if !t.Failed() { // Otherwise leave the footloose "VMs" & config files around for debugging purposes.
 		// Clean up:
-		defer run(t, "footloose", "delete", "-c", "../../../examples/footloose/centos7/multimaster.yaml")
+		defer run(t, "footloose", "delete", "-c", "../../../examples/footloose/docker/centos7/multimaster.yaml")
 		defer os.Remove(dirName)
 		defer os.Remove(clusterYAML)
 		defer os.Remove(machinesYAML)
