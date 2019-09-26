@@ -195,8 +195,6 @@ jobs:
       # - attach_workspace:
       #     at: /tmp/workspace
       # - run: /tmp/workspace/cmd/wksctl/wksctl version
-      # - run: env
-
       # - run:
       #     name: Install kubectl
       #     command: |
@@ -237,8 +235,6 @@ jobs:
       # - attach_workspace:
       #     at: /tmp/workspace
       # - run: /tmp/workspace/cmd/wksctl/wksctl version
-      # - run: env
-
       # - run:
       #     name: Install kubectl
       #     command: |
