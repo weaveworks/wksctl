@@ -5,7 +5,6 @@ set -e
 # Run integration tests
 IMGTAG=$(./tools/image-tag)
 
-docker login -u="$DOCKER_USER" -p="$DOCKER_PASSWORD" quay.io
 export PATH=$GOROOT/bin:$PATH
 # Work around for broken docker package in RHEL
 export DOCKER_VERSION='1.13.1-75*'
