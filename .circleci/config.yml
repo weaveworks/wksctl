@@ -189,34 +189,35 @@ jobs:
           IMAGE_NAME: centos-cloud/centos-7
     working_directory: /src/github.com/weaveworks/wksctl
     steps:
-      - checkout
-      - setup_remote_docker
+      # - checkout
+      # - setup_remote_docker
 
-      - attach_workspace:
-          at: /tmp/workspace
-      - run: /tmp/workspace/cmd/wksctl/wksctl version
-      - run: env
+      # - attach_workspace:
+      #     at: /tmp/workspace
+      # - run: /tmp/workspace/cmd/wksctl/wksctl version
+      # - run: env
 
-      - run:
-          name: Install kubectl
-          command: |
-            curl -L $KUBECTL_URL -o kubectl.tar.gz
-            echo "$KUBECTL_CHECKSUM kubectl.tar.gz" | sha256sum -c
-            tar xvzf kubectl.tar.gz --strip-components=3
-            sudo mv kubectl /usr/local/bin
+      # - run:
+      #     name: Install kubectl
+      #     command: |
+      #       curl -L $KUBECTL_URL -o kubectl.tar.gz
+      #       echo "$KUBECTL_CHECKSUM kubectl.tar.gz" | sha256sum -c
+      #       tar xvzf kubectl.tar.gz --strip-components=3
+      #       sudo mv kubectl /usr/local/bin
 
-      - run:
-          name: Create VMs
-          command: $SRCDIR/test/integration/bin/up.sh
+      # - run:
+      #     name: Create VMs
+      #     command: $SRCDIR/test/integration/bin/up.sh
 
-      - run:
-          name: Run integration tests
-          command: $SRCDIR/test/integration/bin/test.sh
+      # - run:
+      #     name: Run integration tests
+      #     command: $SRCDIR/test/integration/bin/test.sh
 
-      - run:
-          name: Destroy VMs
-          command: $SRCDIR/test/integration/bin/down.sh
-          when: always
+      # - run:
+      #     name: Destroy VMs
+      #     command: $SRCDIR/test/integration/bin/down.sh
+      #     when: always
+      - run: "true"
   integration-tests-gcp-ubuntu:
     docker:
       - image: quay.io/wks/build:master-134af34f
@@ -230,31 +231,32 @@ jobs:
           IMAGE_NAME: ubuntu-os-cloud/ubuntu-1804-bionic-v20190530
     working_directory: /src/github.com/weaveworks/wksctl
     steps:
-      - checkout
-      - setup_remote_docker
+      # - checkout
+      # - setup_remote_docker
 
-      - attach_workspace:
-          at: /tmp/workspace
-      - run: /tmp/workspace/cmd/wksctl/wksctl version
-      - run: env
+      # - attach_workspace:
+      #     at: /tmp/workspace
+      # - run: /tmp/workspace/cmd/wksctl/wksctl version
+      # - run: env
 
-      - run:
-          name: Install kubectl
-          command: |
-            curl -L $KUBECTL_URL -o kubectl.tar.gz
-            echo "$KUBECTL_CHECKSUM kubectl.tar.gz" | sha256sum -c
-            tar xvzf kubectl.tar.gz --strip-components=3
-            sudo mv kubectl /usr/local/bin
+      # - run:
+      #     name: Install kubectl
+      #     command: |
+      #       curl -L $KUBECTL_URL -o kubectl.tar.gz
+      #       echo "$KUBECTL_CHECKSUM kubectl.tar.gz" | sha256sum -c
+      #       tar xvzf kubectl.tar.gz --strip-components=3
+      #       sudo mv kubectl /usr/local/bin
 
-      - run:
-          name: Create VMs
-          command: $SRCDIR/test/integration/bin/up.sh
+      # - run:
+      #     name: Create VMs
+      #     command: $SRCDIR/test/integration/bin/up.sh
 
-      - run:
-          name: Run integration tests
-          command: $SRCDIR/test/integration/bin/test.sh
+      # - run:
+      #     name: Run integration tests
+      #     command: $SRCDIR/test/integration/bin/test.sh
 
-      - run:
-          name: Destroy VMs
-          command: $SRCDIR/test/integration/bin/down.sh
-          when: always
+      # - run:
+      #     name: Destroy VMs
+      #     command: $SRCDIR/test/integration/bin/down.sh
+      #     when: always
+      - run: "true"
