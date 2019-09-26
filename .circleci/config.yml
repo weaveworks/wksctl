@@ -103,20 +103,19 @@ jobs:
       SRCDIR: /home/circleci/src/github.com/weaveworks/wksctl
     working_directory: /home/circleci/src/github.com/weaveworks/wksctl
     steps:
-      # - checkout
-      # - run:
-      #     name: Install go
-      #     command: |
-      #       (cd ~ && curl -L $GOURL -o go.tar.gz && echo "$GOCHECKSUM go.tar.gz" | sha256sum -c)
-      #       mkdir -p $GOROOT && tar xf ~/go.tar.gz -C $GOROOT --strip-components 1
+      - checkout
+      - run:
+          name: Install go
+          command: |
+            (cd ~ && curl -L $GOURL -o go.tar.gz && echo "$GOCHECKSUM go.tar.gz" | sha256sum -c)
+            mkdir -p $GOROOT && tar xf ~/go.tar.gz -C $GOROOT --strip-components 1
 
-      # - run:
-      #     name: Run container tests
-      #     command: |
-      #       export PATH=$GOROOT/bin:$PATH
-      #       go version
-      #       make container-tests
-      - run: "true"
+      - run:
+          name: Run container tests
+          command: |
+            export PATH=$GOROOT/bin:$PATH
+            go version
+            make container-tests
   integration-tests-container:
     machine:
       docker_layer_caching: true
@@ -134,50 +133,49 @@ jobs:
       KUBECTL_CHECKSUM: da9d557989a0b9671a610f21642052febb8f70c3cf144c98a8a4f7ecab6bafe2
     working_directory: /home/circleci/src/github.com/weaveworks/wksctl
     steps:
-      # - checkout
-      # - run:
-      #     name: Install go
-      #     command: |
-      #       (cd ~ && curl -L $GOURL -o go.tar.gz && echo "$GOCHECKSUM go.tar.gz" | sha256sum -c)
-      #       mkdir -p $GOROOT && tar xf ~/go.tar.gz -C $GOROOT --strip-components 1
-      # - run:
-      #     name: Install hugo
-      #     command: |
-      #       curl -L $HUGO_URL -o hugo.tar.gz
-      #       echo "$HUGO_CHECKSUM hugo.tar.gz" | sha256sum -c
-      #       tar xzf hugo.tar.gz hugo
-      #       chmod +x hugo
-      #       sudo mv hugo /usr/local/bin
-      # - run:
-      #     name: Install footloose
-      #     command: |
-      #       curl -L $FOOTLOOSE_URL -o footloose
-      #       echo "$FOOTLOOSE_CHECKSUM footloose" | sha256sum -c
-      #       chmod +x footloose
-      #       sudo mv footloose /usr/local/bin
-      # - run:
-      #     name: Install kubectl
-      #     command: |
-      #       curl -L $KUBECTL_URL -o kubectl.tar.gz
-      #       echo "$KUBECTL_CHECKSUM kubectl.tar.gz" | sha256sum -c
-      #       tar xvzf kubectl.tar.gz --strip-components=3
-      #       sudo mv kubectl /usr/local/bin
-      # - restore_cache:
-      #     keys:
-      #       - local-docker-registry-images
-      # - run:
-      #     name: Run integration container tests
-      #     command: |
-      #       export PATH=$GOROOT/bin:$PATH
-      #       go version
-      #       make integration-tests-container
-      # - save_cache:
-      #     key: local-docker-registry-images
-      #     paths:
-      #       # This ought to match the path mounted by the local Docker registry
-      #       # in the integration tests.
-      #       - "/tmp/registry"
-      - run: "true"
+      - checkout
+      - run:
+          name: Install go
+          command: |
+            (cd ~ && curl -L $GOURL -o go.tar.gz && echo "$GOCHECKSUM go.tar.gz" | sha256sum -c)
+            mkdir -p $GOROOT && tar xf ~/go.tar.gz -C $GOROOT --strip-components 1
+      - run:
+          name: Install hugo
+          command: |
+            curl -L $HUGO_URL -o hugo.tar.gz
+            echo "$HUGO_CHECKSUM hugo.tar.gz" | sha256sum -c
+            tar xzf hugo.tar.gz hugo
+            chmod +x hugo
+            sudo mv hugo /usr/local/bin
+      - run:
+          name: Install footloose
+          command: |
+            curl -L $FOOTLOOSE_URL -o footloose
+            echo "$FOOTLOOSE_CHECKSUM footloose" | sha256sum -c
+            chmod +x footloose
+            sudo mv footloose /usr/local/bin
+      - run:
+          name: Install kubectl
+          command: |
+            curl -L $KUBECTL_URL -o kubectl.tar.gz
+            echo "$KUBECTL_CHECKSUM kubectl.tar.gz" | sha256sum -c
+            tar xvzf kubectl.tar.gz --strip-components=3
+            sudo mv kubectl /usr/local/bin
+      - restore_cache:
+          keys:
+            - local-docker-registry-images
+      - run:
+          name: Run integration container tests
+          command: |
+            export PATH=$GOROOT/bin:$PATH
+            go version
+            make integration-tests-container
+      - save_cache:
+          key: local-docker-registry-images
+          paths:
+            # This ought to match the path mounted by the local Docker registry
+            # in the integration tests.
+            - "/tmp/registry"
   integration-tests-gcp-centos:
     docker:
       - image: quay.io/wks/build:master-134af34f
