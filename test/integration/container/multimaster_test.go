@@ -325,7 +325,7 @@ func TestMultimasterSetup(t *testing.T) {
 
 	if !t.Failed() { // Otherwise leave the footloose "VMs" & config files around for debugging purposes.
 		// Clean up:
-		defer run(t, "footloose", "delete", "-c", "../../../examples/footloose/docker/centos7/multimaster.yaml")
+		defer run(t, "footloose", "delete", "-c", "../../../examples/footloose/centos7/docker/multimaster.yaml")
 		defer os.Remove(dirName)
 		defer os.Remove(clusterYAML)
 		defer os.Remove(machinesYAML)
