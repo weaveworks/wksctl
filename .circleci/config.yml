@@ -176,6 +176,10 @@ jobs:
             # This ought to match the path mounted by the local Docker registry
             # in the integration tests.
             - "/tmp/registry"
+  #
+  # GCP tests are running under the `wks-tests` project for now.
+  # https://console.cloud.google.com/compute/instances?project=wks-tests
+  #
   integration-tests-gcp-centos:
     docker:
       - image: quay.io/wks/build:master-134af34f
