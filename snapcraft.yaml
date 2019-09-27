@@ -1,6 +1,6 @@
 name: wksctl
 version: git
-summary: Open Source Weaveworks Kubernetes Subscription
+summary: Open Source Weaveworks Kubernetes System
 description: >
   wksctl allows simple creation of a Kubernetes cluster given a set of IP addresses and an SSH key. It
   can be run in a standalone environment but is best used via a GitOps approach in which cluster and
