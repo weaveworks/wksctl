@@ -39,7 +39,7 @@ const sampleTerraformOutput = `{
     "private_key_path": {
         "sensitive": false,
         "type": "string",
-        "value": "/root/.ssh/weaveworks_cit_id_rsa"
+        "value": "/root/.ssh/wksctl_cit_id_rsa"
     },
     "public_etc_hosts": {
         "sensitive": false,
@@ -65,7 +65,7 @@ const sampleTerraformOutput = `{
     "username": {
         "sensitive": false,
         "type": "string",
-        "value": "weaveworks-cit"
+        "value": "wksctl-cit"
     },
     "zone": {
         "sensitive": false,
@@ -79,7 +79,7 @@ func TestNewTerraformOutput(t *testing.T) {
 	r := strings.NewReader(sampleTerraformOutput)
 	output, err := newTerraformOutput(r)
 	assert.NoError(t, err)
-	assert.Equal(t, "weaveworks-cit", output.stringVar("username"))
+	assert.Equal(t, "wksctl-cit", output.stringVar("username"))
 	assert.Equal(t, []string{"35.238.98.255", "35.238.50.88"}, output.stringArrayVar("public_ips"))
 
 }
