@@ -37,7 +37,7 @@ func (r *ClusterAPIRepo) MachinesManifestPath() (string, error) {
 	for _, c := range candidates {
 		fqCand := filepath.Join(r.worktreePath, r.subdir, c)
 		if _, err := os.Stat(fqCand); err == nil {
-			return c, nil
+			return fqCand, nil
 		}
 	}
 	return "", errors.New("machines manifest not found")
