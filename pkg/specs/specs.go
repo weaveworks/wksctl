@@ -71,7 +71,7 @@ func New(cluster *clusterv1.Cluster, machines []*clusterv1.Machine) *Specs {
 }
 
 // Create an SSHClient to the master node referenced by the specs
-func (s *Specs) GetSSHClient(verbose bool) (*ssh.Client, error) {
+func (s *Specs) GetSSHClient(printOutputs bool) (*ssh.Client, error) {
 	var ip string
 	var port uint16
 	if s.masterSpec.Public.Address != "" {
@@ -87,7 +87,7 @@ func (s *Specs) GetSSHClient(verbose bool) (*ssh.Client, error) {
 		Host:           ip,
 		Port:           port,
 		PrivateKeyPath: s.ClusterSpec.SSHKeyPath,
-		Verbose:        verbose,
+		PrintOutputs:   printOutputs,
 	})
 }
 

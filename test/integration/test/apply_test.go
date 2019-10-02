@@ -406,7 +406,7 @@ func TestApply(t *testing.T) {
 		Host:           ip,
 		Port:           port,
 		PrivateKeyPath: cSpec.SSHKeyPath,
-		Verbose:        true,
+		PrintOutputs:   true,
 	})
 	assert.NoError(t, err)
 	err = writeTmpFile(sshClient, "/tmp/workspace/cmd/mock-https-authz-server/server", "authserver")
