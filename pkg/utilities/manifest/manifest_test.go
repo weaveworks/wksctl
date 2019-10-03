@@ -163,7 +163,7 @@ spec:
       cri:
         kind: docker
         package: docker-ce
-        version: 18.09.7
+        version: 19.03.1
 `
 	machinesyaml = `apiVersion: v1
 kind: List

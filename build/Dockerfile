@@ -33,7 +33,7 @@ RUN curl -O https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cl
     gcloud --version
 
 # Install Docker
-RUN curl -fsSL get.docker.com | VERSION=18.09.7 /bin/sh
+RUN curl -fsSL get.docker.com | VERSION=19.03.1 /bin/sh
 
 # Install gometalinter
 ENV GOMETALINTER_VERSION 2.0.11
