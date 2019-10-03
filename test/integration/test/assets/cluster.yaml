@@ -13,7 +13,6 @@ spec:
     value:
       apiVersion: "baremetalproviderspec/v1alpha1"
       kind: "BareMetalClusterProviderSpec"
-      sshKeyPath: "/root/.ssh/wksctl_cit_id_rsa"
       user: "wksctl-cit"
       os:
         files:
