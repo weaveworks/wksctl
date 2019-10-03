@@ -127,10 +127,6 @@ func parseClusterManifest(file string) (*clusterv1.Cluster, error) {
 }
 
 // Getters for nested fields needed externally
-func (s *Specs) GetSSHKeyPath() string {
-	return s.ClusterSpec.SSHKeyPath
-}
-
 func (s *Specs) GetClusterName() string {
 	return s.cluster.ObjectMeta.Name
 }

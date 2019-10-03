@@ -142,7 +142,7 @@ func (a *Applier) initiateCluster(clusterManifestPath, machinesManifestPath stri
 		PrivateIP:            sp.GetMasterPrivateAddress(),
 		ClusterManifestPath:  clusterManifestPath,
 		MachinesManifestPath: machinesManifestPath,
-		SSHKeyPath:           sp.GetSSHKeyPath(),
+		SSHKeyPath:           sp.ClusterSpec.SSHKeyPath,
 		BootstrapToken:       token,
 		KubeletConfig: config.KubeletConfig{
 			NodeIP:        sp.GetMasterPrivateAddress(),

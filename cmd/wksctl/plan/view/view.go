@@ -104,7 +104,7 @@ func displayPlan(clusterManifestPath, machinesManifestPath string) error {
 		PrivateIP:            sp.GetMasterPrivateAddress(),
 		ClusterManifestPath:  clusterManifestPath,
 		MachinesManifestPath: machinesManifestPath,
-		SSHKeyPath:           sp.GetSSHKeyPath(),
+		SSHKeyPath:           sp.ClusterSpec.SSHKeyPath,
 		KubeletConfig: config.KubeletConfig{
 			NodeIP:        sp.GetMasterPrivateAddress(),
 			CloudProvider: sp.GetCloudProvider(),
