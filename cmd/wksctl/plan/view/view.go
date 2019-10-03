@@ -9,6 +9,7 @@ import (
 	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/config"
 	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/os"
 	"github.com/weaveworks/wksctl/pkg/manifests"
+	"github.com/weaveworks/wksctl/pkg/plan/runners/ssh"
 	"github.com/weaveworks/wksctl/pkg/specs"
 	"github.com/weaveworks/wksctl/pkg/utilities/manifest"
 	"github.com/weaveworks/wksctl/pkg/version"
@@ -82,7 +83,7 @@ func planRun(cmd *cobra.Command, args []string) error {
 func displayPlan(clusterManifestPath, machinesManifestPath string) error {
 	// TODO: reuse the actual plan created by `wksctl apply`, rather than trying to construct a similar plan and printing it.
 	sp := specs.NewFromPaths(clusterManifestPath, machinesManifestPath)
-	sshClient, err := sp.GetSSHClient(viewOptions.verbose)
+	sshClient, err := ssh.NewClientForMachine(sp.MasterSpec, sp.ClusterSpec.User, sp.ClusterSpec.SSHKeyPath, viewOptions.verbose)
 	if err != nil {
 		return errors.Wrap(err, "failed to create SSH client: ")
 	}
