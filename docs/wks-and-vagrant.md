@@ -4,7 +4,7 @@
 $ make install
 $ cd examples/vagrant
 $ vagrant up
-$ wksctl apply --cluster=cluster.yaml --machines=machines2.yaml
+$ wksctl apply --cluster=cluster.yaml --machines=machines2.yaml --ssh-key=$HOME/.vagrant/insecure_private_key
 INFO[0000] installing CRI implementation
 INFO[0054] installing Kubernetes
 INFO[0079] initializing Kubernetes cluster with kubeadm
