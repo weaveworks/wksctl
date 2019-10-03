@@ -31,6 +31,7 @@ type Params struct {
 	gitBranch            string
 	gitPath              string
 	gitDeployKeyPath     string
+	sshKeyPath           string
 	sealedSecretKeyPath  string
 	sealedSecretCertPath string
 	configDirectory      string
@@ -48,6 +49,7 @@ func init() {
 	Cmd.Flags().StringVar(&globalParams.gitBranch, "git-branch", "master", "Git branch WKS should use to sync with your cluster")
 	Cmd.Flags().StringVar(&globalParams.gitPath, "git-path", ".", "Relative path to files in Git")
 	Cmd.Flags().StringVar(&globalParams.gitDeployKeyPath, "git-deploy-key", "", "Path to the Git deploy key")
+	Cmd.Flags().StringVar(&globalParams.sshKeyPath, "ssh-key", "./cluster-key", "Path to a key authorized to log in to machines by SSH")
 	Cmd.Flags().StringVar(&globalParams.sealedSecretKeyPath, "sealed-secret-key", "", "Path to a key used to decrypt sealed secrets")
 	Cmd.Flags().StringVar(&globalParams.sealedSecretCertPath, "sealed-secret-cert", "", "Path to a certificate used to encrypt sealed secrets")
 	Cmd.Flags().StringVar(&globalParams.configDirectory, "config-directory", ".", "Directory containing configuration information for the cluster")
@@ -95,7 +97,7 @@ func (a *Applier) Apply() error {
 
 func (a *Applier) initiateCluster(clusterManifestPath, machinesManifestPath string) error {
 	sp := specs.NewFromPaths(clusterManifestPath, machinesManifestPath)
-	sshClient, err := ssh.NewClientForMachine(sp.MasterSpec, sp.ClusterSpec.User, sp.ClusterSpec.DeprecatedSSHKeyPath, a.Params.verbose)
+	sshClient, err := ssh.NewClientForMachine(sp.MasterSpec, sp.ClusterSpec.User, a.Params.sshKeyPath, a.Params.verbose)
 
 	if err != nil {
 		return errors.Wrap(err, "failed to create SSH client")
@@ -142,7 +144,7 @@ func (a *Applier) initiateCluster(clusterManifestPath, machinesManifestPath stri
 		PrivateIP:            sp.GetMasterPrivateAddress(),
 		ClusterManifestPath:  clusterManifestPath,
 		MachinesManifestPath: machinesManifestPath,
-		SSHKeyPath:           sp.ClusterSpec.DeprecatedSSHKeyPath,
+		SSHKeyPath:           a.Params.sshKeyPath,
 		BootstrapToken:       token,
 		KubeletConfig: config.KubeletConfig{
 			NodeIP:        sp.GetMasterPrivateAddress(),
