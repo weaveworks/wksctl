@@ -8,6 +8,7 @@ import (
 	yaml "github.com/ghodss/yaml"
 	"github.com/pkg/errors"
 	"github.com/weaveworks/wksctl/pkg/cluster/machine"
+	"github.com/weaveworks/wksctl/pkg/plan/runners/ssh"
 	"github.com/weaveworks/wksctl/pkg/plan/runners/sudo"
 	"github.com/weaveworks/wksctl/pkg/specs"
 	"github.com/weaveworks/wksctl/pkg/utilities/path"
@@ -76,7 +77,7 @@ func Sanitize(configStr string, params Params) (string, error) {
 }
 
 func GetRemoteKubeconfig(sp *specs.Specs, verbose, skipTLSVerify bool) (string, error) {
-	sshClient, err := sp.GetSSHClient(verbose)
+	sshClient, err := ssh.NewClientForMachine(sp.MasterSpec, sp.ClusterSpec.User, sp.ClusterSpec.SSHKeyPath, verbose)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to create SSH client: ")
 	}

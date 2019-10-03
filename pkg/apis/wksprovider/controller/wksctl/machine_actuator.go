@@ -150,11 +150,11 @@ func (a *MachineActuator) connectTo(c *baremetalspecv1.BareMetalClusterProviderS
 		return nil, nil, gerrors.Wrap(err, "failed to read SSH key")
 	}
 	sshClient, err := ssh.NewClient(ssh.ClientParams{
-		User:       c.User,
-		Host:       m.Private.Address,
-		Port:       m.Private.Port,
-		PrivateKey: sshKey,
-		Verbose:    a.verbose,
+		User:         c.User,
+		Host:         m.Private.Address,
+		Port:         m.Private.Port,
+		PrivateKey:   sshKey,
+		PrintOutputs: a.verbose,
 	})
 	if err != nil {
 		return nil, nil, gerrors.Wrapf(err, "failed to create SSH client using %v", m.Private)

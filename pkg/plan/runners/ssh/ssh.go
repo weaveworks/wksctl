@@ -9,6 +9,7 @@ import (
 
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"github.com/weaveworks/wksctl/pkg/baremetalproviderspec/v1alpha1"
 	"github.com/weaveworks/wksctl/pkg/plan"
 	sshutil "github.com/weaveworks/wksctl/pkg/utilities/ssh"
 	"golang.org/x/crypto/ssh"
@@ -34,6 +35,26 @@ type Client struct {
 var _ plan.Runner = &Client{}
 
 const tcp = "tcp"
+
+func NewClientForMachine(m *v1alpha1.BareMetalMachineProviderSpec, user, keyPath string, printOutputs bool) (*Client, error) {
+	var ip string
+	var port uint16
+	if m.Public.Address != "" {
+		ip = m.Public.Address
+		port = m.Public.Port
+	} else {
+		// Fall back to the address at the root
+		ip = m.Address
+		port = m.Port
+	}
+	return NewClient(ClientParams{
+		User:           user,
+		Host:           ip,
+		Port:           port,
+		PrivateKeyPath: keyPath,
+		PrintOutputs:   printOutputs,
+	})
+}
 
 // NewClient instantiates a new SSH Client object.
 // N.B.: provide either the key (privateKey) or its path (privateKeyPath).

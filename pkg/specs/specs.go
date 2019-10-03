@@ -9,7 +9,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	baremetalspecv1 "github.com/weaveworks/wksctl/pkg/baremetalproviderspec/v1alpha1"
 	"github.com/weaveworks/wksctl/pkg/cluster/machine"
-	"github.com/weaveworks/wksctl/pkg/plan/runners/ssh"
 	"github.com/weaveworks/wksctl/pkg/utilities"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	clusterv1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
@@ -22,7 +21,7 @@ import (
 type Specs struct {
 	cluster      *clusterv1.Cluster
 	ClusterSpec  *baremetalspecv1.BareMetalClusterProviderSpec
-	masterSpec   *baremetalspecv1.BareMetalMachineProviderSpec
+	MasterSpec   *baremetalspecv1.BareMetalMachineProviderSpec
 	machineCount int
 	masterCount  int
 }
@@ -63,32 +62,11 @@ func New(cluster *clusterv1.Cluster, machines []*clusterv1.Machine) *Specs {
 	return &Specs{
 		cluster:     cluster,
 		ClusterSpec: clusterSpec,
-		masterSpec:  masterSpec,
+		MasterSpec:  masterSpec,
 
 		machineCount: len(machines),
 		masterCount:  masterCount,
 	}
-}
-
-// Create an SSHClient to the master node referenced by the specs
-func (s *Specs) GetSSHClient(printOutputs bool) (*ssh.Client, error) {
-	var ip string
-	var port uint16
-	if s.masterSpec.Public.Address != "" {
-		ip = s.masterSpec.Public.Address
-		port = s.masterSpec.Public.Port
-	} else {
-		// Fall back to the address at the root
-		ip = s.masterSpec.Address
-		port = s.masterSpec.Port
-	}
-	return ssh.NewClient(ssh.ClientParams{
-		User:           s.ClusterSpec.User,
-		Host:           ip,
-		Port:           port,
-		PrivateKeyPath: s.ClusterSpec.SSHKeyPath,
-		PrintOutputs:   printOutputs,
-	})
 }
 
 func parseManifests(clusterManifestPath, machinesManifestPath string) (*clusterv1.Cluster, []*clusterv1.Machine, error) {
@@ -158,11 +136,11 @@ func (s *Specs) GetClusterName() string {
 }
 
 func (s *Specs) GetMasterPublicAddress() string {
-	return s.masterSpec.Public.Address
+	return s.MasterSpec.Public.Address
 }
 
 func (s *Specs) GetMasterPrivateAddress() string {
-	return s.masterSpec.Private.Address
+	return s.MasterSpec.Private.Address
 }
 
 func (s *Specs) GetCloudProvider() string {
