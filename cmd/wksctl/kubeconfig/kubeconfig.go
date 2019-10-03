@@ -33,6 +33,7 @@ var kubeconfigOptions struct {
 	gitDeployKeyPath     string
 	artifactDirectory    string
 	namespace            string
+	sshKeyPath           string
 	skipTLSVerify        bool
 	useLocalhost         bool
 	usePublicAddress     bool
@@ -50,6 +51,7 @@ func init() {
 		"Branch within git repo containing your cluster and machine information")
 	Cmd.Flags().StringVar(&kubeconfigOptions.gitPath, "git-path", ".", "Relative path to files in Git")
 	Cmd.Flags().StringVar(&kubeconfigOptions.gitDeployKeyPath, "git-deploy-key", "", "Path to the Git deploy key")
+	Cmd.Flags().StringVar(&kubeconfigOptions.sshKeyPath, "ssh-key", "./cluster-key", "Path to a key authorized to log in to machines by SSH")
 	Cmd.Flags().StringVar(
 		&kubeconfigOptions.artifactDirectory, "artifact-directory", "", "Write output files in the specified directory")
 	Cmd.Flags().StringVar(
@@ -98,7 +100,7 @@ func writeKubeconfig(cpath, mpath string) error {
 	}
 	sp := specs.NewFromPaths(cpath, mpath)
 
-	configStr, err := config.GetRemoteKubeconfig(sp, kubeconfigOptions.verbose, kubeconfigOptions.skipTLSVerify)
+	configStr, err := config.GetRemoteKubeconfig(sp, kubeconfigOptions.sshKeyPath, kubeconfigOptions.verbose, kubeconfigOptions.skipTLSVerify)
 	if err != nil {
 		return errors.Wrapf(err, "GetRemoteKubeconfig")
 	}
