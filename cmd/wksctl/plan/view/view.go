@@ -83,7 +83,7 @@ func planRun(cmd *cobra.Command, args []string) error {
 func displayPlan(clusterManifestPath, machinesManifestPath string) error {
 	// TODO: reuse the actual plan created by `wksctl apply`, rather than trying to construct a similar plan and printing it.
 	sp := specs.NewFromPaths(clusterManifestPath, machinesManifestPath)
-	sshClient, err := ssh.NewClientForMachine(sp.MasterSpec, sp.ClusterSpec.User, sp.ClusterSpec.SSHKeyPath, viewOptions.verbose)
+	sshClient, err := ssh.NewClientForMachine(sp.MasterSpec, sp.ClusterSpec.User, sp.ClusterSpec.DeprecatedSSHKeyPath, viewOptions.verbose)
 	if err != nil {
 		return errors.Wrap(err, "failed to create SSH client: ")
 	}
@@ -104,7 +104,7 @@ func displayPlan(clusterManifestPath, machinesManifestPath string) error {
 		PrivateIP:            sp.GetMasterPrivateAddress(),
 		ClusterManifestPath:  clusterManifestPath,
 		MachinesManifestPath: machinesManifestPath,
-		SSHKeyPath:           sp.ClusterSpec.SSHKeyPath,
+		SSHKeyPath:           sp.ClusterSpec.DeprecatedSSHKeyPath,
 		KubeletConfig: config.KubeletConfig{
 			NodeIP:        sp.GetMasterPrivateAddress(),
 			CloudProvider: sp.GetCloudProvider(),

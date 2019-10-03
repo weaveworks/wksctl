@@ -166,10 +166,10 @@ func validateSSHKeyEmpty(cluster *clusterv1.Cluster, manifestPath string) field.
 		log.Fatalf("Failed to parse the ClusterSpec -  %v", err)
 	}
 
-	if spec.SSHKeyPath != "" {
+	if spec.DeprecatedSSHKeyPath != "" {
 		return field.ErrorList{
 			field.Invalid(
-				clusterProviderPath("sshKeyPath"), spec.SSHKeyPath,
+				clusterProviderPath("sshKeyPath"), spec.DeprecatedSSHKeyPath,
 				"wks no longer expects the ssh key to be specified in the Cluster manifest - pleae provide the ssh key using CLI flags instead",
 			),
 		}

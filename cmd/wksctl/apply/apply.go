@@ -95,7 +95,7 @@ func (a *Applier) Apply() error {
 
 func (a *Applier) initiateCluster(clusterManifestPath, machinesManifestPath string) error {
 	sp := specs.NewFromPaths(clusterManifestPath, machinesManifestPath)
-	sshClient, err := ssh.NewClientForMachine(sp.MasterSpec, sp.ClusterSpec.User, sp.ClusterSpec.SSHKeyPath, a.Params.verbose)
+	sshClient, err := ssh.NewClientForMachine(sp.MasterSpec, sp.ClusterSpec.User, sp.ClusterSpec.DeprecatedSSHKeyPath, a.Params.verbose)
 
 	if err != nil {
 		return errors.Wrap(err, "failed to create SSH client")
@@ -142,7 +142,7 @@ func (a *Applier) initiateCluster(clusterManifestPath, machinesManifestPath stri
 		PrivateIP:            sp.GetMasterPrivateAddress(),
 		ClusterManifestPath:  clusterManifestPath,
 		MachinesManifestPath: machinesManifestPath,
-		SSHKeyPath:           sp.ClusterSpec.SSHKeyPath,
+		SSHKeyPath:           sp.ClusterSpec.DeprecatedSSHKeyPath,
 		BootstrapToken:       token,
 		KubeletConfig: config.KubeletConfig{
 			NodeIP:        sp.GetMasterPrivateAddress(),
