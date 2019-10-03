@@ -1,8 +1,8 @@
 /instances.json
 /machines.yaml
-ssh_key
+cluster-key
+cluster-key.pub
 ssh_key.list
-ssh_key.pub
 .envrc
 git_deploy_key
 git_deploy_key.pub
