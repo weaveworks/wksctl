@@ -69,7 +69,7 @@
    $ export KUBECONFIG=/home/lucas/.wks/weavek8sops/example/kubeconfig
    $ kubectl get nodes
    NAME               STATUS   ROLES    AGE   VERSION
-   b4fdde36eb122804   Ready    master   77s   v1.14.1
+   b4fdde36eb122804   Ready    master   77s   v1.14.7
    $ kubectl get pods --all-namespaces
    NAMESPACE     NAME                              READY   STATUS    RESTARTS   AGE
    kube-system   coredns-86c58d9df4-26gv9          1/1     Running   0          55s

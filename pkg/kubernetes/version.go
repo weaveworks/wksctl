@@ -1,7 +1,7 @@
 package kubernetes
 
 // DefaultVersion is the default Kubernetes version used by WKS.
-const DefaultVersion = "1.14.1"
+const DefaultVersion = "1.14.7"
 
 // DefaultVersionsRange is the default Kubernetes versions' range used by WKS to validate Kubernetes versions.
-const DefaultVersionsRange = ">1.10.0 <=1.14.1"
+const DefaultVersionsRange = ">1.10.0 <=1.14.7"

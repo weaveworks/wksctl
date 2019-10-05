@@ -446,7 +446,7 @@ func TestApply(t *testing.T) {
 
 	//Test we have installed the specified version.
 	t.Run("KubernetesVersion", func(t *testing.T) {
-		testApplyKubernetesVersion(t, "1.14.1")
+		testApplyKubernetesVersion(t, "1.14.7")
 	})
 
 	// Test we can run kubectl against the cluster.
