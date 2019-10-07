@@ -34,7 +34,6 @@ spec:
     value:
       apiVersion: baremetalproviderspec/v1alpha1
       kind: BareMetalClusterProviderSpec
-      sshKeyPath: cluster-key
       user: root
       imageRepository: %s:%d
       os:

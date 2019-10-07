@@ -9,6 +9,7 @@ import (
 	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/config"
 	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/os"
 	"github.com/weaveworks/wksctl/pkg/manifests"
+	"github.com/weaveworks/wksctl/pkg/plan/runners/ssh"
 	"github.com/weaveworks/wksctl/pkg/specs"
 	"github.com/weaveworks/wksctl/pkg/utilities/manifest"
 	"github.com/weaveworks/wksctl/pkg/version"
@@ -31,6 +32,7 @@ var viewOptions struct {
 	gitBranch            string
 	gitPath              string
 	gitDeployKeyPath     string
+	sshKeyPath           string
 	sealedSecretCertPath string
 	configDirectory      string
 	verbose              bool
@@ -45,6 +47,7 @@ func init() {
 	Cmd.Flags().StringVar(&viewOptions.gitBranch, "git-branch", "master", "Git branch WKS should use to read your cluster")
 	Cmd.Flags().StringVar(&viewOptions.gitPath, "git-path", ".", "Relative path to files in Git")
 	Cmd.Flags().StringVar(&viewOptions.gitDeployKeyPath, "git-deploy-key", "", "Path to the Git deploy key")
+	Cmd.Flags().StringVar(&viewOptions.sshKeyPath, "ssh-key", "./cluster-key", "Path to a key authorized to log in to machines by SSH")
 	Cmd.Flags().StringVar(&viewOptions.sealedSecretCertPath, "sealed-secret-cert", "", "Path to a certificate used to encrypt sealed secrets")
 	Cmd.Flags().StringVar(&viewOptions.configDirectory, "config-directory", ".", "Directory containing configuration information for the cluster")
 
@@ -82,7 +85,7 @@ func planRun(cmd *cobra.Command, args []string) error {
 func displayPlan(clusterManifestPath, machinesManifestPath string) error {
 	// TODO: reuse the actual plan created by `wksctl apply`, rather than trying to construct a similar plan and printing it.
 	sp := specs.NewFromPaths(clusterManifestPath, machinesManifestPath)
-	sshClient, err := sp.GetSSHClient(viewOptions.verbose)
+	sshClient, err := ssh.NewClientForMachine(sp.MasterSpec, sp.ClusterSpec.User, viewOptions.sshKeyPath, viewOptions.verbose)
 	if err != nil {
 		return errors.Wrap(err, "failed to create SSH client: ")
 	}
@@ -103,7 +106,7 @@ func displayPlan(clusterManifestPath, machinesManifestPath string) error {
 		PrivateIP:            sp.GetMasterPrivateAddress(),
 		ClusterManifestPath:  clusterManifestPath,
 		MachinesManifestPath: machinesManifestPath,
-		SSHKeyPath:           sp.GetSSHKeyPath(),
+		SSHKeyPath:           viewOptions.sshKeyPath,
 		KubeletConfig: config.KubeletConfig{
 			NodeIP:        sp.GetMasterPrivateAddress(),
 			CloudProvider: sp.GetCloudProvider(),

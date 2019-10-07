@@ -8,9 +8,9 @@ import (
 type BareMetalClusterProviderSpec struct {
 	metav1.TypeMeta `json:",inline"`
 
-	User       string `json:"user"`
-	SSHKeyPath string `json:"sshKeyPath"`
-	HTTPProxy  string `json:"httpProxy,omitempty"`
+	User                 string `json:"user"`
+	DeprecatedSSHKeyPath string `json:"sshKeyPath"`
+	HTTPProxy            string `json:"httpProxy,omitempty"`
 
 	Authentication *AuthenticationWebhook `json:"authenticationWebhook,omitempty"`
 	Authorization  *AuthorizationWebhook  `json:"authorizationWebhook,omitempty"`
