@@ -9,6 +9,7 @@ import (
 
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"github.com/weaveworks/wksctl/pkg/baremetalproviderspec/v1alpha1"
 	"github.com/weaveworks/wksctl/pkg/plan"
 	sshutil "github.com/weaveworks/wksctl/pkg/utilities/ssh"
 	"golang.org/x/crypto/ssh"
@@ -21,24 +22,44 @@ type ClientParams struct {
 	Port           uint16
 	PrivateKeyPath string
 	PrivateKey     []byte
-	Verbose        bool
+	PrintOutputs   bool
 }
 
 // Client is a higher-level abstraction around the standard API's SSH
 // configuration, client and connection to the remote machine.
 type Client struct {
-	client  *ssh.Client
-	verbose bool
+	client       *ssh.Client
+	printOutputs bool
 }
 
 var _ plan.Runner = &Client{}
 
 const tcp = "tcp"
 
+func NewClientForMachine(m *v1alpha1.BareMetalMachineProviderSpec, user, keyPath string, printOutputs bool) (*Client, error) {
+	var ip string
+	var port uint16
+	if m.Public.Address != "" {
+		ip = m.Public.Address
+		port = m.Public.Port
+	} else {
+		// Fall back to the address at the root
+		ip = m.Address
+		port = m.Port
+	}
+	return NewClient(ClientParams{
+		User:           user,
+		Host:           ip,
+		Port:           port,
+		PrivateKeyPath: keyPath,
+		PrintOutputs:   printOutputs,
+	})
+}
+
 // NewClient instantiates a new SSH Client object.
 // N.B.: provide either the key (privateKey) or its path (privateKeyPath).
 func NewClient(params ClientParams) (*Client, error) {
-	log.WithFields(log.Fields{"user": params.User, "host": params.Host, "port": params.Port, "privateKeyPath": params.PrivateKeyPath, "verbose": params.Verbose}).Debugf("creating SSH client")
+	log.WithFields(log.Fields{"user": params.User, "host": params.Host, "port": params.Port, "privateKeyPath": params.PrivateKeyPath, "printOutputs": params.PrintOutputs}).Debugf("creating SSH client")
 	signer, err := sshutil.SignerFromPrivateKey(params.PrivateKeyPath, params.PrivateKey)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to read private key from \"%s\"", params.PrivateKeyPath)
@@ -60,8 +81,8 @@ func NewClient(params ClientParams) (*Client, error) {
 		return nil, errors.Wrapf(err, "failed to connect to %s", hostPort)
 	}
 	return &Client{
-		client:  client,
-		verbose: params.Verbose,
+		client:       client,
+		printOutputs: params.PrintOutputs,
 	}, nil
 }
 
@@ -96,7 +117,7 @@ func (c *Client) handleSessionIO(action func(*ssh.Session) error) (string, error
 	var stdOutErr bytes.Buffer
 	outWriters := []io.Writer{&stdOutErr}
 	errWriters := []io.Writer{&stdOutErr}
-	if c.verbose {
+	if c.printOutputs {
 		outWriters = append(outWriters, os.Stdout)
 		errWriters = append(errWriters, os.Stderr)
 	}

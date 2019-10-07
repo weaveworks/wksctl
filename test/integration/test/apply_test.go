@@ -34,8 +34,9 @@ import (
 type role = string
 
 const (
-	master = "master"
-	node   = "node"
+	master     = "master"
+	node       = "node"
+	sshKeyPath = "/root/.ssh/wksctl_cit_id_rsa"
 )
 
 var (
@@ -405,8 +406,8 @@ func TestApply(t *testing.T) {
 		User:           cSpec.User,
 		Host:           ip,
 		Port:           port,
-		PrivateKeyPath: cSpec.SSHKeyPath,
-		Verbose:        true,
+		PrivateKeyPath: sshKeyPath,
+		PrintOutputs:   true,
 	})
 	assert.NoError(t, err)
 	err = writeTmpFile(sshClient, "/tmp/workspace/cmd/mock-https-authz-server/server", "authserver")
@@ -425,12 +426,12 @@ func TestApply(t *testing.T) {
 	// Install the Cluster.
 	run, err := apply(exe, "--cluster="+clusterManifestPath, "--machines="+machinesManifestPath, "--namespace=default",
 		"--config-directory="+configDir, "--sealed-secret-key="+configPath("ss.key"), "--sealed-secret-cert="+configPath("ss.cert"),
-		"--verbose=true")
+		"--verbose=true", "--ssh-key="+sshKeyPath)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, run.ExitCode())
 
 	// Extract the kubeconfig,
-	run, err = kubeconfig(exe, "--cluster="+configPath("cluster.yaml"), "--machines="+configPath("machines.yaml"), "--namespace=default")
+	run, err = kubeconfig(exe, "--cluster="+configPath("cluster.yaml"), "--machines="+configPath("machines.yaml"), "--namespace=default", "--ssh-key="+sshKeyPath)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, run.ExitCode())
 

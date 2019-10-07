@@ -1,8 +1,6 @@
 package specs
 
 import (
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -12,6 +10,24 @@ import (
 )
 
 const clusterMinimumValid = `
+apiVersion: "cluster.k8s.io/v1alpha1"
+kind: Cluster
+metadata:
+  name: example
+spec:
+  clusterNetwork:
+    services:
+      cidrBlocks: ["10.96.0.0/12"]
+    pods:
+      cidrBlocks: ["192.168.0.0/16"]
+  providerSpec:
+    value:
+      apiVersion: "baremetalproviderspec/v1alpha1"
+      kind: "BareMetalClusterProviderSpec"
+      user: "vagrant"
+`
+
+const clusterHasSSHKey = `
 apiVersion: "cluster.k8s.io/v1alpha1"
 kind: Cluster
 metadata:
@@ -46,7 +62,6 @@ spec:
     value:
       apiVersion: "baremetalproviderspec/v1alpha1"
       kind: "BareMetalClusterProviderSpec"
-      sshKeyPath: "/etc/hosts"
       user: "vagrant"
 `
 
@@ -65,26 +80,6 @@ spec:
     value:
       apiVersion: "baremetalproviderspec/v1alpha1"
       kind: "BareMetalClusterProviderSpec"
-      sshKeyPath: "/etc/hosts"
-      user: "vagrant"
-`
-
-const clusterNonExistentSSHKey = `
-apiVersion: "cluster.k8s.io/v1alpha1"
-kind: Cluster
-metadata:
-  name: example
-spec:
-  clusterNetwork:
-    services:
-      cidrBlocks: ["10.96.0.0/12"]
-    pods:
-      cidrBlocks: ["192.168.0.0/16"]
-  providerSpec:
-    value:
-      apiVersion: "baremetalproviderspec/v1alpha1"
-      kind: "BareMetalClusterProviderSpec"
-      sshKeyPath: "/etc/foo"
       user: "vagrant"
 `
 
@@ -103,7 +98,6 @@ spec:
     value:
       apiVersion: "baremetalproviderspec/v1alpha1"
       kind: "BareMetalClusterProviderSpec"
-      sshKeyPath: "/etc/hosts"
       user: "vagrant"
 `
 
@@ -122,7 +116,6 @@ spec:
     value:
       apiVersion: "baremetalproviderspec/v1alpha1"
       kind: "BareMetalClusterProviderSpec"
-      sshKeyPath: "/etc/hosts"
       user: "vagrant"
       authenticationWebhook:
         cacheTTL: foo
@@ -145,7 +138,6 @@ spec:
     value:
       apiVersion: "baremetalproviderspec/v1alpha1"
       kind: "BareMetalClusterProviderSpec"
-      sshKeyPath: "/etc/hosts"
       user: "vagrant"
       authenticationWebhook:
         cacheTTL: 2m0s
@@ -168,7 +160,6 @@ spec:
     value:
       apiVersion: "baremetalproviderspec/v1alpha1"
       kind: "BareMetalClusterProviderSpec"
-      sshKeyPath: "/etc/hosts"
       user: "vagrant"
       authenticationWebhook:
         cacheTTL: 2m0s
@@ -194,7 +185,6 @@ spec:
     value:
       apiVersion: "baremetalproviderspec/v1alpha1"
       kind: "BareMetalClusterProviderSpec"
-      sshKeyPath: "/etc/hosts"
       user: "vagrant"
       authorizationWebhook:
         cacheAuthorizedTTL: 5m0s
@@ -221,7 +211,6 @@ spec:
     value:
       apiVersion: "baremetalproviderspec/v1alpha1"
       kind: "BareMetalClusterProviderSpec"
-      sshKeyPath: "/etc/hosts"
       user: "vagrant"
       addons:
       - name: foo
@@ -242,7 +231,6 @@ spec:
     value:
       apiVersion: "baremetalproviderspec/v1alpha1"
       kind: "BareMetalClusterProviderSpec"
-      sshKeyPath: "/etc/hosts"
       user: "vagrant"
       addons:
       - name: kube-kerberos
@@ -272,6 +260,9 @@ func TestValidateCluster(t *testing.T) {
 		errors []string
 	}{
 		{clusterMinimumValid, []string{}},
+		{clusterHasSSHKey, []string{
+			"cluster.spec.providerSpec.value.sshKeyPath",
+		}},
 		{clusterNonDefaultServiceDomain, []string{
 			"cluster.spec.clusterNetwork.serviceDomain",
 		}},
@@ -281,9 +272,6 @@ func TestValidateCluster(t *testing.T) {
 		}},
 		{clusterServicePodNetworksOverlap, []string{
 			"cluster.spec.clusterNetwork.services.cidrBlocks",
-		}},
-		{clusterNonExistentSSHKey, []string{
-			"cluster.spec.providerSpec.value.sshKeyPath",
 		}},
 		{ClusterAddonBadName, []string{
 			"cluster.spec.providerSpec.value.addons[0].foo",
@@ -327,63 +315,4 @@ func TestDefaultClusterValues(t *testing.T) {
 	cluster := clusterFromString(t, clusterMinimumValid)
 	populateCluster(cluster)
 	assert.Equal(t, "cluster.local", cluster.Spec.ClusterNetwork.ServiceDomain)
-}
-
-const clusterHomeExpansion = `
-apiVersion: "cluster.k8s.io/v1alpha1"
-kind: Cluster
-metadata:
-  name: example
-spec:
-  clusterNetwork:
-    services:
-      cidrBlocks: ["10.96.0.0/12"]
-    pods:
-      cidrBlocks: ["192.168.0.0/16"]
-  providerSpec:
-    value:
-      apiVersion: "baremetalproviderspec/v1alpha1"
-      kind: "BareMetalClusterProviderSpec"
-      sshKeyPath: "~/."
-      user: "vagrant"
-`
-
-func TestHomeExpansion(t *testing.T) {
-	cluster := clusterFromString(t, clusterHomeExpansion)
-	populateCluster(cluster)
-
-	home := os.Getenv("HOME")
-	spec, err := clusterSpec(cluster)
-	assert.NoError(t, err)
-	assert.Equal(t, home, spec.SSHKeyPath)
-}
-
-const clusterRelativePathExpansion = `
-apiVersion: "cluster.k8s.io/v1alpha1"
-kind: Cluster
-metadata:
-  name: example
-spec:
-  clusterNetwork:
-    services:
-      cidrBlocks: ["10.96.0.0/12"]
-    pods:
-      cidrBlocks: ["192.168.0.0/16"]
-  providerSpec:
-    value:
-      apiVersion: "baremetalproviderspec/v1alpha1"
-      kind: "BareMetalClusterProviderSpec"
-      sshKeyPath: "./ssh_key"
-      user: "vagrant"
-`
-
-func TestRelativePathExpansion(t *testing.T) {
-	cluster := clusterFromString(t, clusterRelativePathExpansion)
-	populateCluster(cluster)
-
-	spec, err := clusterSpec(cluster)
-	assert.NoError(t, err)
-	expectedPath, err := filepath.Abs(spec.SSHKeyPath)
-	assert.NoError(t, err)
-	assert.Equal(t, expectedPath, spec.SSHKeyPath)
 }
