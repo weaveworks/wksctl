@@ -120,6 +120,8 @@ func updateControllerManifests(contents []byte, options initOptionType) ([]byte,
 	withVersion := controllerImageSegment.ReplaceAll(contents, []byte(`$1:`+options.version))
 	if controllerFootlooseEnvEntry.Find(withVersion) == nil {
 		return controllerFootlooseAddrLocation.ReplaceAll(withVersion,
+			// We want to add to the matched entry so we start with $0 (the entire match) and use $1 to get the indentation correct.
+			// The $1 contains a leading newline.
 			[]byte(fmt.Sprintf("$0$1  env:$1  - name: FOOTLOOSE_SERVER_ADDR$1    value: %s$1  - name: FOOTLOOSE_BACKEND$1    value: %s", options.footlooseIP, options.footlooseBackend))), nil
 	}
 	return withVersion, nil
