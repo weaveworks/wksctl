@@ -274,6 +274,11 @@ spec:
         operator: Exists
       containers:
       - name: controller
+        env:
+        - name: FOOTLOOSE_SERVER_ADDR
+          value: 192.168.51.1:28496
+        - name: FOOTLOOSE_BACKEND
+          value: docker
         image: quay.io/wksctl/controller:version1.2.3
         command:
         - /bin/controller
@@ -290,7 +295,9 @@ spec:
 func TestControllerTranslate(t *testing.T) {
 	res, err := updateControllerManifests([]byte(controllerInputs),
 		initOptionType{
-			version: "version1.2.3",
+			version:          "version1.2.3",
+			footlooseIP:      "192.168.51.1:28496",
+			footlooseBackend: "docker",
 		})
 	assert.NoError(t, err)
 	assert.Equal(t, string(res), controllerOutputs)
