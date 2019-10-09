@@ -33,6 +33,7 @@ require (
 	github.com/weaveworks/footloose v0.0.0-20190829132911-efbcbb7a6390
 	github.com/weaveworks/go-checkpoint v0.0.0-20170503165305-ebbb8b0518ab
 	github.com/weaveworks/launcher v0.0.0-20180824102238-59a4fcc32c9c
+	github.com/whilp/git-urls v0.0.0-20160530060445-31bac0d230fa
 	go.uber.org/atomic v1.4.0 // indirect
 	go.uber.org/multierr v1.1.0 // indirect
 	go.uber.org/zap v1.10.0 // indirect
