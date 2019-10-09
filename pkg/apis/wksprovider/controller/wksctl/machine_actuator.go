@@ -12,6 +12,7 @@ import (
 	"math/rand"
 	"net/http"
 	"net/url"
+	goos "os"
 	"path/filepath"
 	"time"
 
@@ -51,7 +52,8 @@ const (
 
 const clusterName = "firekube"
 
-var dockerHost = "172.17.0.1:5555"
+var footlooseAddr = "10.0.2.15:28496"
+var footlooseBackend = "docker"
 var machineIPs = map[string]string{}
 
 // STOPGAP: copy of machine def from footloose; the footloose version has private fields
@@ -107,6 +109,15 @@ func (a *MachineActuator) create(ctx context.Context, cluster *clusterv1.Cluster
 	// Bootstrap - set plan on seed node if not present before any updates can occur
 	if err = a.initializeMasterPlanIfNecessary(installer); err != nil {
 		return err
+	}
+	// Also, update footloose IP from env
+	log.Infof("FETCHING FOOTLOOSE ADDRESS...")
+	fip := goos.Getenv("FOOTLOOSE_SERVER_ADDR")
+	if fip != "" {
+		footlooseAddr = fip
+		footlooseBackend = goos.Getenv("FOOTLOOSE_BACKEND")
+		log.Infof("FOOTLOOSE ADDR: %s", footlooseAddr)
+		log.Infof("FOOTLOOSE BACKEND: %s", footlooseBackend)
 	}
 	nodePlan, err := a.getNodePlan(c, machine, a.getMachineAddress(machine), installer)
 	if err != nil {
@@ -784,11 +795,10 @@ func getFootlooseMachineIP(uri string) (string, error) {
 	machineName := getMachineName(uri)
 	req := &http.Request{
 		Method: "GET",
-		Host:   dockerHost,
 		URL: &url.URL{
 			Opaque: fmt.Sprintf("/api/clusters/%s/machines/%s", clusterName, machineName),
 			Scheme: "http",
-			Host:   dockerHost,
+			Host:   footlooseAddr,
 		},
 		Close: true,
 	}
@@ -816,13 +826,13 @@ func invokeFootlooseCreate(machine *clusterv1.Machine) (string, error) {
 		"name":       machine.Name,
 		"image":      "quay.io/footloose/centos7:0.6.1",
 		"privileged": true,
-		"backend":    "docker",
+		"backend":    footlooseBackend,
 	}
 	postdata, err := json.Marshal(params)
 	if err != nil {
 		return "", err
 	}
-	resp, err := http.Post(fmt.Sprintf("http://%s/api/clusters/%s/machines", dockerHost, clusterName),
+	resp, err := http.Post(fmt.Sprintf("http://%s/api/clusters/%s/machines", footlooseAddr, clusterName),
 		"application/json", bytes.NewReader(postdata))
 	if err != nil {
 		return "", fmt.Errorf("Error creating footloose machine: %v\n", err)
@@ -835,7 +845,7 @@ func invokeFootlooseCreate(machine *clusterv1.Machine) (string, error) {
 	}
 	uri, ok := m["uri"]
 	if !ok {
-		uri = []byte(fmt.Sprintf("http://%s/api/clusters/%s/machines/%s", dockerHost, clusterName, machine.Name))
+		uri = []byte(fmt.Sprintf("http://%s/api/clusters/%s/machines/%s", footlooseAddr, clusterName, machine.Name))
 	}
 	ustr, ok := uri.(string)
 	if !ok {
