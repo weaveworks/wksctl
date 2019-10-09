@@ -52,7 +52,7 @@ const (
 
 const clusterName = "firekube"
 
-var footlooseAddr = "10.0.2.15:28496"
+var footlooseAddr = "<unknown>"
 var footlooseBackend = "docker"
 var machineIPs = map[string]string{}
 
