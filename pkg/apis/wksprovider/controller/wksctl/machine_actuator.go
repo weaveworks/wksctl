@@ -115,10 +115,13 @@ func (a *MachineActuator) create(ctx context.Context, cluster *clusterv1.Cluster
 	fip := goos.Getenv("FOOTLOOSE_SERVER_ADDR")
 	if fip != "" {
 		footlooseAddr = fip
-		footlooseBackend = goos.Getenv("FOOTLOOSE_BACKEND")
-		log.Infof("FOOTLOOSE ADDR: %s", footlooseAddr)
-		log.Infof("FOOTLOOSE BACKEND: %s", footlooseBackend)
 	}
+	backend := goos.Getenv("FOOTLOOSE_BACKEND")
+	if backend != "" {
+		footlooseBackend = backend
+	}
+	log.Infof("FOOTLOOSE ADDR: %s", footlooseAddr)
+	log.Infof("FOOTLOOSE BACKEND: %s", footlooseBackend)
 	nodePlan, err := a.getNodePlan(c, machine, a.getMachineAddress(machine), installer)
 	if err != nil {
 		return err
@@ -711,10 +714,7 @@ func (a *MachineActuator) exists(ctx context.Context, cluster *clusterv1.Cluster
 			return false, err
 		}
 		contextLog.Infof("Created underlying machine: %s", ip)
-		err = a.updateMachine(machine, ip)
-		if err != nil {
-			return false, err
-		}
+		a.updateMachine(machine, ip)
 		contextLog.Infof("Updated machine: %s", ip)
 	}
 	os, closer, err := a.connectTo(machine, c, m)
@@ -782,9 +782,8 @@ func (a *MachineActuator) getMasterNodes() ([]*corev1.Node, error) {
 	return masters, nil
 }
 
-func (a *MachineActuator) updateMachine(machine *clusterv1.Machine, ip string) error {
+func (a *MachineActuator) updateMachine(machine *clusterv1.Machine, ip string) {
 	machineIPs[getMachineID(machine)] = ip
-	return nil
 }
 
 func getMachineName(uri string) string {
@@ -805,9 +804,8 @@ func getFootlooseMachineIP(uri string) (string, error) {
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("Error retrieving footloose machine: %v\n", err)
-	} else {
-		defer resp.Body.Close()
 	}
+	defer resp.Body.Close()
 	var m FootlooseMachine
 	if err := json.NewDecoder(resp.Body).Decode(&m); err != nil {
 		return "", err
