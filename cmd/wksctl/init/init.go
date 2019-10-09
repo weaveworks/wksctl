@@ -18,10 +18,12 @@ import (
 // updated git information for flux manifests.
 
 type initOptionType struct {
-	localRepoDirectory string
+	footlooseIP        string
+	footlooseBackend   string
 	gitURL             string
 	gitBranch          string
 	gitPath            string
+	localRepoDirectory string
 	namespace          string
 	version            string
 }
@@ -45,13 +47,15 @@ var (
 
 	initOptions initOptionType
 
-	namespacePrefixPattern = "kind: Namespace\n  metadata:\n    name: "
-	namespaceNamePattern   = multiLineRegexp(namespacePrefixPattern + `\S+`)
-	controllerImageSegment = multiLineRegexp(`(image:\s*\S*[/]controller)(:\s*\S+)?`)
-	namespacePattern       = multiLineRegexp(`namespace:\s*\S+`)
-	gitURLPattern          = multiLineRegexp(`(--git-url)=\S+`)
-	gitBranchPattern       = multiLineRegexp(`(--git-branch)=\S+`)
-	gitPathPattern         = multiLineRegexp(`(--git-path)=\S+`)
+	namespacePrefixPattern          = "kind: Namespace\n  metadata:\n    name: "
+	namespaceNamePattern            = multiLineRegexp(namespacePrefixPattern + `\S+`)
+	controllerFootlooseAddrLocation = multiLineRegexp(`(\s*)- name: controller`)
+	controllerFootlooseEnvEntry     = multiLineRegexp(`env:\n\s*- name: FOOTLOOSE_SERVER_ADDR`)
+	controllerImageSegment          = multiLineRegexp(`(image:\s*\S*[/]controller)(:\s*\S+)?`)
+	namespacePattern                = multiLineRegexp(`namespace:\s*\S+`)
+	gitURLPattern                   = multiLineRegexp(`(--git-url)=\S+`)
+	gitBranchPattern                = multiLineRegexp(`(--git-branch)=\S+`)
+	gitPathPattern                  = multiLineRegexp(`(--git-path)=\S+`)
 
 	updates = []manifestUpdate{
 		{selector: equal("wks-controller.yaml"), updater: updateControllerManifests},
@@ -63,6 +67,10 @@ func multiLineRegexp(pattern string) *regexp.Regexp {
 }
 
 func init() {
+	Cmd.Flags().StringVar(
+		&initOptions.footlooseIP, "footloose-ip", "172.17.0.1", "address of footloose server on host")
+	Cmd.Flags().StringVar(
+		&initOptions.footlooseBackend, "footloose-backend", "docker", "which machine backend to use: ignite or docker")
 	Cmd.Flags().StringVar(
 		&initOptions.localRepoDirectory, "gitk8s-clone", ".", "Local location of cloned git repository")
 	Cmd.Flags().StringVar(&initOptions.gitURL, "git-url", "",
@@ -109,7 +117,14 @@ func updatedArg(item string) []byte {
 }
 
 func updateControllerManifests(contents []byte, options initOptionType) ([]byte, error) {
-	return controllerImageSegment.ReplaceAll(contents, []byte(`$1:`+options.version)), nil
+	withVersion := controllerImageSegment.ReplaceAll(contents, []byte(`$1:`+options.version))
+	if controllerFootlooseEnvEntry.Find(withVersion) == nil {
+		return controllerFootlooseAddrLocation.ReplaceAll(withVersion,
+			// We want to add to the matched entry so we start with $0 (the entire match) and use $1 to get the indentation correct.
+			// The $1 contains a leading newline.
+			[]byte(fmt.Sprintf("$0$1  env:$1  - name: FOOTLOOSE_SERVER_ADDR$1    value: %s$1  - name: FOOTLOOSE_BACKEND$1    value: %s", options.footlooseIP, options.footlooseBackend))), nil
+	}
+	return withVersion, nil
 }
 
 func updateFluxManifests(contents []byte, options initOptionType) ([]byte, error) {
