@@ -14,6 +14,7 @@ import (
 	initpkg "github.com/weaveworks/wksctl/cmd/wksctl/init"
 	"github.com/weaveworks/wksctl/cmd/wksctl/kubeconfig"
 	"github.com/weaveworks/wksctl/cmd/wksctl/plan"
+	"github.com/weaveworks/wksctl/cmd/wksctl/profile"
 	"github.com/weaveworks/wksctl/cmd/wksctl/registrysynccommands"
 	"github.com/weaveworks/wksctl/cmd/wksctl/version"
 	"github.com/weaveworks/wksctl/cmd/wksctl/zshcompletions"
@@ -49,6 +50,7 @@ func main() {
 	rootCmd.AddCommand(initpkg.Cmd)
 	rootCmd.AddCommand(kubeconfig.Cmd)
 	rootCmd.AddCommand(plan.Cmd)
+	rootCmd.AddCommand(profile.Cmd)
 	rootCmd.AddCommand(registrysynccommands.Cmd)
 	rootCmd.AddCommand(version.Cmd)
 
