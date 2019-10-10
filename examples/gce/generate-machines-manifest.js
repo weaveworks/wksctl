@@ -1,7 +1,7 @@
 import * as std from '@jkcfg/std';
 import * as param from '@jkcfg/std/param';
 
-const input = std.param.String("instances", "instances.json");
+const input = param.String("instances", "instances.json");
 const user = std.param.String("user");
 const numMasters = 1;
 const numWorkers = 2;
