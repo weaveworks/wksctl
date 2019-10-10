@@ -5,14 +5,21 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/gob"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"math/rand"
+	"net/http"
+	"net/url"
+	goos "os"
+	"path/filepath"
 	"time"
 
 	gerrors "github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"github.com/weaveworks/footloose/pkg/cluster"
+	fconfig "github.com/weaveworks/footloose/pkg/config"
 	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/config"
 	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/os"
 	baremetalspecv1 "github.com/weaveworks/wksctl/pkg/baremetalproviderspec/v1alpha1"
@@ -43,6 +50,30 @@ const (
 	bootstrapTokenID string = "bootstrapTokenID"
 )
 
+const clusterName = "firekube"
+
+var footlooseAddr = "<unknown>"
+var footlooseBackend = "docker"
+var machineIPs = map[string]string{}
+
+// STOPGAP: copy of machine def from footloose; the footloose version has private fields
+type FootlooseMachine struct {
+	Spec *fconfig.Machine `json:"spec"`
+
+	// container name.
+	Name string `json:"name"`
+	// container hostname.
+	Hostname string `json:"hostname"`
+	// container ip.
+	IP string `json:"ip,omitempty"`
+
+	RuntimeNetworks []*cluster.RuntimeNetwork `json:"runtimeNetworks,omitempty"`
+	// Fields that are cached from the docker daemon.
+
+	Ports map[int]int `json:"ports,omitempty"`
+	// maps containerPort -> hostPort.
+}
+
 // MachineActuator is responsible for managing this cluster's machines, and
 // ensuring their state converge towards their definitions.
 type MachineActuator struct {
@@ -70,7 +101,7 @@ func (a *MachineActuator) create(ctx context.Context, cluster *clusterv1.Cluster
 	if err != nil {
 		return err
 	}
-	installer, closer, err := a.connectTo(c, m)
+	installer, closer, err := a.connectTo(machine, c, m)
 	if err != nil {
 		return gerrors.Wrapf(err, "failed to establish connection to machine %s", machine.Name)
 	}
@@ -79,7 +110,19 @@ func (a *MachineActuator) create(ctx context.Context, cluster *clusterv1.Cluster
 	if err = a.initializeMasterPlanIfNecessary(installer); err != nil {
 		return err
 	}
-	nodePlan, err := a.getNodePlan(c, machine, m.Private.Address, installer)
+	// Also, update footloose IP from env
+	log.Infof("FETCHING FOOTLOOSE ADDRESS...")
+	fip := goos.Getenv("FOOTLOOSE_SERVER_ADDR")
+	if fip != "" {
+		footlooseAddr = fip
+	}
+	backend := goos.Getenv("FOOTLOOSE_BACKEND")
+	if backend != "" {
+		footlooseBackend = backend
+	}
+	log.Infof("FOOTLOOSE ADDR: %s", footlooseAddr)
+	log.Infof("FOOTLOOSE BACKEND: %s", footlooseBackend)
+	nodePlan, err := a.getNodePlan(c, machine, a.getMachineAddress(machine), installer)
 	if err != nil {
 		return err
 	}
@@ -144,14 +187,14 @@ func (a *MachineActuator) parse(cluster *clusterv1.Cluster, machine *clusterv1.M
 	return c, m, nil
 }
 
-func (a *MachineActuator) connectTo(c *baremetalspecv1.BareMetalClusterProviderSpec, m *baremetalspecv1.BareMetalMachineProviderSpec) (*os.OS, io.Closer, error) {
+func (a *MachineActuator) connectTo(machine *clusterv1.Machine, c *baremetalspecv1.BareMetalClusterProviderSpec, m *baremetalspecv1.BareMetalMachineProviderSpec) (*os.OS, io.Closer, error) {
 	sshKey, err := a.sshKey()
 	if err != nil {
 		return nil, nil, gerrors.Wrap(err, "failed to read SSH key")
 	}
 	sshClient, err := ssh.NewClient(ssh.ClientParams{
 		User:         c.User,
-		Host:         m.Private.Address,
+		Host:         a.getMachineAddress(machine),
 		Port:         m.Private.Port,
 		PrivateKey:   sshKey,
 		PrintOutputs: a.verbose,
@@ -161,7 +204,7 @@ func (a *MachineActuator) connectTo(c *baremetalspecv1.BareMetalClusterProviderS
 	}
 	os, err := os.Identify(sshClient)
 	if err != nil {
-		return nil, nil, gerrors.Wrapf(err, "failed to identify machine %s's operating system", m.Private.Address)
+		return nil, nil, gerrors.Wrapf(err, "failed to identify machine %s's operating system", a.getMachineAddress(machine))
 	}
 	return os, sshClient, nil
 }
@@ -294,7 +337,7 @@ func (a *MachineActuator) delete(ctx context.Context, cluster *clusterv1.Cluster
 	if err != nil {
 		return err
 	}
-	os, closer, err := a.connectTo(c, m)
+	os, closer, err := a.connectTo(machine, c, m)
 	if err != nil {
 		return gerrors.Wrapf(err, "failed to establish connection to machine %s", machine.Name)
 	}
@@ -336,7 +379,7 @@ func (a *MachineActuator) update(ctx context.Context, cluster *clusterv1.Cluster
 	if err != nil {
 		return err
 	}
-	installer, closer, err := a.connectTo(c, m)
+	installer, closer, err := a.connectTo(machine, c, m)
 	if err != nil {
 		return gerrors.Wrapf(err, "failed to establish connection to machine %s", machine.Name)
 	}
@@ -350,7 +393,7 @@ func (a *MachineActuator) update(ctx context.Context, cluster *clusterv1.Cluster
 		return err
 	}
 	contextLog := log.WithFields(log.Fields{"machine": machine.Name, "cluster": cluster.Name, "node": node.Name})
-	nodePlan, err := a.getNodePlan(c, machine, m.Private.Address, installer)
+	nodePlan, err := a.getNodePlan(c, machine, a.getMachineAddress(machine), installer)
 	if err != nil {
 		return gerrors.Wrapf(err, "Failed to get node plan for machine %s", machine.Name)
 	}
@@ -660,7 +703,21 @@ func (a *MachineActuator) exists(ctx context.Context, cluster *clusterv1.Cluster
 	if err != nil {
 		return false, err
 	}
-	os, closer, err := a.connectTo(c, m)
+	contextLog := log.WithFields(log.Fields{"machine": machine.Name})
+	contextLog.Infof("M: %#v", m)
+	// In a managed environment, machine IPs are added by an underlying controller; if no IP is currently present, wait
+	// for the IP to be added before operating on the machine
+	if a.getMachineAddress(machine) == "" {
+		contextLog.Info("Creating underlying machine")
+		ip, err := invokeFootlooseCreate(machine)
+		if err != nil {
+			return false, err
+		}
+		contextLog.Infof("Created underlying machine: %s", ip)
+		a.updateMachine(machine, ip)
+		contextLog.Infof("Updated machine: %s", ip)
+	}
+	os, closer, err := a.connectTo(machine, c, m)
 	if err != nil {
 		return false, gerrors.Wrapf(err, "failed to establish connection to machine %s", machine.Name)
 	}
@@ -725,6 +782,76 @@ func (a *MachineActuator) getMasterNodes() ([]*corev1.Node, error) {
 	return masters, nil
 }
 
+func (a *MachineActuator) updateMachine(machine *clusterv1.Machine, ip string) {
+	machineIPs[getMachineID(machine)] = ip
+}
+
+func getMachineName(uri string) string {
+	return filepath.Base(uri)
+}
+
+func getFootlooseMachineIP(uri string) (string, error) {
+	machineName := getMachineName(uri)
+	req := &http.Request{
+		Method: "GET",
+		URL: &url.URL{
+			Opaque: fmt.Sprintf("/api/clusters/%s/machines/%s", clusterName, machineName),
+			Scheme: "http",
+			Host:   footlooseAddr,
+		},
+		Close: true,
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("Error retrieving footloose machine: %v\n", err)
+	}
+	defer resp.Body.Close()
+	var m FootlooseMachine
+	if err := json.NewDecoder(resp.Body).Decode(&m); err != nil {
+		return "", err
+	}
+	nets := m.RuntimeNetworks
+	for _, net := range nets {
+		if net.Name == "bridge" {
+			return net.IP, nil
+		}
+	}
+	return "", fmt.Errorf("Could not find bridge network for machine: %s", machineName)
+}
+
+func invokeFootlooseCreate(machine *clusterv1.Machine) (string, error) {
+	params := map[string]interface{}{
+		"name":       machine.Name,
+		"image":      "quay.io/footloose/centos7:0.6.1",
+		"privileged": true,
+		"backend":    footlooseBackend,
+	}
+	postdata, err := json.Marshal(params)
+	if err != nil {
+		return "", err
+	}
+	resp, err := http.Post(fmt.Sprintf("http://%s/api/clusters/%s/machines", footlooseAddr, clusterName),
+		"application/json", bytes.NewReader(postdata))
+	if err != nil {
+		return "", fmt.Errorf("Error creating footloose machine: %v\n", err)
+	} else {
+		defer resp.Body.Close()
+	}
+	m := map[string]interface{}{}
+	if err := json.NewDecoder(resp.Body).Decode(&m); err != nil {
+		return "", err
+	}
+	uri, ok := m["uri"]
+	if !ok {
+		uri = []byte(fmt.Sprintf("http://%s/api/clusters/%s/machines/%s", footlooseAddr, clusterName, machine.Name))
+	}
+	ustr, ok := uri.(string)
+	if !ok {
+		return "", fmt.Errorf("Invalid uri for: %s", machine.Name)
+	}
+	return getFootlooseMachineIP(ustr)
+}
+
 func isMaster(node *corev1.Node) bool {
 	_, isMaster := node.Labels["node-role.kubernetes.io/master"]
 	return isMaster
@@ -749,6 +876,19 @@ func (a *MachineActuator) recordEvent(object runtime.Object, eventType, reason, 
 	default:
 		log.Debugf(messageFmt, args...)
 	}
+}
+
+func getMachineID(machine *clusterv1.Machine) string {
+	return machine.Namespace + ":" + machine.Name
+}
+
+func (a *MachineActuator) getMachineAddress(machine *clusterv1.Machine) string {
+	m, _ := a.codec.MachineProviderFromProviderSpec(machine.Spec.ProviderSpec)
+
+	if m.Private.Address != "" {
+		return m.Private.Address
+	}
+	return machineIPs[getMachineID(machine)]
 }
 
 // MachineActuatorParams groups required inputs to create a machine actuator.
