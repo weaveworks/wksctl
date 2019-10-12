@@ -22,8 +22,11 @@ wksctl profile disable --git-url=<profile_repository> [--revision=master] [--pus
 Please make sure that there is no staged change on the current branch before disable a profile.
 `,
 	Args: profileDisableArgs,
-	RunE: func(_ *cobra.Command, _ []string) error {
-		return profileDisable(profileDisableParams)
+	Run: func(_ *cobra.Command, _ []string) {
+		err := profileDisable(profileDisableParams)
+		if err != nil {
+			log.Fatal(err)
+		}
 	},
 	SilenceUsage: true,
 }
@@ -38,7 +41,7 @@ var profileDisableParams profileDisableFlags
 
 func init() {
 	Cmd.Flags().StringVar(&profileDisableParams.profileDir, "profile-dir", "profiles", "specify a directory for storing profiles")
-	Cmd.Flags().StringVar(&profileDisableParams.gitUrl, "git-url", "", "enable profile from the Git URL")
+	Cmd.Flags().StringVar(&profileDisableParams.gitUrl, "git-url", "", "disable profile from the Git URL")
 	Cmd.Flags().BoolVar(&profileDisableParams.push, "push", true, "auto push after disable the profile")
 }
 
