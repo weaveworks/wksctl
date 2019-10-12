@@ -21,8 +21,11 @@ If you'd like to specify the revision other than the master branch, use --revisi
 To disable auto-push, pass --push=false.
 `,
 	Args: profileEnableArgs,
-	RunE: func(_ *cobra.Command, _ []string) error {
-		return profileEnableRun(profileEnableParams)
+	Run: func(_ *cobra.Command, _ []string) {
+		err := profileEnableRun(profileEnableParams)
+		if err != nil {
+			log.Fatal(err)
+		}
 	},
 	SilenceUsage: true,
 }
