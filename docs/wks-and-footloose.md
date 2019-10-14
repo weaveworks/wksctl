@@ -51,6 +51,14 @@
    b4fdde36eb122804	weaveworks/ignite-centos:latest	weaveworks/ignite-kernel:4.19.47	4.0 GB	2	1024.0 MB	10m ago	Up 10m	172.17.0.2	0.0.0.0:2222->22/tcp, 0.0.0.0:6443->6443/tcp, 0.0.0.0:30443->30443/tcp, 0.0.0.0:30080->30080/tcp	centos-singlemaster-node0
    ```
 
+   In case you would like to ssh into a machine e.g. `node0`, run:
+
+   ```console
+   footloose ssh -c ${DISTRO}/${BACKEND}/singlemaster.yaml root@node0
+   ```
+
+   as the default user name is `root` for both backends.
+
 1. Run `wksctl apply`:
 
    ```console
