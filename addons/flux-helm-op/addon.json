@@ -1,0 +1,7 @@
+{
+  "kind": "yaml",
+  "category": "Helm",
+  "name": "Flux Helm Operator",
+  "description": "Operator for deploying Helm Charts via Flux",
+  "entryPoint": "flux-helm-op.yaml"
+}
