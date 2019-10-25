@@ -1,8 +1,13 @@
 package enable
 
 import (
+	"bufio"
 	"errors"
+	"fmt"
+	"io"
+	"os"
 	"path"
+	"regexp"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -69,14 +74,19 @@ func profileEnableRun(params profileEnableFlags) error {
 	if err != nil {
 		return err
 	}
-	clonePath := path.Join(params.profileDir, hostName, repoName)
+	profilePath := path.Join(params.profileDir, hostName, repoName)
 
 	log.Info("Adding the profile to the local repository...")
-	err = git.SubtreeAdd(clonePath, repoURL, params.revision)
+	err = git.SubtreeAdd(profilePath, repoURL, params.revision)
 	if err != nil {
 		return err
 	}
 	log.Info("Added the profile to the local repository.")
+
+	// Detect and process the ignore file if found at the top most directory of the profile
+	if err := doIgnoreFiles(profilePath); err != nil {
+		return err
+	}
 
 	// The default behaviour is auto-commit and push
 	if params.push {
@@ -85,5 +95,51 @@ func profileEnableRun(params profileEnableFlags) error {
 		}
 	}
 
+	return nil
+}
+
+func doIgnoreFiles(profilePath string) error {
+	ignoreFilePath := path.Join(profilePath, constants.WKSctlIgnoreFilename)
+	if _, err := os.Stat(ignoreFilePath); err == nil {
+		log.Infof("Ignoring files declared in %s...", constants.WKSctlIgnoreFilename)
+		file, err := os.Open(ignoreFilePath)
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+		pathsToIgnores, err := parseDotIgnorefile(profilePath, file)
+		if err != nil {
+			return err
+		}
+		if err := removePathsFromGit(pathsToIgnores...); err != nil {
+			return err
+		}
+		log.Info("Ignored files successfully.")
+	}
+	return nil
+}
+
+func parseDotIgnorefile(dir string, reader io.Reader) ([]string, error) {
+	result := []string{}
+	scanner := bufio.NewScanner(reader)
+	re := regexp.MustCompile(`(?ms)^\s*(?P<pathToIgnore>[^\s#]+).*$`)
+	for scanner.Scan() {
+		groups := re.FindStringSubmatch(scanner.Text())
+		if len(groups) != 2 {
+			continue
+		}
+		pathToIgnore := groups[1]
+		result = append(result, path.Join(dir, pathToIgnore))
+	}
+	return result, nil
+}
+
+func removePathsFromGit(paths ...string) error {
+	if err := git.RmRecursive(paths...); err != nil {
+		return err
+	}
+	if err := git.Commit(fmt.Sprintf("Ignored files declared in %s", constants.WKSctlIgnoreFilename)); err != nil {
+		return err
+	}
 	return nil
 }

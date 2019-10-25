@@ -22,8 +22,8 @@ func HasNoStagedChanges() error {
 	return errors.Wrap(gitExec("diff", "--staged", "--exit-code"), "repository contains staged changes")
 }
 
-func RmRecursive(path string) error {
-	return gitExec("rm", "-r", "--", path)
+func RmRecursive(paths ...string) error {
+	return gitExec(append([]string{"rm", "-r", "--"}, paths...)...)
 }
 
 func AddAll(path string) error {
