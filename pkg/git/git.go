@@ -19,7 +19,7 @@ func gitExec(args ...string) error {
 }
 
 func HasNoStagedChanges() error {
-	return errors.Wrap(gitExec("diff", "--staged", "--exit-code"), "repository contains staged changes")
+	return errors.Wrap(gitExec("diff", "--quiet", "--staged", "--exit-code"), "repository contains staged changes")
 }
 
 func RmRecursive(paths ...string) error {

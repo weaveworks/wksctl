@@ -12,6 +12,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/weaveworks/wksctl/cmd/wksctl/profile/constants"
+	"github.com/weaveworks/wksctl/pkg/addons"
 	"github.com/weaveworks/wksctl/pkg/git"
 )
 
@@ -41,6 +42,7 @@ type profileEnableFlags struct {
 	revision   string
 	push       bool
 	profileDir string
+	withHelm   bool
 }
 
 var profileEnableParams profileEnableFlags
@@ -50,6 +52,7 @@ func init() {
 	Cmd.Flags().StringVar(&profileEnableParams.gitURL, "git-url", "", "enable profile from the gitUrl")
 	Cmd.Flags().StringVar(&profileEnableParams.revision, "revision", "master", "use this revision of the profile")
 	Cmd.Flags().BoolVar(&profileEnableParams.push, "push", true, "auto push after enable the profile")
+	Cmd.Flags().BoolVar(&profileEnableParams.withHelm, "with-helm", true, "enable profile with Flux Helm Operator installed")
 }
 
 func profileEnableArgs(cmd *cobra.Command, args []string) error {
@@ -60,8 +63,46 @@ func profileEnableArgs(cmd *cobra.Command, args []string) error {
 }
 
 func profileEnableRun(params profileEnableFlags) error {
-	repoURL := params.gitURL
 
+	const flexHelmOpAddonName = "flux-helm-op"
+	var flexHelmOpAddonPath = path.Join("base", "addons", flexHelmOpAddonName)
+
+	if params.withHelm {
+		log.Info("Installing Flux Helm Operator...")
+		addon, err := addons.Get(flexHelmOpAddonName)
+		if err != nil {
+			return err
+		}
+
+		// If flexHelmOpAddonPath does not exist
+		// then we trying to mkdir
+		// if we cannot create the directory, we should return err
+		if _, err := os.Stat(flexHelmOpAddonPath); os.IsNotExist(err) {
+			if err := os.MkdirAll(flexHelmOpAddonPath, 0755); err != nil {
+				return err
+			}
+		}
+
+		if _, err := addon.Build(addons.BuildOptions{
+			OutputDirectory: flexHelmOpAddonPath,
+			YAML:            true,
+		}); err != nil {
+			return err
+		}
+		if err := git.AddAll(flexHelmOpAddonPath); err != nil {
+			return err
+		}
+		// Commit only if there's some staged changes
+		if err := git.HasNoStagedChanges(); err != nil {
+			if err := git.Commit("Installed Flux Helm Operator into " + flexHelmOpAddonPath); err != nil {
+				return err
+			}
+		}
+
+		log.Info("Installed Flux Helm Operator.")
+	}
+
+	repoURL := params.gitURL
 	if repoURL == constants.AppDevAlias {
 		repoURL = constants.AppDevRepoURL
 	}
