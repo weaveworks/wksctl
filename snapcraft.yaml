@@ -31,9 +31,7 @@ parts:
 plugs:	
   kube-config:	
     interface: personal-files	
-    read:	
-    - $HOME/.kube	
-    - $HOME/.minikube	
+    write:	
     - $HOME/.wks
 
 apps:
