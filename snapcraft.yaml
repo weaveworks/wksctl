@@ -39,6 +39,7 @@ apps:
     command: bin/wksctl
     plugs:
     - kube-config
+    - removable-media
     - home
     - network	
     - network-bind
