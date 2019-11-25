@@ -5,7 +5,7 @@ items:
     kind: ServiceAccount
     metadata:
       name: tiller
-      namespace: kube-system
+      namespace: weavek8sops
   - apiVersion: rbac.authorization.k8s.io/v1
     kind: ClusterRoleBinding
     metadata:
@@ -17,7 +17,7 @@ items:
     subjects:
     - kind: ServiceAccount
       name: tiller
-      namespace: kube-system
+      namespace: weavek8sops
   - apiVersion: apps/v1
     kind: Deployment
     metadata:
@@ -25,7 +25,7 @@ items:
         app: helm
         name: tiller
       name: tiller-deploy
-      namespace: kube-system
+      namespace: weavek8sops
     spec:
       replicas: 1
       selector:
@@ -43,10 +43,10 @@ items:
           containers:
           - env:
             - name: TILLER_NAMESPACE
-              value: kube-system
+              value: weavek8sops
             - name: TILLER_HISTORY_MAX
               value: "0"
-            image: gcr.io/kubernetes-helm/tiller:v2.15.0
+            image: gcr.io/kubernetes-helm/tiller:v2.14.3
             imagePullPolicy: IfNotPresent
             livenessProbe:
               httpGet:
@@ -75,7 +75,7 @@ items:
         app: helm
         name: tiller
       name: tiller-deploy
-      namespace: kube-system
+      namespace: weavek8sops
     spec:
       ports:
       - name: tiller
@@ -367,8 +367,8 @@ items:
             - --update-chart-deps=true
             - --log-release-diffs=false
             - --workers=2
-            - --tiller-namespace=kube-system
-            image: docker.io/fluxcd/helm-operator:1.0.0-rc3
+            - --tiller-namespace=weavek8sops
+            image: docker.io/fluxcd/helm-operator:1.0.0-rc2
             imagePullPolicy: IfNotPresent
             livenessProbe:
               failureThreshold: 3
