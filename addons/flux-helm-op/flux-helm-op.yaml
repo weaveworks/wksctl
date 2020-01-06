@@ -46,7 +46,7 @@ items:
               value: weavek8sops
             - name: TILLER_HISTORY_MAX
               value: "0"
-            image: gcr.io/kubernetes-helm/tiller:v2.14.3
+            image: gcr.io/kubernetes-helm/tiller:v2.14.3 # keep in sync with eksctl https://github.com/weaveworks/wksctl/pull/108
             imagePullPolicy: IfNotPresent
             livenessProbe:
               httpGet:
@@ -368,7 +368,7 @@ items:
             - --log-release-diffs=false
             - --workers=2
             - --tiller-namespace=weavek8sops
-            image: docker.io/fluxcd/helm-operator:1.0.0-rc2
+            image: docker.io/fluxcd/helm-operator:1.0.0-rc2 # keep in sync with eksctl https://github.com/weaveworks/wksctl/pull/108
             imagePullPolicy: IfNotPresent
             livenessProbe:
               failureThreshold: 3
