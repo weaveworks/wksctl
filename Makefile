@@ -31,6 +31,15 @@ DOCKERFILES := $(shell find . \
  -type f -name 'Dockerfile' \
  -print \
 )
+
+# Every directory with a Dockerfile in it builds an image called
+# $(IMAGE_PREFIX)<dirname>. Dependencies (i.e. things that go in the image)
+# still need to be explicitly declared.
+%/$(UPTODATE): %/Dockerfile %/*
+	$(SUDO) docker build --build-arg=revision=$(GIT_REVISION) -t $(IMAGE_PREFIX)$(shell basename $(@D)) $(@D)/
+	$(SUDO) docker tag $(IMAGE_PREFIX)$(shell basename $(@D)) $(IMAGE_PREFIX)$(shell basename $(@D)):$(IMAGE_TAG)
+	touch $@
+
 UPTODATE_FILES := $(patsubst %/Dockerfile,%/$(UPTODATE),$(DOCKERFILES))
 DOCKER_IMAGE_DIRS := $(patsubst %/Dockerfile,%,$(DOCKERFILES))
 IMAGE_NAMES := $(foreach dir,$(DOCKER_IMAGE_DIRS),$(patsubst %,$(IMAGE_PREFIX)%,$(shell basename $(dir))))
