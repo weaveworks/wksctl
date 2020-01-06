@@ -21,7 +21,7 @@ type ClusterActuator struct {
 // Reconcile creates or updates the cluster.
 func (a *ClusterActuator) Reconcile(cluster *clusterv1.Cluster) error {
 	a.recordEvent(cluster, corev1.EventTypeNormal, "Reconcile", "Reconciled cluster %v", cluster.Name)
-	return errors.New("ClusterActuator#Reconcile not implemented")
+	return nil
 }
 
 // Delete the cluster.
