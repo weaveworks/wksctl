@@ -441,7 +441,7 @@ func (a *MachineActuator) update(ctx context.Context, cluster *clusterv1.Cluster
 		}
 		contextLog.Infof("Is original: %v", isOriginal)
 		if (!isOriginal && originalNeedsUpdate) || (!nodeIsMaster && masterNeedsUpdate) {
-			return gerrors.Wrap(err, "Master nodes must be upgraded before worker nodes")
+			return errors.New("Master nodes must be upgraded before worker nodes")
 		}
 		isController, err := a.isControllerNode(node)
 		if err != nil {
