@@ -148,7 +148,7 @@ func (a *MachineActuator) create(ctx context.Context, cluster *clusterv1.Cluster
 // don't miss any updates. The plan is derived from the original seed node plan and stored in a config map
 // for use by the actuator.
 func (a *MachineActuator) initializeMasterPlanIfNecessary(installer *os.OS) error {
-	master, err := a.getMasterNode()
+	master, err := a.getMasterNode() // Only one can exist at this point
 	if err != nil {
 		return err
 	}
@@ -384,6 +384,10 @@ func (a *MachineActuator) update(ctx context.Context, cluster *clusterv1.Cluster
 		return gerrors.Wrapf(err, "failed to establish connection to machine %s", machine.Name)
 	}
 	defer closer.Close()
+	// Bootstrap - set plan on seed node if not present before any updates can occur
+	if err := a.initializeMasterPlanIfNecessary(installer); err != nil {
+		return err
+	}
 	ids, err := installer.IDs()
 	if err != nil {
 		return gerrors.Wrapf(err, "failed to read machine %s's IDs", machine.Name)
