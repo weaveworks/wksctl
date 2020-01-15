@@ -15,13 +15,13 @@ builds:
     - amd64
   hooks:
     pre: make generated
-archive:
-  name_template: "wksctl-{{ .Version }}-{{ .Os }}-{{ .Arch }}"
-  replacements:
-    386: i386
-    amd64: x86_64
-  files:
-    - examples/**/*
+archives:
+  - name_template: "wksctl-{{ .Version }}-{{ .Os }}-{{ .Arch }}"
+    replacements:
+      386: i386
+      amd64: x86_64
+    files:
+      - examples/**/*
 changelog:
   sort: asc
   filters:
