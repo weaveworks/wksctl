@@ -55,6 +55,14 @@ const (
 	clusterName      string = "firekube"
 )
 
+type nodeType int
+
+const (
+	originalMaster nodeType = iota
+	secondaryMaster
+	worker
+)
+
 var (
 	footlooseAddr    = "<unknown>"
 	footlooseBackend = "docker"
@@ -414,14 +422,14 @@ func (a *MachineActuator) update(ctx context.Context, cluster *clusterv1.Cluster
 		return nil
 	}
 	log.Infof("........................NEW UPDATE FOR: %s...........................", machine.Name)
-	nodeIsMaster := isMaster(node)
-	if nodeIsMaster {
+	isMaster := isMaster(node)
+	if isMaster {
 		if err := a.prepareForMasterUpdate(); err != nil {
 			return err
 		}
 	}
 	upOrDowngrade := isUpOrDowngrade(machine, node)
-	contextLog.Infof("Is master: %v, is up or downgrade: %v", nodeIsMaster, upOrDowngrade)
+	contextLog.Infof("Is master: %t, is up or downgrade: %t", isMaster, upOrDowngrade)
 	if upOrDowngrade {
 		version := machineutil.GetKubernetesVersion(machine)
 		nodeStyleVersion := "v" + version
@@ -429,27 +437,28 @@ func (a *MachineActuator) update(ctx context.Context, cluster *clusterv1.Cluster
 		if err != nil {
 			return err
 		}
-		contextLog.Infof("Original needs update: %v", originalNeedsUpdate)
+		contextLog.Infof("Original needs update: %t", originalNeedsUpdate)
 		masterNeedsUpdate, err := a.checkIfMasterNotAtVersion(nodeStyleVersion)
 		if err != nil {
 			return err
 		}
-		contextLog.Infof("Master needs update: %v", masterNeedsUpdate)
+		contextLog.Infof("Master needs update: %t", masterNeedsUpdate)
 		isOriginal, err := a.isOriginalMaster(node)
 		if err != nil {
 			return err
 		}
-		contextLog.Infof("Is original: %v", isOriginal)
-		if (!isOriginal && originalNeedsUpdate) || (!nodeIsMaster && masterNeedsUpdate) {
+		contextLog.Infof("Is original: %t", isOriginal)
+		if (!isOriginal && originalNeedsUpdate) || (!isMaster && masterNeedsUpdate) {
 			return errors.New("Master nodes must be upgraded before worker nodes")
 		}
 		isController, err := a.isControllerNode(node)
 		if err != nil {
 			return err
 		}
-		contextLog.Infof("Is controller: %v", isController)
-		if isOriginal {
+		contextLog.Infof("Is controller: %t", isController)
+		if isMaster {
 			if isController {
+				// If there is no error, this will end the run of this reconciliation since the controller will be migrated
 				if err := drain.Drain(node, a.clientSet, drain.Params{
 					Force:               true,
 					DeleteLocalData:     true,
@@ -457,10 +466,13 @@ func (a *MachineActuator) update(ctx context.Context, cluster *clusterv1.Cluster
 				}); err != nil {
 					return err
 				}
+			} else if isOriginal {
+				return a.kubeadmUpOrDowngrade(machine, node, installer, version, planKey, planJSON, originalMaster)
 			} else {
-				return a.kubeadmUpOrDowngrade(machine, node, installer, version, planKey, planJSON)
+				return a.kubeadmUpOrDowngrade(machine, node, installer, version, planKey, planJSON, secondaryMaster)
 			}
 		}
+		return a.kubeadmUpOrDowngrade(machine, node, installer, version, planKey, planJSON, worker)
 	}
 	if err = a.performActualUpdate(installer, machine, node, nodePlan, c); err != nil {
 		return err
@@ -472,35 +484,49 @@ func (a *MachineActuator) update(ctx context.Context, cluster *clusterv1.Cluster
 	return nil
 }
 
-func (a *MachineActuator) kubeadmUpOrDowngrade(machine *clusterv1.Machine, node *corev1.Node, installer *os.OS, version, planKey, planJSON string) error {
+func (a *MachineActuator) kubeadmUpOrDowngrade(machine *clusterv1.Machine, node *corev1.Node, installer *os.OS,
+	version, planKey, planJSON string, ntype nodeType) error {
 	b := plan.NewBuilder()
 	b.AddResource(
-		"upgrade:seed-node-unlock-kubernetes",
+		"upgrade:node-unlock-kubernetes",
 		&resource.Run{Script: object.String("yum versionlock delete 'kube*' || true")})
 	b.AddResource(
-		"upgrade:seed-node-install-kubeadm",
+		"upgrade:node-install-kubeadm",
 		&resource.RPM{Name: "kubeadm", Version: version, DisableExcludes: "kubernetes"},
-		plan.DependOn("upgrade:seed-node-unlock-kubernetes"))
+		plan.DependOn("upgrade:node-unlock-kubernetes"))
+	switch ntype {
+	case originalMaster:
+		b.AddResource(
+			"upgrade:node-kubeadm-upgrade",
+			&resource.Run{Script: object.String(fmt.Sprintf("kubeadm upgrade plan && kubeadm upgrade apply -y %s", version))},
+			plan.DependOn("upgrade:node-install-kubeadm"))
+	case secondaryMaster:
+		b.AddResource(
+			"upgrade:node-kubeadm-upgrade",
+			&resource.Run{Script: object.String("kubeadm upgrade node experimental-control-plane")},
+			plan.DependOn("upgrade:node-install-kubeadm"))
+	case worker:
+		b.AddResource(
+			"upgrade:node-kubeadm-upgrade",
+			&resource.Run{Script: object.String(fmt.Sprintf("kubeadm upgrade node config --kubelet-version %s", version))},
+			plan.DependOn("upgrade:node-install-kubeadm"))
+	}
 	b.AddResource(
-		"upgrade:seed-node-kubeadm-upgrade",
-		&resource.Run{Script: object.String(fmt.Sprintf("kubeadm upgrade plan && kubeadm upgrade apply -y %s", version))},
-		plan.DependOn("upgrade:seed-node-install-kubeadm"))
-	b.AddResource(
-		"upgrade:seed-node-kubelet",
+		"upgrade:node-kubelet",
 		&resource.RPM{Name: "kubelet", Version: version, DisableExcludes: "kubernetes"},
-		plan.DependOn("upgrade:seed-node-kubeadm-upgrade"))
+		plan.DependOn("upgrade:node-kubeadm-upgrade"))
 	b.AddResource(
-		"upgrade:seed-node-restart-kubelet",
+		"upgrade:node-restart-kubelet",
 		&resource.Run{Script: object.String("systemctl restart kubelet")},
-		plan.DependOn("upgrade:seed-node-kubelet"))
+		plan.DependOn("upgrade:node-kubelet"))
 	b.AddResource(
-		"upgrade:seed-node-kubectl",
+		"upgrade:node-kubectl",
 		&resource.RPM{Name: "kubectl", Version: version, DisableExcludes: "kubernetes"},
-		plan.DependOn("upgrade:seed-node-restart-kubelet"))
+		plan.DependOn("upgrade:node-restart-kubelet"))
 	b.AddResource(
-		"upgrade:seed-node-lock-kubernetes",
+		"upgrade:node-lock-kubernetes",
 		&resource.Run{Script: object.String("yum versionlock add 'kube*' || true")},
-		plan.DependOn("upgrade:seed-node-kubectl"))
+		plan.DependOn("upgrade:node-kubectl"))
 
 	p, err := b.Plan()
 	if err != nil {
@@ -804,18 +830,14 @@ func (a *MachineActuator) checkMasterHAConstraint() error {
 		// accidentally flush the sole master
 		return err
 	}
-	for retry := 0; retry < 5; retry++ {
-		avail := 0
-		for _, node := range nodes {
-			if hasConditionTrue(node, corev1.NodeReady) && !hasTaint(node, "NoSchedule") {
-				avail++
-				if avail >= 2 {
-					return nil
-				}
+	avail := 0
+	for _, node := range nodes {
+		if hasConditionTrue(node, corev1.NodeReady) && !hasTaint(node, "NoSchedule") {
+			avail++
+			if avail >= 2 {
+				return nil
 			}
 		}
-		time.Sleep(10 * time.Second)
-		log.Infof("RETRY: %v", retry)
 	}
 	return errors.New("Fewer than two master nodes available")
 }
@@ -856,7 +878,6 @@ func (a *MachineActuator) exists(ctx context.Context, cluster *clusterv1.Cluster
 		return false, err
 	}
 	contextLog := log.WithFields(log.Fields{"machine": machine.Name})
-	contextLog.Infof("M: %#v", m)
 	// In a managed environment, machine IPs are added by an underlying controller; if no IP is currently present, wait
 	// for the IP to be added before operating on the machine
 	if a.getMachineAddress(machine) == "" {
