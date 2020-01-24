@@ -19,6 +19,7 @@ func removeFile(remotePath string, runner plan.Runner) error {
 type PkgType string
 
 const (
-	PkgTypeDeb PkgType = "Deb"
-	PkgTypeRPM PkgType = "RPM"
+	PkgTypeDeb  PkgType = "Deb"
+	PkgTypeRPM  PkgType = "RPM"
+	PkgTypeRHEL PkgType = "RHEL"
 )
