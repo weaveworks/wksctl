@@ -2,7 +2,6 @@ package recipe
 
 import (
 	"fmt"
-
 	"io/ioutil"
 
 	log "github.com/sirupsen/logrus"
@@ -19,7 +18,7 @@ func BuildBasePlan(pkgType resource.PkgType) plan.Resource {
 	b := plan.NewBuilder()
 
 	switch pkgType {
-	case resource.PkgTypeRPM:
+	case resource.PkgTypeRPM, resource.PkgTypeRHEL:
 		// Package manager features
 		b.AddResource("install:yum-utils", &resource.RPM{Name: "yum-utils"})
 		b.AddResource("install:yum-versionlock", &resource.RPM{Name: "yum-plugin-versionlock"})
@@ -27,6 +26,11 @@ func BuildBasePlan(pkgType resource.PkgType) plan.Resource {
 		// Device Mapper
 		b.AddResource("install:device-mapper-persistent-data", &resource.RPM{Name: "device-mapper-persistent-data"})
 		b.AddResource("install:lvm2", &resource.RPM{Name: "lvm2"})
+		if pkgType == resource.PkgTypeRHEL {
+			// RHEL requires installation of container-selinux
+			b.AddResource("install:container-selinux", &resource.RPM{Name: "container-selinux"})
+		}
+
 	case resource.PkgTypeDeb:
 		// Package manager features
 		b.AddResource("install:gnupg", &resource.Deb{Name: "gnupg"})
@@ -88,7 +92,7 @@ func BuildCRIPlan(criSpec *baremetalspecv1.ContainerRuntime, cfg *envcfg.EnvSpec
 
 	// Docker runtime
 	switch pkgType {
-	case resource.PkgTypeRPM:
+	case resource.PkgTypeRPM, resource.PkgTypeRHEL:
 		b.AddResource("install:docker", &resource.RPM{Name: criSpec.Package, Version: criSpec.Version})
 	case resource.PkgTypeDeb:
 		// TODO(michal): Use the official docker.com repo
@@ -140,7 +144,7 @@ func BuildK8SPlan(kubernetesVersion string, kubeletNodeIP string, setSELinuxPerm
 
 	// Kubernetes repos
 	switch pkgType {
-	case resource.PkgTypeRPM:
+	case resource.PkgTypeRPM, resource.PkgTypeRHEL:
 		// do nothing
 	case resource.PkgTypeDeb:
 		// XXX: Workaround for https://github.com/weaveworks/wksctl/issues/654 : *.gpg is a binary format, and currently wks is unable to handle
@@ -171,7 +175,7 @@ func BuildK8SPlan(kubernetesVersion string, kubeletNodeIP string, setSELinuxPerm
 
 	// Install k8s packages
 	switch pkgType {
-	case resource.PkgTypeRPM:
+	case resource.PkgTypeRPM, resource.PkgTypeRHEL:
 		b.AddResource("install:kubelet", &resource.RPM{Name: "kubelet", Version: kubernetesVersion, DisableExcludes: "kubernetes"})
 		b.AddResource("install:kubectl", &resource.RPM{Name: "kubectl", Version: kubernetesVersion, DisableExcludes: "kubernetes"})
 		b.AddResource("install:kubeadm",
