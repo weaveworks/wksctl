@@ -15,6 +15,8 @@ import (
 	goos "os"
 	"path/filepath"
 	"regexp"
+	"strconv"
+	"strings"
 	"time"
 
 	gerrors "github.com/pkg/errors"
@@ -431,6 +433,10 @@ func (a *MachineActuator) update(ctx context.Context, cluster *clusterv1.Cluster
 	upOrDowngrade := isUpOrDowngrade(machine, node)
 	contextLog.Infof("Is master: %t, is up or downgrade: %t", isMaster, upOrDowngrade)
 	if upOrDowngrade {
+		err = checkForVersionJump(machine, node)
+		if err != nil {
+			return err
+		}
 		version := machineutil.GetKubernetesVersion(machine)
 		nodeStyleVersion := "v" + version
 		originalNeedsUpdate, err := a.checkIfOriginalMasterNotAtVersion(nodeStyleVersion)
@@ -663,6 +669,77 @@ func (a *MachineActuator) getProviderConfigMaps(providerSpec *baremetalspecv1.Ba
 
 func isUpOrDowngrade(machine *clusterv1.Machine, node *corev1.Node) bool {
 	return machineVersion(machine) != nodeVersion(node)
+}
+
+func checkForVersionJump(machine *clusterv1.Machine, node *corev1.Node) error {
+	mVersion := machineVersion(machine)
+	nVersion := nodeVersion(node)
+	lt, err := versionLessThan(mVersion, nVersion)
+	if err != nil {
+		return err
+	}
+	if lt {
+		return fmt.Errorf("Downgrade not supported. Machine version: %s is less than node version: %s", mVersion, nVersion)
+	}
+	isVersionJump, err := versionJump(nVersion, mVersion)
+	if err != nil {
+		return err
+	}
+	if isVersionJump {
+		return fmt.Errorf("Upgrades can only be performed between patch versions of a single minor version or between "+
+			"minor versions differing by no more than 1 - machine version: %s, node version: %s", mVersion, nVersion)
+	}
+	return nil
+}
+
+func versionJump(nodeVersion, machineVersion string) (bool, error) {
+	nodemajor, nodeminor, _, err := parseVersion(nodeVersion)
+	if err != nil {
+		return false, err
+	}
+	machinemajor, machineminor, _, err := parseVersion(machineVersion)
+	if err != nil {
+		return false, err
+	}
+	return machinemajor == nodemajor && machineminor-nodeminor > 1, nil
+}
+
+func minorVersion(vstr string) (int, error) {
+	_, minor, _, err := parseVersion(vstr)
+	if err != nil {
+		return -1, err
+	}
+	return minor, nil
+}
+
+func versionLessThan(v1, v2 string) (bool, error) {
+	v1major, v1minor, v1patch, err := parseVersion(v1)
+	if err != nil {
+		return false, err
+	}
+	v2major, v2minor, v2patch, err := parseVersion(v2)
+	if err != nil {
+		return false, err
+	}
+	return (v1major < v2major) ||
+		(v1major == v2major && v1minor < v2minor) ||
+		(v1major == v2major && v1minor == v2minor && v1patch < v2patch), nil
+}
+
+func parseVersion(v string) (int, int, int, error) {
+	chunks := strings.Split(v[1:], ".") // drop "v" at front
+	if len(chunks) != 3 {               // major.minor.patch
+		return -1, -1, -1, fmt.Errorf("Invalid kubernetes version: %s", v)
+	}
+	var results = []int{-1, -1, -1}
+	for idx, item := range chunks {
+		val, err := strconv.Atoi(item)
+		if err != nil {
+			return -1, -1, -1, gerrors.Wrapf(err, "version is invalid")
+		}
+		results[idx] = val
+	}
+	return results[0], results[1], results[2], nil
 }
 
 func (a *MachineActuator) checkIfMasterNotAtVersion(kubernetesVersion string) (bool, error) {
