@@ -423,7 +423,7 @@ func (a *MachineActuator) update(ctx context.Context, cluster *clusterv1.Cluster
 		contextLog.Info("Machine and node have matching plans; nothing to do")
 		return nil
 	}
-	log.Infof("........................NEW UPDATE FOR: %s...........................", machine.Name)
+	contextLog.Infof("........................NEW UPDATE FOR: %s...........................", machine.Name)
 	isMaster := isMaster(node)
 	if isMaster {
 		if err := a.prepareForMasterUpdate(); err != nil {
@@ -433,8 +433,7 @@ func (a *MachineActuator) update(ctx context.Context, cluster *clusterv1.Cluster
 	upOrDowngrade := isUpOrDowngrade(machine, node)
 	contextLog.Infof("Is master: %t, is up or downgrade: %t", isMaster, upOrDowngrade)
 	if upOrDowngrade {
-		err = checkForVersionJump(machine, node)
-		if err != nil {
+		if err := checkForVersionJump(machine, node); err != nil {
 			return err
 		}
 		version := machineutil.GetKubernetesVersion(machine)
@@ -538,12 +537,11 @@ func (a *MachineActuator) kubeadmUpOrDowngrade(machine *clusterv1.Machine, node 
 	if err != nil {
 		return err
 	}
-	err = installer.SetupNode(&p)
-	if err != nil {
-		log.Infof("Failed to upgrade master node %s: %v", node.Name, err)
+	if err := installer.SetupNode(&p); err != nil {
+		log.Infof("Failed to upgrade node %s: %v", node.Name, err)
 		return err
 	}
-	log.Infof("About to uncordon master node %s...", node.Name)
+	log.Infof("About to uncordon node %s...", node.Name)
 	if err := a.uncordon(node); err != nil {
 		log.Info("Failed to uncordon...")
 		return err
@@ -704,14 +702,6 @@ func versionJump(nodeVersion, machineVersion string) (bool, error) {
 	return machinemajor == nodemajor && machineminor-nodeminor > 1, nil
 }
 
-func minorVersion(vstr string) (int, error) {
-	_, minor, _, err := parseVersion(vstr)
-	if err != nil {
-		return -1, err
-	}
-	return minor, nil
-}
-
 func versionLessThan(v1, v2 string) (bool, error) {
 	v1major, v1minor, v1patch, err := parseVersion(v1)
 	if err != nil {
@@ -790,7 +780,6 @@ func (a *MachineActuator) getOriginalMasterNode() (*corev1.Node, error) {
 		if err != nil {
 			return nil, gerrors.Wrapf(err, "failed to retrieve internal node address")
 		}
-		fmt.Printf("INTERNAL: %s, ADDR: %s\n", internalAddress, addr)
 		if internalAddress == addr {
 			return node, nil
 		}
