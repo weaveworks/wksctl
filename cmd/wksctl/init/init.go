@@ -80,6 +80,8 @@ func init() {
 	Cmd.Flags().StringVar(&initOptions.gitPath, "git-path", ".", "Relative path to files in Git")
 	Cmd.Flags().StringVar(
 		&initOptions.namespace, "namespace", manifest.DefaultNamespace, "namespace portion of kubeconfig path")
+	Cmd.Flags().StringVar(
+		&initOptions.version, "controller-version", version.Version, "version of wks-controller to use")
 	Cmd.MarkPersistentFlagRequired("git-url")
 }
 
@@ -171,6 +173,5 @@ func updateManifests(options initOptionType) error {
 }
 
 func initRun(cmd *cobra.Command, args []string) error {
-	initOptions.version = version.Version // from main command
 	return updateManifests(initOptions)
 }
