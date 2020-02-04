@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/pelletier/go-toml"
 	"github.com/spf13/cobra"
 	"github.com/weaveworks/wksctl/pkg/utilities/manifest"
 	"github.com/weaveworks/wksctl/pkg/version"
@@ -18,6 +19,7 @@ import (
 // updated git information for flux manifests.
 
 type initOptionType struct {
+	dependencyPath     string
 	footlooseIP        string
 	footlooseBackend   string
 	gitURL             string
@@ -60,6 +62,8 @@ var (
 	updates = []manifestUpdate{
 		{selector: equal("wks-controller.yaml"), updater: updateControllerManifests},
 		{selector: and(prefix("flux"), extension("yaml")), updater: updateFluxManifests}}
+
+	dependencies *toml.Tree
 )
 
 func multiLineRegexp(pattern string) *regexp.Regexp {
@@ -82,6 +86,8 @@ func init() {
 		&initOptions.namespace, "namespace", manifest.DefaultNamespace, "namespace portion of kubeconfig path")
 	Cmd.Flags().StringVar(
 		&initOptions.version, "controller-version", version.Version, "version of wks-controller to use")
+	Cmd.Flags().StringVar(
+		&initOptions.dependencyPath, "dependency-file", "./deps.toml", "path to file containing version information for all dependencies")
 	Cmd.MarkPersistentFlagRequired("git-url")
 }
 
@@ -119,7 +125,11 @@ func updatedArg(item string) []byte {
 }
 
 func updateControllerManifests(contents []byte, options initOptionType) ([]byte, error) {
-	withVersion := controllerImageSegment.ReplaceAll(contents, []byte(`$1:`+options.version))
+	controllerVersion, ok := dependencies.Get("controller.version").(string)
+	if !ok {
+		controllerVersion = initOptions.version
+	}
+	withVersion := controllerImageSegment.ReplaceAll(contents, []byte(`$1:`+controllerVersion))
 	if controllerFootlooseEnvEntry.Find(withVersion) == nil {
 		return controllerFootlooseAddrLocation.ReplaceAll(withVersion,
 			// We want to add to the matched entry so we start with $0 (the entire match) and use $1 to get the indentation correct.
@@ -173,5 +183,17 @@ func updateManifests(options initOptionType) error {
 }
 
 func initRun(cmd *cobra.Command, args []string) error {
+	if initOptions.version == "" {
+		initOptions.version = version.Version // from main command
+	}
+	bytes, err := ioutil.ReadFile(initOptions.dependencyPath)
+	if err != nil {
+		return err
+	}
+	deps, err := toml.Load(string(bytes))
+	if err != nil {
+		return err
+	}
+	dependencies = deps
 	return updateManifests(initOptions)
 }
