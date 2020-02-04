@@ -248,6 +248,11 @@ func (o OS) CreateSeedNodeSetupPlan(params SeedNodeParams) (*plan.Plan, error) {
 	b.AddResource("install:k8s", k8sRes, plan.DependOn("install:cri"))
 
 	apiServerArgs := getAPIServerArgs(providerSpec, pemSecretResources)
+
+	controlPlaneEndpointIP := params.ExternalLoadBalancer
+	if controlPlaneEndpointIP == "" {
+		controlPlaneEndpointIP = params.PrivateIP
+	}
 	kubeadmInitResource :=
 		&resource.KubeadmInit{
 			PublicIP:       params.PublicIP,
@@ -258,7 +263,7 @@ func (o OS) CreateSeedNodeSetupPlan(params SeedNodeParams) (*plan.Plan, error) {
 			SSHKeyPath:     params.SSHKeyPath,
 			BootstrapToken: params.BootstrapToken,
 			// TODO: dynamically inject the API server's port.
-			ControlPlaneEndpoint:  fmt.Sprintf("%s:6443", params.PrivateIP),
+			ControlPlaneEndpoint:  fmt.Sprintf("%s:6443", controlPlaneEndpointIP),
 			IgnorePreflightErrors: cfg.IgnorePreflightErrors,
 			KubernetesVersion:     kubernetesVersion,
 			CloudProvider:         params.KubeletConfig.CloudProvider,
