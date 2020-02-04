@@ -129,6 +129,9 @@ func (ki *KubeadmInit) Apply(runner plan.Runner, diff plan.Diff) (bool, error) {
 	defer removeFile(remotePath, runner)
 
 	var stdOutErr string
+	p := buildKubeadmInitPlan(remotePath, strings.Join(ki.IgnorePreflightErrors, ","),
+		ki.UseIPTables, ki.ControlPlaneEndpoint, &stdOutErr)
+	_, err = p.Apply(runner, plan.EmptyDiff())
 	if err != nil {
 		return false, errors.Wrap(err, "failed to initialize Kubernetes cluster with kubeadm")
 	}
