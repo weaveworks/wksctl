@@ -436,16 +436,17 @@ func addClusterAPICRDs(b *plan.Builder) ([]string, error) {
 
 func (o OS) createSeedNodePlanConfigMapManifest(params SeedNodeParams, providerSpec *baremetalspecv1.BareMetalClusterProviderSpec, providerConfigMaps map[string]*v1.ConfigMap, authConfigMap *v1.ConfigMap, kubernetesVersion string) ([]byte, error) {
 	nodeParams := NodeParams{
-		IsMaster:           true,
-		MasterIP:           params.PrivateIP,
-		MasterPort:         6443, // See TODO in machine_actuator.go
-		KubeletConfig:      params.KubeletConfig,
-		KubernetesVersion:  kubernetesVersion,
-		CRI:                providerSpec.CRI,
-		ConfigFileSpecs:    providerSpec.OS.Files,
-		ProviderConfigMaps: providerConfigMaps,
-		AuthConfigMap:      authConfigMap,
-		Namespace:          params.Namespace,
+		IsMaster:             true,
+		MasterIP:             params.PrivateIP,
+		MasterPort:           6443, // See TODO in machine_actuator.go
+		KubeletConfig:        params.KubeletConfig,
+		KubernetesVersion:    kubernetesVersion,
+		CRI:                  providerSpec.CRI,
+		ConfigFileSpecs:      providerSpec.OS.Files,
+		ProviderConfigMaps:   providerConfigMaps,
+		AuthConfigMap:        authConfigMap,
+		Namespace:            params.Namespace,
+		ExternalLoadBalancer: providerSpec.APIServer.ExternalLoadBalancer,
 	}
 	var paramBuffer bytes.Buffer
 	err := gob.NewEncoder(&paramBuffer).Encode(nodeParams)
@@ -977,6 +978,7 @@ type NodeParams struct {
 	ProviderConfigMaps       map[string]*v1.ConfigMap
 	AuthConfigMap            *v1.ConfigMap
 	Namespace                string
+	ExternalLoadBalancer     string // used instead of MasterIP if existed
 }
 
 // Validate generally validates this NodeParams struct, e.g. ensures it
@@ -1051,6 +1053,7 @@ func (o OS) CreateNodeSetupPlan(params NodeParams) (*plan.Plan, error) {
 		DiscoveryTokenCaCertHash: params.DiscoveryTokenCaCertHash,
 		CertificateKey:           params.CertificateKey,
 		IgnorePreflightErrors:    cfg.IgnorePreflightErrors,
+		ExternalLoadBalancer:     params.ExternalLoadBalancer,
 	}
 	b.AddResource("kubeadm:join", kadmJoinRsrc, plan.DependOn("kubeadm:prejoin"))
 	return createPlan(b)
