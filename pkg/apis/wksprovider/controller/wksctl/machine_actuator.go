@@ -598,10 +598,18 @@ func (a *MachineActuator) getNodePlan(providerSpec *baremetalspecv1.BareMetalClu
 	if err != nil {
 		return nil, err
 	}
-	masterIP, err := getInternalAddress(master)
-	if err != nil {
-		return nil, err
+
+	// first, trying to obtain the master's IP from the load-balancer
+	masterIP := providerSpec.APIServer.ExternalLoadBalancer
+	// if the load-balancer is not defined, then trying to get the IP from the first controller node
+	if masterIP == "" {
+		var err error
+		masterIP, err = getInternalAddress(master)
+		if err != nil {
+			return nil, err
+		}
 	}
+
 	configMaps, err := a.getProviderConfigMaps(providerSpec)
 	if err != nil {
 		return nil, err
