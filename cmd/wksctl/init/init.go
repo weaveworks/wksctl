@@ -87,7 +87,7 @@ func init() {
 	Cmd.Flags().StringVar(
 		&initOptions.version, "controller-version", version.Version, "version of wks-controller to use")
 	Cmd.Flags().StringVar(
-		&initOptions.dependencyPath, "dependency-file", "./deps.toml", "path to file containing version information for all dependencies")
+		&initOptions.dependencyPath, "dependency-file", "./dependencies.toml", "path to file containing version information for all dependencies")
 	Cmd.MarkPersistentFlagRequired("git-url")
 }
 
