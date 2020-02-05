@@ -718,12 +718,11 @@ func versionLessThan(v1, v2 string) (bool, error) {
 }
 
 func parseVersion(v string) (int, int, int, error) {
+	// workaround: occasionally, patch versions are forced into beta versions
+	v = strings.Replace(v, "-beta", "", -1)
 	chunks := strings.Split(v[1:], ".") // drop "v" at front
 	if len(chunks) != 3 {               // major.minor.patch
-		// workaround: occasionally, patch versions are forced into beta versions
-		if !strings.Contains(chunks[2], "beta") {
-			return -1, -1, -1, fmt.Errorf("Invalid kubernetes version: %s", v)
-		}
+		return -1, -1, -1, fmt.Errorf("Invalid kubernetes version: %s", v)
 	}
 	var results = []int{-1, -1, -1}
 	for idx, item := range chunks {
