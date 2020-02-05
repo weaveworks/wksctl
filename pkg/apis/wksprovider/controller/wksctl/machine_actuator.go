@@ -785,7 +785,12 @@ func (a *MachineActuator) getOriginalMasterNode() (*corev1.Node, error) {
 			return node, nil
 		}
 	}
-	return nil, errors.New("No original master node found")
+	// Hack for H/A testing
+	if len(nodes) == 0 {
+		return nil, errors.New("No master found")
+	}
+	return nodes[0], nil
+	//return nil, errors.New("No original master node found")
 }
 
 func (a *MachineActuator) isOriginalMaster(node *corev1.Node) (bool, error) {
