@@ -63,7 +63,7 @@ var (
 		{selector: equal("wks-controller.yaml"), updater: updateControllerManifests},
 		{selector: and(prefix("flux"), extension("yaml")), updater: updateFluxManifests}}
 
-	dependencies *toml.Tree
+	dependencies = &toml.Tree{}
 )
 
 func multiLineRegexp(pattern string) *regexp.Regexp {
@@ -127,7 +127,7 @@ func updatedArg(item string) []byte {
 func updateControllerManifests(contents []byte, options initOptionType) ([]byte, error) {
 	controllerVersion, ok := dependencies.Get("controller.version").(string)
 	if !ok {
-		controllerVersion = initOptions.version
+		controllerVersion = options.version
 	}
 	withVersion := controllerImageSegment.ReplaceAll(contents, []byte(`$1:`+controllerVersion))
 	if controllerFootlooseEnvEntry.Find(withVersion) == nil {

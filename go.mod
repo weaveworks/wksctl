@@ -21,6 +21,7 @@ require (
 	github.com/hashicorp/golang-lru v0.5.3 // indirect
 	github.com/imdario/mergo v0.3.7 // indirect
 	github.com/oleiade/reflections v1.0.0 // indirect
+	github.com/pelletier/go-toml v1.2.0
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
 	github.com/pkg/errors v0.8.1
 	github.com/shurcooL/httpfs v0.0.0-20190707220628-8d4bc4ba7749 // indirect
