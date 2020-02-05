@@ -190,10 +190,9 @@ func initRun(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	deps, err := toml.Load(string(bytes))
+	dependencies, err = toml.Load(string(bytes))
 	if err != nil {
 		return err
 	}
-	dependencies = deps
 	return updateManifests(initOptions)
 }
