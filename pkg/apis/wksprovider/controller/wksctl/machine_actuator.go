@@ -508,7 +508,7 @@ func (a *MachineActuator) kubeadmUpOrDowngrade(machine *clusterv1.Machine, node 
 	case secondaryMaster:
 		b.AddResource(
 			"upgrade:node-kubeadm-upgrade",
-			&resource.Run{Script: object.String("kubeadm upgrade node experimental-control-plane")},
+			&resource.Run{Script: object.String("kubeadm upgrade node")},
 			plan.DependOn("upgrade:node-install-kubeadm"))
 	case worker:
 		b.AddResource(
