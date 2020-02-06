@@ -499,6 +499,17 @@ func (a *MachineActuator) kubeadmUpOrDowngrade(machine *clusterv1.Machine, node 
 		"upgrade:node-install-kubeadm",
 		&resource.RPM{Name: "kubeadm", Version: version, DisableExcludes: "kubernetes"},
 		plan.DependOn("upgrade:node-unlock-kubernetes"))
+
+	//
+	// For secondary masters
+	// version >= v1.15.0 uses: kubeadm upgrade node control-plane
+	// version >= v1.14.0 && < 1.15.0 uses: kubeadm upgrade node experimental-control-plane
+	//
+	upgradeControlPlanFlag := "control-plane"
+	if ok, err := versionLessThan(version, "v1.15.0"); err != nil && ok {
+		upgradeControlPlanFlag = "experimental-control-plane"
+	}
+
 	switch ntype {
 	case originalMaster:
 		b.AddResource(
@@ -508,7 +519,7 @@ func (a *MachineActuator) kubeadmUpOrDowngrade(machine *clusterv1.Machine, node 
 	case secondaryMaster:
 		b.AddResource(
 			"upgrade:node-kubeadm-upgrade",
-			&resource.Run{Script: object.String("kubeadm upgrade node")},
+			&resource.Run{Script: object.String(fmt.Sprintf("kubeadm upgrade node %s", upgradeControlPlanFlag))},
 			plan.DependOn("upgrade:node-install-kubeadm"))
 	case worker:
 		b.AddResource(
