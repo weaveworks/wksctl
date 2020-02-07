@@ -34,7 +34,7 @@ type KubeadmJoin struct {
 	// IgnorePreflightErrors is optionally used to skip kubeadm's preflight checks.
 	IgnorePreflightErrors []string `structs:"ignorePreflightErrors"`
 	// External Load Balancer IP address to be used instead of masterIP
-	ExternalLoadBalancer string `structs:"externalLoadBalancer" plan:"hide"`
+	ExternalLoadBalancer string `structs:"externalLoadBalancer"`
 }
 
 var _ plan.Resource = plan.RegisterResource(&KubeadmJoin{})

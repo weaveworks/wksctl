@@ -49,12 +49,13 @@ import (
 )
 
 const (
-	planKey          string = "wkp.weave.works/node-plan"
-	masterLabel      string = "node-role.kubernetes.io/master"
-	controllerName   string = "wks-controller"
-	controllerSecret string = "wks-controller-secrets"
-	bootstrapTokenID string = "bootstrapTokenID"
-	clusterName      string = "firekube"
+	planKey             string = "wkp.weave.works/node-plan"
+	masterLabel         string = "node-role.kubernetes.io/master"
+	originalMasterLabel string = "wkp.weave.works/original-master"
+	controllerName      string = "wks-controller"
+	controllerSecret    string = "wks-controller-secrets"
+	bootstrapTokenID    string = "bootstrapTokenID"
+	clusterName         string = "firekube"
 )
 
 type nodeType int
@@ -164,11 +165,19 @@ func (a *MachineActuator) create(ctx context.Context, cluster *clusterv1.Cluster
 // don't miss any updates. The plan is derived from the original seed node plan and stored in a config map
 // for use by the actuator.
 func (a *MachineActuator) initializeMasterPlanIfNecessary(installer *os.OS) error {
-	master, err := a.getMasterNode() // Only one can exist at this point
+
+	// we also use this method to mark the first master as the "originalMaster"
+	originalMasterNode, err := a.getOriginalMasterNode()
 	if err != nil {
 		return err
 	}
-	if master.Annotations[planKey] == "" {
+	if _, exist := originalMasterNode.Labels[originalMasterLabel]; !exist {
+		if err := a.setNodeLabel(originalMasterNode, originalMasterLabel, ""); err != nil {
+			return err
+		}
+	}
+
+	if originalMasterNode.Annotations[planKey] == "" {
 		client := a.clientSet.CoreV1().ConfigMaps(a.controllerNamespace)
 		configMap, err := client.Get(os.SeedNodePlanName, metav1.GetOptions{})
 		if err != nil {
@@ -184,7 +193,7 @@ func (a *MachineActuator) initializeMasterPlanIfNecessary(installer *os.OS) erro
 		if err != nil {
 			return err
 		}
-		if err = a.setNodeAnnotation(master, planKey, seedNodeStandardNodePlan.ToJSON()); err != nil {
+		if err = a.setNodeAnnotation(originalMasterNode, planKey, seedNodeStandardNodePlan.ToJSON()); err != nil {
 			return err
 		}
 	}
@@ -502,12 +511,12 @@ func (a *MachineActuator) kubeadmUpOrDowngrade(machine *clusterv1.Machine, node 
 
 	//
 	// For secondary masters
-	// version >= v1.15.0 uses: kubeadm upgrade node control-plane
-	// version >= v1.14.0 && < 1.15.0 uses: kubeadm upgrade node experimental-control-plane
+	// version >= 1.16.0 uses: kubeadm upgrade node
+	// version >= 1.14.0 && < 1.16.0 uses: kubeadm upgrade node experimental-control-plane
 	//
-	upgradeControlPlanFlag := "control-plane"
-	if ok, err := versionLessThan(version, "v1.15.0"); err != nil && ok {
-		upgradeControlPlanFlag = "experimental-control-plane"
+	secondaryMasterUpgradeControlPlaneFlag := ""
+	if lt, err := versionLessThan(version, "v1.16.0"); err == nil && lt {
+		secondaryMasterUpgradeControlPlaneFlag = "experimental-control-plane"
 	}
 
 	switch ntype {
@@ -519,7 +528,7 @@ func (a *MachineActuator) kubeadmUpOrDowngrade(machine *clusterv1.Machine, node 
 	case secondaryMaster:
 		b.AddResource(
 			"upgrade:node-kubeadm-upgrade",
-			&resource.Run{Script: object.String(fmt.Sprintf("kubeadm upgrade node %s", upgradeControlPlanFlag))},
+			&resource.Run{Script: object.String(fmt.Sprintf("kubeadm upgrade node %s", secondaryMasterUpgradeControlPlaneFlag))},
 			plan.DependOn("upgrade:node-install-kubeadm"))
 	case worker:
 		b.AddResource(
@@ -729,8 +738,11 @@ func versionLessThan(v1, v2 string) (bool, error) {
 }
 
 func parseVersion(v string) (int, int, int, error) {
-	chunks := strings.Split(v[1:], ".") // drop "v" at front
-	if len(chunks) != 3 {               // major.minor.patch
+	if strings.HasPrefix(v, "v") {
+		v = v[1:]
+	}
+	chunks := strings.Split(v, ".")
+	if len(chunks) != 3 { // major.minor.patch
 		return -1, -1, -1, fmt.Errorf("Invalid kubernetes version: %s", v)
 	}
 	var results = []int{-1, -1, -1}
@@ -770,29 +782,13 @@ func (a *MachineActuator) checkIfOriginalMasterNotAtVersion(kubernetesVersion st
 }
 
 func (a *MachineActuator) getOriginalMasterNode() (*corev1.Node, error) {
-	client := a.clientSet.CoreV1().ConfigMaps("kube-system")
-	mapName := "kubeadm-config"
-	configMap, err := client.Get(mapName, metav1.GetOptions{})
-	if err != nil {
-		return nil, errors.New(fmt.Sprintf("failed to retrieve kubeadm-config config map: %v", err))
-	}
-	config := configMap.Data["ClusterConfiguration"]
-	var addr string
-	if results := hostAddrRegexp.FindStringSubmatch(config); results != nil {
-		addr = results[1]
-	} else {
-		return nil, errors.New("Could not obtain endpoint address")
-	}
 	nodes, err := a.getMasterNodes()
 	if err != nil {
 		return nil, err
 	}
 	for _, node := range nodes {
-		internalAddress, err := getInternalAddress(node)
-		if err != nil {
-			return nil, gerrors.Wrapf(err, "failed to retrieve internal node address")
-		}
-		if internalAddress == addr {
+		_, isOriginalMaster := node.Labels[originalMasterLabel]
+		if isOriginalMaster {
 			return node, nil
 		}
 	}
@@ -801,7 +797,6 @@ func (a *MachineActuator) getOriginalMasterNode() (*corev1.Node, error) {
 		return nil, errors.New("No master found")
 	}
 	return nodes[0], nil
-	//return nil, errors.New("No original master node found")
 }
 
 func (a *MachineActuator) isOriginalMaster(node *corev1.Node) (bool, error) {
@@ -1147,7 +1142,7 @@ func invokeFootlooseCreate(machine *clusterv1.Machine) (string, error) {
 }
 
 func isMaster(node *corev1.Node) bool {
-	_, isMaster := node.Labels["node-role.kubernetes.io/master"]
+	_, isMaster := node.Labels[masterLabel]
 	return isMaster
 }
 

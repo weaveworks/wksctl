@@ -130,7 +130,7 @@ func (ki *KubeadmInit) Apply(runner plan.Runner, diff plan.Diff) (bool, error) {
 
 	var stdOutErr string
 	p := buildKubeadmInitPlan(remotePath, strings.Join(ki.IgnorePreflightErrors, ","),
-		ki.UseIPTables, ki.ControlPlaneEndpoint, &stdOutErr)
+		ki.UseIPTables, &stdOutErr)
 	_, err = p.Apply(runner, plan.EmptyDiff())
 	if err != nil {
 		return false, errors.Wrap(err, "failed to initialize Kubernetes cluster with kubeadm")
@@ -233,10 +233,10 @@ func (ki *KubeadmInit) Undo(runner plan.Runner, current plan.State) error {
 	return buildKubeadmInitPlan(
 		remotePath,
 		strings.Join(ki.IgnorePreflightErrors, ","),
-		ki.UseIPTables, ki.ControlPlaneEndpoint, &ignored).Undo(runner, plan.EmptyState)
+		ki.UseIPTables, &ignored).Undo(runner, plan.EmptyState)
 }
 
-func buildKubeadmInitPlan(path string, ignorePreflightErrors string, useIPTables bool, controlPlaneEndpoint string, output *string) plan.Resource {
+func buildKubeadmInitPlan(path string, ignorePreflightErrors string, useIPTables bool, output *string) plan.Resource {
 	b := plan.NewBuilder()
 	if useIPTables {
 		b.AddResource(
