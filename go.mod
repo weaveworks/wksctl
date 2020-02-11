@@ -31,7 +31,7 @@ require (
 	github.com/spf13/pflag v1.0.3
 	github.com/stretchr/testify v1.4.0
 	github.com/thanhpk/randstr v0.0.0-20190104161604-ac5b2d62bffb
-	github.com/weaveworks/footloose v0.0.0-20190829132911-efbcbb7a6390
+	github.com/weaveworks/footloose v0.0.0-20190903132036-efbcbb7a6390
 	github.com/weaveworks/go-checkpoint v0.0.0-20170503165305-ebbb8b0518ab
 	github.com/weaveworks/launcher v0.0.0-20180824102238-59a4fcc32c9c
 	github.com/whilp/git-urls v0.0.0-20160530060445-31bac0d230fa
