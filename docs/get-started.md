@@ -33,7 +33,7 @@ The git command line arguments will be passed instead of `--cluster` and `--mach
 wksctl apply \
   --git-url git@github.com:$YOUR_GITHUB_ORG/config-repo.git \
   --git-branch dev \
-  --git-deloy-key-path ./deploy-key
+  --git-deploy-key ./deploy-key
 ```
 
 Using the url, branch, and deploy key, we will clone the repo - if we can't clone the repo we will error out.
