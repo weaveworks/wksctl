@@ -38,10 +38,10 @@ require (
 	gomodules.xyz/jsonpatch/v2 v2.0.1 // indirect
 	gopkg.in/oleiade/reflections.v1 v1.0.0
 	gopkg.in/src-d/go-git.v4 v4.10.0
-	k8s.io/api v0.17.3
+	k8s.io/api v0.15.10
 	k8s.io/apiextensions-apiserver v0.0.0-20190831115834-b8e250c992fa // indirect
 	k8s.io/apimachinery v0.0.0-20191111054156-6eb29fdf75dc
-	k8s.io/client-go v0.17.3
+	k8s.io/client-go v0.15.10
 	k8s.io/cluster-bootstrap v0.0.0-20190205054431-5627c5c14d7e
 	k8s.io/kube-proxy v0.0.0-20190208174132-30e63035f31f
 	k8s.io/kubernetes v1.14.10
