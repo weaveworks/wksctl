@@ -43,7 +43,7 @@ require (
 	k8s.io/apimachinery v0.17.3
 	k8s.io/client-go v0.17.3
 	k8s.io/cluster-bootstrap v0.0.0-20190205054431-5627c5c14d7e
-	k8s.io/kube-proxy v0.17.3
+	k8s.io/kube-proxy v0.0.0-20190208174132-30e63035f31f
 	k8s.io/kubernetes v1.14.10
 	k8s.io/utils v0.0.0-20191114184206-e782cd3c129f
 	sigs.k8s.io/cluster-api v0.0.0-20181211193542-3547f8dd9307
