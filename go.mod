@@ -37,17 +37,16 @@ require (
 	github.com/whilp/git-urls v0.0.0-20160530060445-31bac0d230fa
 	golang.org/x/crypto v0.0.0-20190617133340-57b3e21c3d56
 	gomodules.xyz/jsonpatch/v2 v2.0.1 // indirect
-	google.golang.org/appengine v1.4.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/oleiade/reflections.v1 v1.0.0
 	gopkg.in/src-d/go-git.v4 v4.10.0
-	k8s.io/api v0.0.0-20190831074750-7364b6bdad65
+	k8s.io/api v0.0.0-20190704094930-781da4e7b28a
 	k8s.io/apiextensions-apiserver v0.0.0-20190831115834-b8e250c992fa // indirect
-	k8s.io/apimachinery v0.0.0-20190831074630-461753078381
-	k8s.io/client-go v11.0.1-0.20190409021438-1a26190bd76a+incompatible
+	k8s.io/apimachinery v0.0.0-20190704094625-facf06a8f4b8
+	k8s.io/client-go v0.0.0-20190202011228-6e4752048fde
 	k8s.io/cluster-bootstrap v0.0.0-20190205054431-5627c5c14d7e
 	k8s.io/kube-proxy v0.0.0-20190208174132-30e63035f31f
-	k8s.io/kubernetes v0.0.0-20190201210629-c6d339953bd4
+	k8s.io/kubernetes v1.13.9-beta.0.0.20190726214758-e065364bfbf4
 	k8s.io/utils v0.0.0-20190801114015-581e00157fb1
 	sigs.k8s.io/cluster-api v0.0.0-20181211193542-3547f8dd9307
 	sigs.k8s.io/controller-runtime v0.1.12
