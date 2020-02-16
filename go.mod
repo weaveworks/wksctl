@@ -40,7 +40,7 @@ require (
 	gopkg.in/src-d/go-git.v4 v4.10.0
 	k8s.io/api v0.15.10
 	k8s.io/apiextensions-apiserver v0.0.0-20190831115834-b8e250c992fa // indirect
-	k8s.io/apimachinery v0.15.10
+	k8s.io/apimachinery v0.0.0-20190704094625-facf06a8f4b8
 	k8s.io/client-go v0.15.10
 	k8s.io/cluster-bootstrap v0.0.0-20190205054431-5627c5c14d7e
 	k8s.io/kube-proxy v0.0.0-20190208174132-30e63035f31f
@@ -56,6 +56,7 @@ replace (
 	github.com/appscode/jsonpatch => gomodules.xyz/jsonpatch/v2 v2.0.0+incompatible
 	github.com/dlespiau/kube-test-harness => github.com/dlespiau/kube-test-harness v0.0.0-20180712150055-7eab798dff48
 	github.com/json-iterator/go => github.com/json-iterator/go v0.0.0-20180612202835-f2b4162afba3
+	k8s.io/apimachinery => k8s.io/apimachinery v0.0.0-20190704094625-facf06a8f4b8
 	sigs.k8s.io/cluster-api => sigs.k8s.io/cluster-api v0.0.0-20181211193542-3547f8dd9307
 	sigs.k8s.io/kind => sigs.k8s.io/kind v0.0.0-20190204012257-d1773a79317d
 )
