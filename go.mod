@@ -60,7 +60,7 @@ replace (
 	github.com/json-iterator/go => github.com/json-iterator/go v0.0.0-20180612202835-f2b4162afba3
 	k8s.io/api => k8s.io/api v0.0.0-20190704094930-781da4e7b28a
 	k8s.io/apimachinery => k8s.io/apimachinery v0.0.0-20190704094625-facf06a8f4b8
-	k8s.io/client-go => k8s.io/client-go v0.0.0-20190202011228-6e4752048fde
+	k8s.io/client-go => k8s.io/client-go v0.0.0-20190831074946-3fe2abece89e
 	k8s.io/kubernetes => k8s.io/kubernetes v1.13.9-beta.0.0.20190726214758-e065364bfbf4
 	sigs.k8s.io/kind => sigs.k8s.io/kind v0.0.0-20190204012257-d1773a79317d
 )
