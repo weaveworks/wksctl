@@ -19,6 +19,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/chanwit/plandiff"
 	gerrors "github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/weaveworks/footloose/pkg/cluster"
@@ -410,6 +411,7 @@ func (a *MachineActuator) update(ctx context.Context, cluster *clusterv1.Cluster
 		return gerrors.Wrapf(err, "failed to establish connection to machine %s", machine.Name)
 	}
 	defer closer.Close()
+
 	// Bootstrap - set plan on seed node if not present before any updates can occur
 	if err := a.initializeMasterPlanIfNecessary(installer); err != nil {
 		return err
@@ -428,10 +430,19 @@ func (a *MachineActuator) update(ctx context.Context, cluster *clusterv1.Cluster
 		return gerrors.Wrapf(err, "Failed to get node plan for machine %s", machine.Name)
 	}
 	planJSON := nodePlan.ToJSON()
-	if node.Annotations[planKey] == planJSON {
+	currentPlan := node.Annotations[planKey]
+	if currentPlan == planJSON {
 		contextLog.Info("Machine and node have matching plans; nothing to do")
 		return nil
 	}
+
+	if diffedPlan, err := plandiff.GetUnifiedDiff(currentPlan, planJSON); err == nil {
+		contextLog.Info("........................ DIFF PLAN ........................")
+		contextLog.Info(diffedPlan)
+	} else {
+		contextLog.Infof("DIFF PLAN Error: %v", err)
+	}
+
 	contextLog.Infof("........................NEW UPDATE FOR: %s...........................", machine.Name)
 	isMaster := isMaster(node)
 	if isMaster {
@@ -488,9 +499,14 @@ func (a *MachineActuator) update(ctx context.Context, cluster *clusterv1.Cluster
 		}
 		return a.kubeadmUpOrDowngrade(machine, node, installer, version, planKey, planJSON, worker)
 	}
-	if err = a.performActualUpdate(installer, machine, node, nodePlan, c); err != nil {
-		return err
-	}
+	//
+	// OK not upgrade or downgrade? so why this?
+	// This is non-logical update becuse it's already done by kubeadm?
+	//
+	// if err = a.performActualUpdate(installer, machine, node, nodePlan, c); err != nil {
+	//	return err
+	// }
+	//
 	if err = a.setNodeAnnotation(node, planKey, planJSON); err != nil {
 		return err
 	}
