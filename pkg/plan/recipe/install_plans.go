@@ -86,10 +86,13 @@ func BuildCRIPlan(criSpec *baremetalspecv1.ContainerRuntime, cfg *envcfg.EnvSpec
 		log.Fatalf("Unknown CRI - %s", criSpec.Kind)
 	}
 
+	IsDockerOnCentOS := false
 	// Docker runtime
 	switch pkgType {
 	case resource.PkgTypeRPM, resource.PkgTypeRHEL:
 		b.AddResource("install:docker", &resource.RPM{Name: criSpec.Package, Version: criSpec.Version})
+		// SELinux will be here along with docker and containerd-selinux packages
+		IsDockerOnCentOS = true
 	case resource.PkgTypeDeb:
 		// TODO(michal): Use the official docker.com repo
 		b.AddResource("install:docker", &resource.Deb{Name: "docker.io"})
@@ -105,6 +108,17 @@ func BuildCRIPlan(criSpec *baremetalspecv1.ContainerRuntime, cfg *envcfg.EnvSpec
 			plan.DependOn("install:docker"))
 	}
 
+	if IsDockerOnCentOS {
+		b.AddResource(
+			"selinux:permissive",
+			&resource.Run{
+				Script: object.String("setenforce 0 && sed -i 's/^SELINUX=enforcing$/SELINUX=permissive/' /etc/selinux/config"),
+				// sometime, SELinux not installed yet
+				UndoScript: object.String("setenforce 1 && sed -i 's/^SELINUX=permissive$/SELINUX=enforcing/' /etc/selinux/config || true"),
+			},
+			plan.DependOn("install:docker"))
+	}
+
 	b.AddResource(
 		"systemd:daemon-reload",
 		&resource.Run{Script: object.String("systemctl daemon-reload")},
@@ -114,6 +128,7 @@ func BuildCRIPlan(criSpec *baremetalspecv1.ContainerRuntime, cfg *envcfg.EnvSpec
 		"service-init:docker-service",
 		&resource.Service{Name: "docker", Status: "active", Enabled: true},
 		plan.DependOn("systemd:daemon-reload"))
+
 	p, err := b.Plan()
 
 	p.SetUndoCondition(func(r plan.Runner, _ plan.State) bool {

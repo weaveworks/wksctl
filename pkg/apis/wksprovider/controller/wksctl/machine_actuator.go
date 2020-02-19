@@ -433,7 +433,7 @@ func (a *MachineActuator) update(ctx context.Context, cluster *clusterv1.Cluster
 
 	if diffedPlan, err := plandiff.GetUnifiedDiff(currentPlan, planJSON); err == nil {
 		contextLog.Info("........................ DIFF PLAN ........................")
-		contextLog.Info(diffedPlan)
+		fmt.Print(diffedPlan)
 	} else {
 		contextLog.Errorf("DIFF PLAN Error: %v", err)
 	}

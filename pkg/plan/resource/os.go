@@ -186,6 +186,17 @@ func (p *OS) HasSELinuxEnabled() (bool, error) {
 	}
 }
 
+func (p *OS) IsSELinuxPermissive() (bool, error) {
+	if _, err := p.runner.RunCommand("sestatus | grep 'Current mode' | grep permissive", nil); err == nil {
+		return true, nil
+	} else if err, ok := err.(*plan.RunError); ok && err.ExitCode == 1 {
+		// not conform with selinux permissive, may be not permissive, maybe command not found
+		return false, nil
+	} else {
+		return false, err
+	}
+}
+
 func (p *OS) IsOSInContainerVM() (bool, error) {
 	output, err := p.runner.RunCommand("cat /proc/1/environ", nil)
 	return strings.Contains(output, "container=docker"), err
