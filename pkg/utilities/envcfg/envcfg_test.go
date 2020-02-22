@@ -12,12 +12,13 @@ import (
 )
 
 const (
-	cmdOsRel          = "cat /etc/os-release"
-	cmdEnv            = "cat /proc/1/environ"
-	cmdSELinuxFound   = `command -v -- "selinuxenabled" >/dev/null 2>&1`
-	cmdSELinuxEnabled = `selinuxenabled`
-	cmdMachineID      = "cat /etc/machine-id 2>/dev/null || cat /var/lib/dbus/machine-id 2>/dev/null"
-	cmdUUID           = "cat /sys/class/dmi/id/product_uuid 2>/dev/null || cat /etc/machine-id 2>/dev/null"
+	cmdOsRel             = "cat /etc/os-release"
+	cmdEnv               = "cat /proc/1/environ"
+	cmdSELinuxFound      = `command -v -- "selinuxenabled" >/dev/null 2>&1`
+	cmdSELinuxEnabled    = `selinuxenabled`
+	cmdMachineID         = "cat /etc/machine-id 2>/dev/null || cat /var/lib/dbus/machine-id 2>/dev/null"
+	cmdUUID              = "cat /sys/class/dmi/id/product_uuid 2>/dev/null || cat /etc/machine-id 2>/dev/null"
+	cmdSELinuxPermissive = "sestatus | grep 'Current mode' | grep permissive"
 
 	relUbuntu    = "ID=ubuntu\nVERSION_ID=\"18.04\""
 	relCentos    = "ID=centos\nVERSION_ID=7\n"
@@ -64,12 +65,13 @@ func TestGetEnvSpecificConfig(t *testing.T) {
 			pkgType: resource.PkgTypeDeb,
 			runner: &fakeRunner{
 				value: map[string]runnerResult{
-					cmdOsRel:          {out: relUbuntu},
-					cmdEnv:            {out: envContainer},
-					cmdSELinuxFound:   {},
-					cmdSELinuxEnabled: {},
-					cmdMachineID:      {out: "01234567"},
-					cmdUUID:           {out: "01234567"},
+					cmdOsRel:             {out: relUbuntu},
+					cmdEnv:               {out: envContainer},
+					cmdSELinuxFound:      {},
+					cmdSELinuxEnabled:    {},
+					cmdMachineID:         {out: "01234567"},
+					cmdUUID:              {out: "01234567"},
+					cmdSELinuxPermissive: {},
 				},
 			},
 
@@ -85,11 +87,12 @@ func TestGetEnvSpecificConfig(t *testing.T) {
 			pkgType: resource.PkgTypeDeb,
 			runner: &fakeRunner{
 				value: map[string]runnerResult{
-					cmdOsRel:        {out: relUbuntu},
-					cmdEnv:          {out: envContainer},
-					cmdSELinuxFound: {err: &plan.RunError{ExitCode: 1}},
-					cmdMachineID:    {out: "01234567"},
-					cmdUUID:         {out: "01234567"},
+					cmdOsRel:             {out: relUbuntu},
+					cmdEnv:               {out: envContainer},
+					cmdSELinuxFound:      {err: &plan.RunError{ExitCode: 1}},
+					cmdMachineID:         {out: "01234567"},
+					cmdUUID:              {out: "01234567"},
+					cmdSELinuxPermissive: {},
 				},
 			},
 
@@ -105,12 +108,13 @@ func TestGetEnvSpecificConfig(t *testing.T) {
 			pkgType: resource.PkgTypeRPM,
 			runner: &fakeRunner{
 				value: map[string]runnerResult{
-					cmdOsRel:          {out: relCentos},
-					cmdEnv:            {out: envContainer},
-					cmdSELinuxFound:   {},
-					cmdSELinuxEnabled: {},
-					cmdMachineID:      {out: "01234567"},
-					cmdUUID:           {out: "01234567"},
+					cmdOsRel:             {out: relCentos},
+					cmdEnv:               {out: envContainer},
+					cmdSELinuxFound:      {},
+					cmdSELinuxEnabled:    {},
+					cmdMachineID:         {out: "01234567"},
+					cmdUUID:              {out: "01234567"},
+					cmdSELinuxPermissive: {}, //, err: &plan.RunError{ExitCode: 1}},
 				},
 			},
 
@@ -126,12 +130,13 @@ func TestGetEnvSpecificConfig(t *testing.T) {
 			pkgType: resource.PkgTypeRPM,
 			runner: &fakeRunner{
 				value: map[string]runnerResult{
-					cmdOsRel:          {out: relCentos},
-					cmdEnv:            {},
-					cmdSELinuxFound:   {},
-					cmdSELinuxEnabled: {},
-					cmdMachineID:      {out: "01234567"},
-					cmdUUID:           {out: "01234567"},
+					cmdOsRel:             {out: relCentos},
+					cmdEnv:               {},
+					cmdSELinuxFound:      {},
+					cmdSELinuxEnabled:    {},
+					cmdMachineID:         {out: "01234567"},
+					cmdUUID:              {out: "01234567"},
+					cmdSELinuxPermissive: {err: &plan.RunError{ExitCode: 1}},
 				},
 			},
 
@@ -146,11 +151,12 @@ func TestGetEnvSpecificConfig(t *testing.T) {
 			pkgType: resource.PkgTypeRPM,
 			runner: &fakeRunner{
 				value: map[string]runnerResult{
-					cmdOsRel:        {out: relCentos},
-					cmdEnv:          {},
-					cmdSELinuxFound: {err: &plan.RunError{ExitCode: 1}},
-					cmdMachineID:    {out: "01234567"},
-					cmdUUID:         {out: "01234567"},
+					cmdOsRel:             {out: relCentos},
+					cmdEnv:               {},
+					cmdSELinuxFound:      {err: &plan.RunError{ExitCode: 1}},
+					cmdMachineID:         {out: "01234567"},
+					cmdUUID:              {out: "01234567"},
+					cmdSELinuxPermissive: {},
 				},
 			},
 
@@ -165,11 +171,12 @@ func TestGetEnvSpecificConfig(t *testing.T) {
 			pkgType: resource.PkgTypeDeb,
 			runner: &fakeRunner{
 				value: map[string]runnerResult{
-					cmdOsRel:        {out: relUbuntu},
-					cmdEnv:          {},
-					cmdSELinuxFound: {err: &plan.RunError{ExitCode: 1}},
-					cmdMachineID:    {out: "01234567"},
-					cmdUUID:         {out: "01234567"},
+					cmdOsRel:             {out: relUbuntu},
+					cmdEnv:               {},
+					cmdSELinuxFound:      {err: &plan.RunError{ExitCode: 1}},
+					cmdMachineID:         {out: "01234567"},
+					cmdUUID:              {out: "01234567"},
+					cmdSELinuxPermissive: {},
 				},
 			},
 
@@ -184,11 +191,12 @@ func TestGetEnvSpecificConfig(t *testing.T) {
 			pkgType: resource.PkgTypeDeb,
 			runner: &fakeRunner{
 				value: map[string]runnerResult{
-					cmdOsRel:        {out: relUbuntu},
-					cmdEnv:          {},
-					cmdSELinuxFound: {err: &plan.RunError{ExitCode: 127}},
-					cmdMachineID:    {out: "01234567"},
-					cmdUUID:         {out: "01234567"},
+					cmdOsRel:             {out: relUbuntu},
+					cmdEnv:               {},
+					cmdSELinuxFound:      {err: &plan.RunError{ExitCode: 127}},
+					cmdMachineID:         {out: "01234567"},
+					cmdUUID:              {out: "01234567"},
+					cmdSELinuxPermissive: {},
 				},
 			},
 
@@ -203,12 +211,13 @@ func TestGetEnvSpecificConfig(t *testing.T) {
 			pkgType: resource.PkgTypeDeb,
 			runner: &fakeRunner{
 				value: map[string]runnerResult{
-					cmdOsRel:          {out: relUbuntu},
-					cmdEnv:            {},
-					cmdSELinuxFound:   {},
-					cmdSELinuxEnabled: {},
-					cmdMachineID:      {out: "01234567"},
-					cmdUUID:           {out: "01234567"},
+					cmdOsRel:             {out: relUbuntu},
+					cmdEnv:               {},
+					cmdSELinuxFound:      {},
+					cmdSELinuxEnabled:    {},
+					cmdMachineID:         {out: "01234567"},
+					cmdUUID:              {out: "01234567"},
+					cmdSELinuxPermissive: {err: &plan.RunError{ExitCode: 1}},
 				},
 			},
 
@@ -223,12 +232,13 @@ func TestGetEnvSpecificConfig(t *testing.T) {
 			pkgType: resource.PkgTypeDeb,
 			runner: &fakeRunner{
 				value: map[string]runnerResult{
-					cmdOsRel:          {out: relUbuntu},
-					cmdEnv:            {},
-					cmdSELinuxFound:   {},
-					cmdSELinuxEnabled: {err: &plan.RunError{ExitCode: 1}},
-					cmdMachineID:      {out: "01234567"},
-					cmdUUID:           {out: "01234567"},
+					cmdOsRel:             {out: relUbuntu},
+					cmdEnv:               {},
+					cmdSELinuxFound:      {},
+					cmdSELinuxEnabled:    {err: &plan.RunError{ExitCode: 1}},
+					cmdMachineID:         {out: "01234567"},
+					cmdUUID:              {out: "01234567"},
+					cmdSELinuxPermissive: {err: &plan.RunError{ExitCode: 1}},
 				},
 			},
 
@@ -243,11 +253,12 @@ func TestGetEnvSpecificConfig(t *testing.T) {
 			pkgType: resource.PkgTypeRPM,
 			runner: &fakeRunner{
 				value: map[string]runnerResult{
-					cmdOsRel:        {out: relUbuntu, err: errors.New("kaboom")},
-					cmdEnv:          {},
-					cmdSELinuxFound: {},
-					cmdMachineID:    {out: "01234567"},
-					cmdUUID:         {out: "01234567"},
+					cmdOsRel:             {out: relUbuntu, err: errors.New("kaboom")},
+					cmdEnv:               {},
+					cmdSELinuxFound:      {},
+					cmdMachineID:         {out: "01234567"},
+					cmdUUID:              {out: "01234567"},
+					cmdSELinuxPermissive: {},
 				},
 			},
 			wantError: true,
@@ -257,12 +268,13 @@ func TestGetEnvSpecificConfig(t *testing.T) {
 			pkgType: resource.PkgTypeRPM,
 			runner: &fakeRunner{
 				value: map[string]runnerResult{
-					cmdOsRel:          {out: relUbuntu},
-					cmdEnv:            {err: errors.New("kaboom")},
-					cmdSELinuxFound:   {},
-					cmdSELinuxEnabled: {},
-					cmdMachineID:      {out: "01234567"},
-					cmdUUID:           {out: "01234567"},
+					cmdOsRel:             {out: relUbuntu},
+					cmdEnv:               {err: errors.New("kaboom")},
+					cmdSELinuxFound:      {},
+					cmdSELinuxEnabled:    {},
+					cmdMachineID:         {out: "01234567"},
+					cmdUUID:              {out: "01234567"},
+					cmdSELinuxPermissive: {},
 				},
 			},
 			wantError: true,
@@ -272,12 +284,13 @@ func TestGetEnvSpecificConfig(t *testing.T) {
 			pkgType: resource.PkgTypeRPM,
 			runner: &fakeRunner{
 				value: map[string]runnerResult{
-					cmdOsRel:          {out: relUbuntu},
-					cmdEnv:            {},
-					cmdSELinuxFound:   {},
-					cmdSELinuxEnabled: {err: &plan.RunError{ExitCode: 127}},
-					cmdMachineID:      {out: "01234567"},
-					cmdUUID:           {out: "01234567"},
+					cmdOsRel:             {out: relUbuntu},
+					cmdEnv:               {},
+					cmdSELinuxFound:      {},
+					cmdSELinuxEnabled:    {err: &plan.RunError{ExitCode: 127}},
+					cmdMachineID:         {out: "01234567"},
+					cmdUUID:              {out: "01234567"},
+					cmdSELinuxPermissive: {},
 				},
 			},
 			wantError: true,
