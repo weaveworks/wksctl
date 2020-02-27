@@ -33,7 +33,7 @@ type KubeadmJoin struct {
 	CertificateKey string `structs:"certificateKey" plan:"hide"`
 	// IgnorePreflightErrors is optionally used to skip kubeadm's preflight checks.
 	IgnorePreflightErrors []string `structs:"ignorePreflightErrors"`
-	// External Load Balancer IP address to be used instead of masterIP
+	// External Load Balancer name or IP address to be used instead of the master's IP
 	ExternalLoadBalancer string `structs:"externalLoadBalancer"`
 }
 
