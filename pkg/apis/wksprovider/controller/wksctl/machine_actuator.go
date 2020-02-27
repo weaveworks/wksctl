@@ -440,7 +440,7 @@ func (a *MachineActuator) update(ctx context.Context, cluster *clusterv1.Cluster
 		contextLog.Info("........................ DIFF PLAN ........................")
 		contextLog.Info(diffedPlan)
 	} else {
-		contextLog.Infof("DIFF PLAN Error: %v", err)
+		contextLog.Errorf("DIFF PLAN Error: %v", err)
 	}
 
 	contextLog.Infof("........................NEW UPDATE FOR: %s...........................", machine.Name)
