@@ -499,14 +499,11 @@ func (a *MachineActuator) update(ctx context.Context, cluster *clusterv1.Cluster
 		}
 		return a.kubeadmUpOrDowngrade(machine, node, installer, version, planKey, planJSON, worker)
 	}
-	//
-	// OK not upgrade or downgrade? so why this?
-	// This is non-logical update becuse it's already done by kubeadm?
-	//
-	// if err = a.performActualUpdate(installer, machine, node, nodePlan, c); err != nil {
-	//	return err
-	// }
-	//
+
+	if err = a.performActualUpdate(installer, machine, node, nodePlan, c); err != nil {
+		return err
+	}
+
 	if err = a.setNodeAnnotation(node, planKey, planJSON); err != nil {
 		return err
 	}
