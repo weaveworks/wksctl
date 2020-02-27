@@ -50,13 +50,13 @@ import (
 )
 
 const (
-	planKey             string = "wkp.weave.works/node-plan"
+	planKey             string = "wks.weave.works/node-plan"
 	masterLabel         string = "node-role.kubernetes.io/master"
-	originalMasterLabel string = "wkp.weave.works/original-master"
+	originalMasterLabel string = "wks.weave.works/original-master"
 	controllerName      string = "wks-controller"
 	controllerSecret    string = "wks-controller-secrets"
 	bootstrapTokenID    string = "bootstrapTokenID"
-	clusterName         string = "firekube"
+	clusterName         string = "wks-firekube"
 )
 
 type nodeType int
