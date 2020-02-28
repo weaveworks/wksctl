@@ -18,7 +18,7 @@
    export BACKEND=docker
    ```
 
-1. Install [`footloose`](https://github.com/weaveworks/footloose):
+1. Install [footloose](https://github.com/weaveworks/footloose):
 
    ```console
    GO111MODULE=on go install github.com/weaveworks/footloose
@@ -26,11 +26,13 @@
 
 1. Start two machines using `footloose`:
 
+These commands assume you are in the `examples/footloose` directory.
+
    ```console
    $ footloose create -c ${DISTRO}/${BACKEND}/singlemaster.yaml
    INFO[0000] Image: quay.io/footloose/centos7 present locally
-   INFO[0000] Creating machine: cluster-node0 ...
-   INFO[0001] Creating machine: cluster-node1 ...
+   INFO[0000] Creating machine: centos-singlemaster-node0 ...
+   INFO[0001] Creating machine: centos-singlemaster-node1 ...
    ```
 
    You should now see the Container Machines running with `docker ps` or `ignite ps` (depending on your backend):
