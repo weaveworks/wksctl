@@ -20,14 +20,14 @@ wksctl apply \
 
 We will create a cluster by pulling the cluster and machine yaml from git.
 
-The following are new commandline arguments to `wksctl apply` which will result in a cluster being created.
+The following are commandline arguments to `wksctl apply` which will result in a cluster being created.
 
 - **git-url** The git repo url containing the `cluster.yaml` and `machine.yaml`
 - **git-branch**  The branch within the repo to pull the cluster info from
 - **git-deploy-key** The deploy key configured for the GitHub repo
 - **git-path** Relative path to files in Git (optional)
 
-The git command line arguments will be passed instead of `--cluster` and `--machines`.
+The git command line arguments are passed instead of `--cluster` and `--machines`.
 
 ```console
 wksctl apply \
@@ -36,10 +36,8 @@ wksctl apply \
   --git-deploy-key ./deploy-key
 ```
 
-Using the url, branch, and deploy key, we will clone the repo - if we can't clone the repo we will error out.
+Using the url, branch, and deploy key, `wksctl` will clone the repo and create the cluster.
 
-These `--git` arguments are then used to set up and configure [flux](https://www.weave.works/oss/flux/) to automate cluster management.
+These `--git` arguments are then used to set up and configure [flux](https://www.weave.works/oss/flux/) to automate cluster management via Git aka [GitOps](https://www.weave.works/technologies/gitops/)
 
-We will rely on the user installing [fluxctl](https://docs.fluxcd.io/en/latest/references/fluxctl.html#installing-fluxctl) to interact with flux directly instead of trying to replicate the functionality within `wksctl`
-
-To see a more detailed example combining Wksctl, [GitOps](https://www.weave.works/technologies/gitops/), [Ignite](https://ignite.readthedocs.io/en/stable/) also know as FireKube see [Firekube](https://github.com/weaveworks/wks-quickstart-firekube).
+We will rely on the user installing [fluxctl](https://docs.fluxcd.io/en/latest/references/fluxctl.html#installing-fluxctl) to interact with flux directly.  `wksctl` does not replicate this functionality.
