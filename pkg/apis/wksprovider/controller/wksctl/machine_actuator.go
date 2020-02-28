@@ -172,11 +172,6 @@ func (a *MachineActuator) initializeMasterPlanIfNecessary(installer *os.OS) erro
 	if err != nil {
 		return err
 	}
-	if _, exist := originalMasterNode.Labels[originalMasterLabel]; !exist {
-		if err := a.setNodeLabel(originalMasterNode, originalMasterLabel, ""); err != nil {
-			return err
-		}
-	}
 
 	if originalMasterNode.Annotations[planKey] == "" {
 		client := a.clientSet.CoreV1().ConfigMaps(a.controllerNamespace)
@@ -805,11 +800,21 @@ func (a *MachineActuator) getOriginalMasterNode() (*corev1.Node, error) {
 			return node, nil
 		}
 	}
-	// Hack for H/A testing
+
 	if len(nodes) == 0 {
 		return nil, errors.New("No master found")
 	}
-	return nodes[0], nil
+
+	// There is no master node which is labeled with originalMasterLabel
+	// So we just pick nodes[0] of the list, then label it.
+	originalMasterNode := nodes[0]
+	if _, exist := originalMasterNode.Labels[originalMasterLabel]; !exist {
+		if err := a.setNodeLabel(originalMasterNode, originalMasterLabel, ""); err != nil {
+			return nil, err
+		}
+	}
+
+	return originalMasterNode, nil
 }
 
 func (a *MachineActuator) isOriginalMaster(node *corev1.Node) (bool, error) {
