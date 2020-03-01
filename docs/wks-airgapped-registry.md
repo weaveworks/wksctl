@@ -40,7 +40,7 @@ A registry is listening on port 5000, in my case the container has IPAddress: `1
 
 Footloose installs and configures Docker on the target nodes, and Docker default configuration requires all images pulled from external registries be secured by TLS. You can enable an insecure registry by adding the registry address to `insecure-registries`; in Firekube, this can be configured in `docker-config.yaml`:
 
-```
+```diff
 @@ -10,6 +10,9 @@ data:
        "log-opts": {
          "max-size": "100m"
@@ -55,15 +55,24 @@ Footloose installs and configures Docker on the target nodes, and Docker default
 
 This configuration change should be made before `./setup.sh` and before the cluster is created since it affects the Firekube nodes' Docker daemons.
 
-When this configuration is changed, the developer with Docker access on the workstation can run `docker build app-repo/ -t localhost:5000/app:tag` and `docker push localhost:5000/app:tag` to build and push an image into the private registry, and those images can then be used in pod definitions within workloads on the Firekube/WKS cluster.
+When this configuration is changed, the developer with Docker access on the workstation can run:
+
+```
+$ docker build app-repo/ -t localhost:5000/app:tag
+$ docker push localhost:5000/app:tag
+```
+
+to build and push an image into the private registry, and those images can then be used in pod definitions for workloads on the WKS cluster.
 
 The pod spec can refer to the image on the registry as `172.25.0.4:5000/app:tag`; since that seemed to have met our needs at first, we considered that we were done! (Almost...)
 
 ### Addressing registry by name from within the Kubernetes cluster
 
-Addressing the registry by IP in this configuration is perhaps not ideal; even though the container is outside of our WKS cluster, it is inside of a Docker machine, where there's no hard address stability guarantee. If Docker is restarted with a different host configuration, or if containers are started in a different order, or perhaps if the Docker machine's bridge network configuration changes for some other reason, then the registry's IP address will likely change too. Now we have to admit, this does not look very GitOps.
+Addressing the registry by IP in this configuration is not ideal; even though the container is outside of our WKS cluster, it is inside of a Docker machine, where there's no hard address stability guarantee. If containers are restarted in a different order, or if the Docker machine's bridge network configuration changes for some other reason, then the registry's IP address will likely change too. Now we have to admit, this method does not look very GitOps.
 
-Given that Docker must be restarted in order to apply a new Docker config, you may find you have a chicken and egg problem where updating `daemon.json` and restarting the Docker Machine results in `registry` starting with a new IP address, again requiring an update to `daemon.json`. Then the Firekube cluster may need to be reconfigured and recreated, ad infinitum. It also seems unwise to use an unstable IP address in GitOps deployment manifests that may need to be reused later; fortunately, there is a better way!
+Given that Docker must be restarted in order to apply a new Docker config, you may find you have a chicken and egg problem where updating `daemon.json` and restarting the Docker Machine results in a new IP address for registry, again requiring an update to `daemon.json`. Then Firekube cluster also needed to be reconfigured and recreated, ...ad infinitum.
+
+It also seems unwise to use an unstable IP address in GitOps deployment manifests that may need to be reused later; fortunately, there is a better way!
 
 A Kubernetes `Service` can be created without any pod selectors, for referring to external services. It is backed by a corresponding (unmanaged) `Endpoints` object which can be updated directly. Images can now use a `Service` name and port, now we also mention it in the Firekube `docker-config.yaml` when setting `insecure-registries` as described before.
 
@@ -93,6 +102,19 @@ subsets:
      - port: 5000
 ```
 
+```diff
+@@ -10,6 +10,9 @@ data:
+       "log-opts": {
+         "max-size": "100m"
+       },
++      "insecure-registries": [
++        "registry.default.svc:5000"
++      ],
+       "exec-opts": [
+         "native.cgroupdriver=cgroupfs"
+       ]
+```
+
 If your air gapped environment includes DNS support and the registry IP is already discoverable via DNS, (whether your registry is insecure as in our case, or even if it is secured by TLS), you can also use an `ExternalName` service instead of creating `Endpoints`. This is equivalent to a CNAME. These examples were both adapted from the article [Kubernetes best practices: mapping external services](https://cloud.google.com/blog/products/gcp/kubernetes-best-practices-mapping-external-services) on the Google Cloud Blog.
 
 ```yaml
@@ -112,7 +134,15 @@ Now the registry service is decoupled from the "external" IP that backs it, and 
 
 On the workstation, with the configuration as above, it may not be needed to change the Docker configuration in `daemon.json` – Although older versions did, `docker push` does not currently seem to require TLS or registry security when the registry is at `localhost:5000`. Images do not embed the hostname or port in the image tag name, so while your GitOps manifests can now refer to `registry.default.svc:5000/image-name:tag`, we can always still `docker push` images to `localhost:5000/image-name:tag` without reconfiguring Docker.
 
-It may be desirable to push and pull from the exact same address interchangeably, both within the WKS cluster and from the Docker workstation (where the Docker bridge network [may not be routed](https://docs.docker.com/docker-for-mac/networking/#there-is-no-docker0-bridge-on-macos)). If so, add `registry.default.svc` to your `/etc/hosts` as an alias for `127.0.0.1 localhost`, so that you can push and pull image references like `registry.default.svc:5000/image-name:tag` from outside of the Docker Machine. (It is not necessary to add any entry to insecure-registries in the host machine's Docker for Desktop `daemon.json` config, apparently, as long as the registry is hosted from localhost.)
+It may be desirable to push and pull from the exact same address interchangeably, both within the WKS cluster and from the Docker workstation (where the Docker bridge network [may not be routed](https://docs.docker.com/docker-for-mac/networking/#there-is-no-docker0-bridge-on-macos)).
+
+If so, add `registry.default.svc` to `/etc/hosts` as an alias like:
+
+```
+127.0.0.1 localhost registry.default.svc
+```
+
+Then you can push and pull image references like `registry.default.svc:5000/image-name:tag` from in the WKS cluster or on the workstation outside of the Docker Machine. (It is not necessary to add any entry to insecure-registries in the host machine's Docker for Desktop `daemon.json` config, apparently, as long as the registry is hosted from localhost.)
 
 For more information about using WKS in this configuration, see the [Firekube quickstart][]
 
