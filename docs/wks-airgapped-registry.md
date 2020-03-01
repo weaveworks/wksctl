@@ -18,7 +18,7 @@ We hoped that our PoC could utilize a local registry to host our unpublished bui
 
 So, the image references (like the commits in the GitOps repo) should be stable relative to the Docker machine or Footloose cluster.
 
-An insecure registry can be configured as described in [Configuring a registry](https://docs.docker.com/registry/configuration/); YMMV, for us it made sense simply using the default configuration [as described here](https://github.com/weaveworks/wksctl/tree/master/environments/local-docker-registry).
+An insecure registry can be configured [as described here](https://github.com/weaveworks/wksctl/tree/master/environments/local-docker-registry).
 
 First, an insecure registry is started on the Docker machine, in a container named `registry`. It starts with an address on the default bridge network:
 
@@ -147,3 +147,4 @@ Then you can push and pull image references like `registry.default.svc:5000/imag
 For more information about using WKS in this configuration, see the [Firekube quickstart][]
 
 [Firekube quickstart]: https://github.com/weaveworks/wks-quickstart-firekube
+[Configuring a registry]: https://docs.docker.com/registry/configuration/
