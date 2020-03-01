@@ -84,7 +84,7 @@ apiVersion: v1
 metadata:
  name: registry
  namespace: default
-Spec:
+spec:
  type: ClusterIP
  ports:
  - port: 5000
