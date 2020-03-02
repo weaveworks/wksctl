@@ -43,7 +43,7 @@ and we use Markdown for everything. Every new commit will be published at
 A few things to be aware of:
 
 - The landing page (`docs/index.rst`) is written in reStructuredText, because readthedocs uses sphinx for generating HTML/PDF/etc. Make sure your new doc is listed there - it's how the index is built. (`recommonmark` is used as the bridge between Markdown and reStructuredText).
-- Use `make serve-docs` to generate the docs locally and point a webbrowser to `localhost:8080` to check out if your changes worked out.
+- Use `make serve-docs` to generate the docs locally and point a webbrowser to the URL in the output, e.g. `localhost:8000/_build/html`, to check out if your changes worked out.
 - Links in the docs will be automatically tested.
 - Gotcha 1: links in markdown tables are problematic: <https://github.com/ryanfox/sphinx-markdown-tables/issues/18>
 - Gotcha 2: cross-referencing using anchors is problematic: <https://github.com/readthedocs/recommonmark/issues/8>
