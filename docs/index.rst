@@ -13,6 +13,7 @@ In this folder you can read more about how to use wksctl, and how it works:
    :caption: Table of contents:
 
    get-started
+   wks-and-firekube
    wks-and-footloose
    wks-and-vagrant
    wks-on-gce
