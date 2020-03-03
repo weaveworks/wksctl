@@ -248,6 +248,11 @@ func (o OS) CreateSeedNodeSetupPlan(params SeedNodeParams) (*plan.Plan, error) {
 	b.AddResource("install:k8s", k8sRes, plan.DependOn("install:cri"))
 
 	apiServerArgs := getAPIServerArgs(providerSpec, pemSecretResources)
+
+	controlPlaneEndpointIP := params.ExternalLoadBalancer
+	if controlPlaneEndpointIP == "" {
+		controlPlaneEndpointIP = params.PrivateIP
+	}
 	kubeadmInitResource :=
 		&resource.KubeadmInit{
 			PublicIP:       params.PublicIP,
@@ -258,7 +263,7 @@ func (o OS) CreateSeedNodeSetupPlan(params SeedNodeParams) (*plan.Plan, error) {
 			SSHKeyPath:     params.SSHKeyPath,
 			BootstrapToken: params.BootstrapToken,
 			// TODO: dynamically inject the API server's port.
-			ControlPlaneEndpoint:  fmt.Sprintf("%s:6443", params.PrivateIP),
+			ControlPlaneEndpoint:  fmt.Sprintf("%s:6443", controlPlaneEndpointIP),
 			IgnorePreflightErrors: cfg.IgnorePreflightErrors,
 			KubernetesVersion:     kubernetesVersion,
 			CloudProvider:         params.KubeletConfig.CloudProvider,
@@ -436,16 +441,17 @@ func addClusterAPICRDs(b *plan.Builder) ([]string, error) {
 
 func (o OS) createSeedNodePlanConfigMapManifest(params SeedNodeParams, providerSpec *baremetalspecv1.BareMetalClusterProviderSpec, providerConfigMaps map[string]*v1.ConfigMap, authConfigMap *v1.ConfigMap, kubernetesVersion string) ([]byte, error) {
 	nodeParams := NodeParams{
-		IsMaster:           true,
-		MasterIP:           params.PrivateIP,
-		MasterPort:         6443, // See TODO in machine_actuator.go
-		KubeletConfig:      params.KubeletConfig,
-		KubernetesVersion:  kubernetesVersion,
-		CRI:                providerSpec.CRI,
-		ConfigFileSpecs:    providerSpec.OS.Files,
-		ProviderConfigMaps: providerConfigMaps,
-		AuthConfigMap:      authConfigMap,
-		Namespace:          params.Namespace,
+		IsMaster:             true,
+		MasterIP:             params.PrivateIP,
+		MasterPort:           6443, // See TODO in machine_actuator.go
+		KubeletConfig:        params.KubeletConfig,
+		KubernetesVersion:    kubernetesVersion,
+		CRI:                  providerSpec.CRI,
+		ConfigFileSpecs:      providerSpec.OS.Files,
+		ProviderConfigMaps:   providerConfigMaps,
+		AuthConfigMap:        authConfigMap,
+		Namespace:            params.Namespace,
+		ExternalLoadBalancer: providerSpec.APIServer.ExternalLoadBalancer,
 	}
 	var paramBuffer bytes.Buffer
 	err := gob.NewEncoder(&paramBuffer).Encode(nodeParams)
@@ -977,6 +983,7 @@ type NodeParams struct {
 	ProviderConfigMaps       map[string]*v1.ConfigMap
 	AuthConfigMap            *v1.ConfigMap
 	Namespace                string
+	ExternalLoadBalancer     string // used instead of MasterIP if existed
 }
 
 // Validate generally validates this NodeParams struct, e.g. ensures it
@@ -1051,6 +1058,7 @@ func (o OS) CreateNodeSetupPlan(params NodeParams) (*plan.Plan, error) {
 		DiscoveryTokenCaCertHash: params.DiscoveryTokenCaCertHash,
 		CertificateKey:           params.CertificateKey,
 		IgnorePreflightErrors:    cfg.IgnorePreflightErrors,
+		ExternalLoadBalancer:     params.ExternalLoadBalancer,
 	}
 	b.AddResource("kubeadm:join", kadmJoinRsrc, plan.DependOn("kubeadm:prejoin"))
 	return createPlan(b)
