@@ -7,13 +7,14 @@ require (
 	github.com/bitnami-labs/sealed-secrets v0.7.0
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/cavaliercoder/go-rpm v0.0.0-20190131055624-7a9c54e3d83e
-	github.com/cube2222/jql v0.0.3 // indirect
+	github.com/chanwit/plandiff v1.0.0
 	github.com/dlespiau/kube-test-harness v0.0.0-20180712150055-7eab798dff48
 	github.com/fatih/structs v1.1.0
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-logr/zapr v0.1.1 // indirect
 	github.com/gogo/protobuf v1.3.0 // indirect
 	github.com/golang/groupcache v0.0.0-20190702054246-869f871628b6 // indirect
+	github.com/google/btree v1.0.0 // indirect
 	github.com/google/go-jsonnet v0.11.2
 	github.com/googleapis/gnostic v0.3.1 // indirect
 	github.com/gregjones/httpcache v0.0.0-20190611155906-901d90724c79 // indirect
@@ -24,6 +25,7 @@ require (
 	github.com/pelletier/go-toml v1.2.0
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
 	github.com/pkg/errors v0.8.1
+	github.com/prometheus/client_golang v0.9.3 // indirect
 	github.com/shurcooL/httpfs v0.0.0-20190707220628-8d4bc4ba7749 // indirect
 	github.com/shurcooL/vfsgen v0.0.0-20181202132449-6a9ea43bcacd
 	github.com/sirupsen/logrus v1.4.2
@@ -35,7 +37,11 @@ require (
 	github.com/weaveworks/go-checkpoint v0.0.0-20170503165305-ebbb8b0518ab
 	github.com/weaveworks/launcher v0.0.0-20180824102238-59a4fcc32c9c
 	github.com/whilp/git-urls v0.0.0-20160530060445-31bac0d230fa
+	go.uber.org/atomic v1.4.0 // indirect
+	go.uber.org/multierr v1.1.0 // indirect
+	go.uber.org/zap v1.10.0 // indirect
 	golang.org/x/crypto v0.0.0-20190617133340-57b3e21c3d56
+	golang.org/x/time v0.0.0-20190308202827-9d24e82272b4 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.0.1 // indirect
 	google.golang.org/appengine v1.4.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
