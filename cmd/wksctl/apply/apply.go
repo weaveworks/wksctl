@@ -4,6 +4,7 @@ import (
 	"path/filepath"
 
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/weaveworks/wksctl/pkg/addons"
 	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/config"
@@ -37,7 +38,6 @@ type Params struct {
 	configDirectory      string
 	namespace            string
 	useManifestNamespace bool
-	verbose              bool
 }
 
 var globalParams Params
@@ -55,9 +55,6 @@ func init() {
 	Cmd.Flags().StringVar(&globalParams.configDirectory, "config-directory", ".", "Directory containing configuration information for the cluster")
 	Cmd.Flags().StringVar(&globalParams.namespace, "namespace", manifest.DefaultNamespace, "namespace override for WKS components")
 	Cmd.Flags().BoolVar(&globalParams.useManifestNamespace, "use-manifest-namespace", false, "use namespaces from supplied manifests (overriding any --namespace argument)")
-
-	// Intentionally shadows the globally defined --verbose flag.
-	Cmd.Flags().BoolVarP(&globalParams.verbose, "verbose", "v", false, "Enable verbose output")
 
 	// Hide controller-image flag as it is a helper/debug flag.
 	Cmd.Flags().StringVar(&globalParams.controllerImage, "controller-image", "", "Controller image override")
@@ -97,7 +94,7 @@ func (a *Applier) Apply() error {
 
 func (a *Applier) initiateCluster(clusterManifestPath, machinesManifestPath string) error {
 	sp := specs.NewFromPaths(clusterManifestPath, machinesManifestPath)
-	sshClient, err := ssh.NewClientForMachine(sp.MasterSpec, sp.ClusterSpec.User, a.Params.sshKeyPath, a.Params.verbose)
+	sshClient, err := ssh.NewClientForMachine(sp.MasterSpec, sp.ClusterSpec.User, a.Params.sshKeyPath, log.GetLevel() > log.InfoLevel)
 
 	if err != nil {
 		return errors.Wrap(err, "failed to create SSH client")
