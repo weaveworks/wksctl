@@ -2,9 +2,9 @@ package kubeconfig
 
 import (
 	"fmt"
-	"io/ioutil"
 	"path/filepath"
 
+	"github.com/kris-nova/logger"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/weaveworks/wksctl/pkg/kubernetes/config"
@@ -12,7 +12,12 @@ import (
 	"github.com/weaveworks/wksctl/pkg/specs"
 	"github.com/weaveworks/wksctl/pkg/utilities/manifest"
 	"github.com/weaveworks/wksctl/pkg/utilities/path"
+	"k8s.io/client-go/tools/clientcmd"
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 )
+
+// DefaultPath defines the default path
+var DefaultPath = clientcmd.RecommendedHomeFile
 
 // A new version of the kubeconfig command that retrieves the config from
 // /etc/kubernetes/admin.conf on a cluster master node
@@ -101,6 +106,7 @@ func writeKubeconfig(cpath, mpath string) error {
 	sp := specs.NewFromPaths(cpath, mpath)
 
 	configStr, err := config.GetRemoteKubeconfig(sp, kubeconfigOptions.sshKeyPath, kubeconfigOptions.verbose, kubeconfigOptions.skipTLSVerify)
+	remoteConfig, err := clientcmd.Load([]byte(configStr))
 	if err != nil {
 		return errors.Wrapf(err, "GetRemoteKubeconfig")
 	}
@@ -112,10 +118,60 @@ func writeKubeconfig(cpath, mpath string) error {
 		return errors.Wrapf(err, "failed to create configuration directory")
 	}
 
-	err = ioutil.WriteFile(configPath, []byte(configStr), 0644)
+	configPath, err = Write(configPath, *remoteConfig, true)
 	if err != nil {
 		return errors.Wrapf(err, "failed to write Kubernetes configuration locally")
 	}
 	fmt.Printf("To use kubectl with the %s cluster, enter:\n$ export KUBECONFIG=%s\n", sp.GetClusterName(), configPath)
 	return nil
+}
+
+// Write will write Kubernetes client configuration to a file.
+// If path isn't specified then the path will be determined by client-go.
+// If file pointed to by path doesn't exist it will be created.
+// If the file already exists then the configuration will be merged with the existing file.
+func Write(path string, newConfig clientcmdapi.Config, setContext bool) (string, error) {
+	configAccess := getConfigAccess(path)
+
+	config, err := configAccess.GetStartingConfig()
+	if err != nil {
+		return "", errors.Wrapf(err, "unable to read existing kubeconfig file %q", path)
+	}
+
+	logger.Debug("merging kubeconfig files")
+	merged := merge(config, &newConfig)
+
+	if setContext && newConfig.CurrentContext != "" {
+		logger.Debug("setting current-context to %s", newConfig.CurrentContext)
+		merged.CurrentContext = newConfig.CurrentContext
+	}
+
+	if err := clientcmd.ModifyConfig(configAccess, *merged, true); err != nil {
+		return "", errors.Wrapf(err, "unable to modify kubeconfig %s", path)
+	}
+
+	return configAccess.GetDefaultFilename(), nil
+}
+
+func getConfigAccess(explicitPath string) clientcmd.ConfigAccess {
+	pathOptions := clientcmd.NewDefaultPathOptions()
+	if explicitPath != "" && explicitPath != DefaultPath {
+		pathOptions.LoadingRules.ExplicitPath = explicitPath
+	}
+
+	return interface{}(pathOptions).(clientcmd.ConfigAccess)
+}
+
+func merge(existing *clientcmdapi.Config, tomerge *clientcmdapi.Config) *clientcmdapi.Config {
+	for k, v := range tomerge.Clusters {
+		existing.Clusters[k] = v
+	}
+	for k, v := range tomerge.AuthInfos {
+		existing.AuthInfos[k] = v
+	}
+	for k, v := range tomerge.Contexts {
+		existing.Contexts[k] = v
+	}
+
+	return existing
 }
