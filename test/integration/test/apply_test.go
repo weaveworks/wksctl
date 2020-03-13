@@ -7,11 +7,11 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
-	"os/user"
-	"path"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"k8s.io/client-go/tools/clientcmd"
 
 	"github.com/weaveworks/wksctl/pkg/cluster/machine"
 	"github.com/weaveworks/wksctl/pkg/kubernetes"
@@ -21,12 +21,11 @@ import (
 	baremetalspecv1 "github.com/weaveworks/wksctl/pkg/baremetalproviderspec/v1alpha1"
 	spawn "github.com/weaveworks/wksctl/test/integration/spawn"
 
+	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	clusterv1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
-
-	"github.com/stretchr/testify/assert"
 )
 
 // Runs a basic set of tests for apply.
@@ -240,13 +239,10 @@ func getClusterNamespaceAndName(t *testing.T) (string, string) {
 // The installer names the kubeconfig file from the cluster namespace and name
 // ~/.wks
 func wksKubeconfig(t *testing.T, l *clusterv1.MachineList) string {
-	currentUser, err := user.Current()
-	assert.NoError(t, err)
 	master := machine.FirstMasterInArray(l.Items)
 	assert.NotNil(t, master)
-	namespace, name := getClusterNamespaceAndName(t)
-	kubeconfig := path.Join(currentUser.HomeDir, ".wks", namespace, name, "kubeconfig")
-	_, err = os.Stat(kubeconfig)
+	kubeconfig := clientcmd.RecommendedHomeFile
+	_, err := os.Stat(kubeconfig)
 	assert.NoError(t, err)
 
 	return kubeconfig

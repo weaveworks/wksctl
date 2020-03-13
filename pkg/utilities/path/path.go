@@ -7,6 +7,8 @@ import (
 	"os/user"
 	"path/filepath"
 	"strings"
+
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 // UserHomeDirectory returns the user directory.
@@ -44,14 +46,7 @@ func WKSHome(artifactDirectory string) string {
 	if artifactDirectory != "" {
 		return expandHome(artifactDirectory)
 	}
-
-	userHome, err := UserHomeDirectory()
-	if err == nil {
-		return filepath.Join(userHome, ".wks")
-	}
-
-	wd, _ := os.Getwd()
-	return wd
+	return clientcmd.RecommendedHomeFile
 }
 
 // WKSResourcePath joins the provided (optional) artifact directory and the

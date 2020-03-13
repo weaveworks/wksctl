@@ -1,10 +1,13 @@
 package config_test
 
 import (
+	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/weaveworks/wksctl/pkg/kubernetes/config"
+	clientcmd "k8s.io/client-go/tools/clientcmd"
 )
 
 const validConfig = `apiVersion: v1
@@ -85,4 +88,47 @@ func TestSanitizeWithInvalidConfigContainingSSHBannerAndWithPublicIPChange(t *te
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, validConfigWithPublicIP, actualConfig)
+}
+
+func TestWrite(t *testing.T) {
+	testDataDir := "./testdata/"
+	testDataPath := "./testdata/test_kubeconfig"
+	defer os.RemoveAll(testDataDir)
+	validConfigObject, err := clientcmd.Load([]byte(validConfig))
+	assert.NoError(t, err)
+	_, err = config.Write(testDataPath, *validConfigObject, true)
+	assert.NoError(t, err)
+	loadedConfig, err := clientcmd.LoadFromFile(testDataPath)
+	assert.NoError(t, err)
+	err = clientcmd.Validate(*loadedConfig)
+	assert.NoError(t, err)
+}
+
+func TestMerge(t *testing.T) {
+	// Create 2 test kubeconfig objects
+	validConfigA, err := clientcmd.Load([]byte(validConfig))
+	assert.NoError(t, err)
+	validConfigB, err := clientcmd.Load([]byte(validConfigWithPublicIP))
+	assert.NoError(t, err)
+
+	mergedConfig := config.Merge(validConfigA, validConfigB)
+	err = clientcmd.Validate(*mergedConfig)
+	assert.NoError(t, err)
+}
+
+func TestInvalidExistingConfig(t *testing.T) {
+	// Fail if the current kubeconfig, which will be merged with the newly created one, is invalid
+	testDataDir := "./testdata/"
+	testDataPath := "./testdata/test_kubeconfig"
+	defer os.RemoveAll(testDataDir)
+	os.Mkdir(testDataDir, 0777)
+
+	err := ioutil.WriteFile(testDataPath, []byte(invalidConfigWithSSHBanner), 0777)
+	assert.NoError(t, err)
+
+	validConfig, err := clientcmd.Load([]byte(validConfig))
+	assert.NoError(t, err)
+
+	_, err = config.Write(testDataPath, *validConfig, true)
+	assert.Errorf(t, err, "Unable to read existing kubeconfig file")
 }
