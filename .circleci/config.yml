@@ -59,6 +59,7 @@ jobs:
           - cmd/wksctl/wksctl
           - cmd/mock-https-authz-server/server
       - run:
+          # Allow builds from forks
           name: Push image if quay login is available
           command: |
             if [ -n "$QUAY_IO_USER" -a -n "$QUAY_IO_PASSWORD" ]; then
