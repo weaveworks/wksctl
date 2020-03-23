@@ -60,10 +60,11 @@ jobs:
           - cmd/mock-https-authz-server/server
       - run:
           name: Push image if quay login is available
-          command: if [ -z "$QUAY_IO_USER" -o -z "$QUAY_IO_PASSWORD" ]; then
-                     docker login -u "$QUAY_IO_USER" -p "$QUAY_IO_PASSWORD" quay.io
-                     make push
-                   fi
+          command: |
+            if [ -z "$QUAY_IO_USER" -o -z "$QUAY_IO_PASSWORD" ]; then
+              docker login -u "$QUAY_IO_USER" -p "$QUAY_IO_PASSWORD" quay.io
+              make push
+            fi
   unit-tests:
     docker:
       - image: quay.io/wks/build:master-134af34f
