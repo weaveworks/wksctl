@@ -42,6 +42,7 @@ These `--git` arguments are then used to set up and configure [flux](https://www
 
 We will rely on the user installing [fluxctl](https://docs.fluxcd.io/en/latest/references/fluxctl.html#installing-fluxctl) to interact with flux directly.  `wksctl` does not replicate this functionality.
 
+```console
 ### wksctl apply 
 A complete description of the apply command
 
@@ -65,3 +66,4 @@ Flags:
       --sealed-secret-key string    Path to a key used to decrypt sealed secrets
       --ssh-key string              Path to a key authorized to log in to machines by SSH (default "./cluster-key")
       --use-manifest-namespace      use namespaces from supplied manifests (overriding any --namespace argument)
+```
