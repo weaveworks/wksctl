@@ -58,9 +58,12 @@ jobs:
           - kubectl
           - cmd/wksctl/wksctl
           - cmd/mock-https-authz-server/server
-      - run: docker login -u "$QUAY_IO_USER" -p "$QUAY_IO_PASSWORD" quay.io
-      - run: make push
-
+      - run:
+          name: Push image if quay login is available
+          command: if [ -z "$QUAY_IO_USER" -o -z "$QUAY_IO_PASSWORD" ]; then
+                     docker login -u "$QUAY_IO_USER" -p "$QUAY_IO_PASSWORD" quay.io
+                     make push
+                   fi
   unit-tests:
     docker:
       - image: quay.io/wks/build:master-134af34f
