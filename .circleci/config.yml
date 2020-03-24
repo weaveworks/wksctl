@@ -118,7 +118,7 @@ jobs:
           name: Run container tests
           command: |
             export PATH=$GOROOT/bin:$PATH
-            go version
+It            go version
             make container-tests
   integration-tests-container:
     machine:
@@ -210,19 +210,14 @@ jobs:
             echo "$KUBECTL_CHECKSUM kubectl.tar.gz" | sha256sum -c
             tar xvzf kubectl.tar.gz --strip-components=3
             sudo mv kubectl /usr/local/bin
-
       - run:
-          name: Create VMs
-          command: $SRCDIR/test/integration/bin/up.sh
-
-      - run:
-          name: Run integration tests
-          command: $SRCDIR/test/integration/bin/test.sh
-
-      - run:
-          name: Destroy VMs
-          command: $SRCDIR/test/integration/bin/down.sh
-          when: always
+          name: Centos integration tests
+          command: |
+            if [ -n "$SECRET_KEY" ]; then
+              $SRCDIR/test/integration/bin/up.sh
+              $SRCDIR/test/integration/bin/test.sh
+              $SRCDIR/test/integration/bin/down.sh
+            fi
       - run: "true"
   integration-tests-gcp-ubuntu:
     docker:
@@ -252,15 +247,11 @@ jobs:
             sudo mv kubectl /usr/local/bin
 
       - run:
-          name: Create VMs
-          command: $SRCDIR/test/integration/bin/up.sh
-
-      - run:
-          name: Run integration tests
-          command: $SRCDIR/test/integration/bin/test.sh
-
-      - run:
-          name: Destroy VMs
-          command: $SRCDIR/test/integration/bin/down.sh
-          when: always
+          name: Ubuntu integration tests
+          command: |
+            if [ -n "$SECRET_KEY" ]; then
+              $SRCDIR/test/integration/bin/up.sh
+              $SRCDIR/test/integration/bin/test.sh
+              $SRCDIR/test/integration/bin/down.sh
+            fi
       - run: "true"
