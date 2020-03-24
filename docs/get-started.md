@@ -42,10 +42,10 @@ These `--git` arguments are then used to set up and configure [flux](https://www
 
 We will rely on the user installing [fluxctl](https://docs.fluxcd.io/en/latest/references/fluxctl.html#installing-fluxctl) to interact with flux directly.  `wksctl` does not replicate this functionality.
 
-```console
 ### wksctl apply 
 A complete description of the apply command
 
+```console
 wksctl apply --help
 Create or update a Kubernetes cluster
 
