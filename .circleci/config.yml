@@ -118,7 +118,7 @@ jobs:
           name: Run container tests
           command: |
             export PATH=$GOROOT/bin:$PATH
-It            go version
+            go version
             make container-tests
   integration-tests-container:
     machine:
