@@ -1,4 +1,4 @@
-# Get started with `wksctl`
+# Get started with wksctl
 
 Using `wksctl` you have two modes of operation. **Standalone** mode and **GitOps** mode. The latter will enable you to keep the state of the cluster itself in Git too.
 
