@@ -1,0 +1,42 @@
+site_name: wksctl
+site_description: Weave Kubernetes System Control
+site_author: wksctl developer community
+site_url: https://wksctl.readthedocs.io
+
+# Repository
+repo_name: weaveworks/wksctl
+repo_url: https://github.com/weaveworks/wksctl
+edit_uri: ""
+
+theme:
+  name: material
+  logo: _static/logo.png
+  language: en
+  feature:
+    tabs: false
+  palette:
+    primary: blue
+    accent: indigo
+  highlightjs: true
+
+docs_dir: docs
+
+extra_css:
+  - _static/custom.css
+
+markdown_extensions:
+  - admonition
+  - codehilite:
+      guess_lang: false
+  - pymdownx.superfences
+  - toc:
+      permalink: true
+
+nav:
+  - Get started with wksctl: get-started.md
+  - WKS and Firekube: wks-and-firekube.md
+  - WKS and Footloose: wks-and-footloose.md
+  - WKS and Vagrant: wks-and-vagrant.md
+  - WKS on GCE: wks-on-gce.md
+  - Frequently asked questions: faq.md
+  - Development: development.md
