@@ -41,3 +41,29 @@ Using the url, branch, and deploy key, `wksctl` will clone the repo and create t
 These `--git` arguments are then used to set up and configure [flux](https://www.weave.works/oss/flux/) to automate cluster management via Git aka [GitOps](https://www.weave.works/technologies/gitops/)
 
 We will rely on the user installing [fluxctl](https://docs.fluxcd.io/en/latest/references/fluxctl.html#installing-fluxctl) to interact with flux directly.  `wksctl` does not replicate this functionality.
+
+### wksctl apply 
+A complete description of the apply command
+
+```console
+wksctl apply --help
+Create or update a Kubernetes cluster
+
+Usage:
+  wksctl apply [flags]
+
+Flags:
+      --cluster string              Location of cluster manifest (default "cluster.yaml")
+      --config-directory string     Directory containing configuration information for the cluster (default ".")
+      --git-branch string           Git branch WKS should use to sync with your cluster (default "master")
+      --git-deploy-key string       Path to the Git deploy key
+      --git-path string             Relative path to files in Git (default ".")
+      --git-url string              Git repo containing your cluster and machine information
+  -h, --help                        help for apply
+      --machines string             Location of machines manifest (default "machines.yaml")
+      --namespace string            namespace override for WKS components (default "weavek8sops")
+      --sealed-secret-cert string   Path to a certificate used to encrypt sealed secrets
+      --sealed-secret-key string    Path to a key used to decrypt sealed secrets
+      --ssh-key string              Path to a key authorized to log in to machines by SSH (default "./cluster-key")
+      --use-manifest-namespace      use namespaces from supplied manifests (overriding any --namespace argument)
+```
