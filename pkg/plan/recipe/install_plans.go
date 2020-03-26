@@ -150,7 +150,7 @@ ExecStartPre=-/sbin/swapoff -a
 `
 
 // BuildK8SPlan creates a plan for running kubernetes on a node
-func BuildK8SPlan(kubernetesVersion string, kubeletNodeIP string, setSELinuxPermissive, disableSwap, lockYUMPkgs bool, pkgType resource.PkgType, cloudProvider string) plan.Resource {
+func BuildK8SPlan(kubernetesVersion string, kubeletNodeIP string, seLinuxInstalled, setSELinuxPermissive, disableSwap, lockYUMPkgs bool, pkgType resource.PkgType, cloudProvider string) plan.Resource {
 	b := plan.NewBuilder()
 
 	// Kubernetes repos
@@ -174,7 +174,7 @@ func BuildK8SPlan(kubernetesVersion string, kubeletNodeIP string, setSELinuxPerm
 		}, plan.DependOn("configure:kubernetes-repo-key"))
 	}
 
-	// Set SELinux to permissive mode.
+	// If we need to set SELinux to permissive mode.
 	if setSELinuxPermissive {
 		b.AddResource(
 			"selinux:permissive",

@@ -29,6 +29,51 @@ type OS struct {
 	factsGathered bool
 }
 
+type SELinuxStatus int
+
+const (
+	SELinuxUnknown SELinuxStatus = iota
+	SELinuxNotInstalled
+	SELinuxInstalled
+)
+
+func (s SELinuxStatus) IsUnknown() bool {
+	return s == SELinuxUnknown
+}
+
+func (s SELinuxStatus) IsNotInstalled() bool {
+	return s == SELinuxNotInstalled
+}
+
+func (s SELinuxStatus) IsInstalled() bool {
+	return s == SELinuxInstalled
+}
+
+type SELinuxMode int
+
+const (
+	SELinuxModeUnknown SELinuxMode = iota
+	SELinuxEnforcing
+	SELinuxPermissive
+	SELinuxDisabled
+)
+
+func (m SELinuxMode) IsUnknown() bool {
+	return m == SELinuxModeUnknown
+}
+
+func (m SELinuxMode) IsEnforcing() bool {
+	return m == SELinuxEnforcing
+}
+
+func (m SELinuxMode) IsPermissive() bool {
+	return m == SELinuxPermissive
+}
+
+func (m SELinuxMode) IsDisabled() bool {
+	return m == SELinuxDisabled
+}
+
 func NewOS(r plan.Runner) (*OS, error) {
 	osr := &OS{runner: r}
 	_, err := osr.Apply(r, plan.EmptyDiff())
@@ -163,31 +208,38 @@ func (p *OS) HasCommand(cmd string) (bool, error) {
 	return false, err
 }
 
-func (p *OS) HasSELinuxEnabled() (bool, error) {
+func (p *OS) GetSELinuxStatus() (SELinuxStatus, SELinuxMode, error) {
 	const cmd = "selinuxenabled"
 
 	if hasCmd, err := p.HasCommand(cmd); err != nil {
 		// Inconclusive.
-		return false, err
+		return SELinuxUnknown, SELinuxModeUnknown, err
 	} else if !hasCmd {
 		// No SELinux tools installed.
-		return false, nil
+		return SELinuxNotInstalled, SELinuxModeUnknown, nil
 	}
 
 	if _, err := p.runner.RunCommand(cmd, nil); err == nil {
 		// SELinux not disabled (that is, enforcing or permissive).
-		return true, nil
+		// return SELinuxEnforcing, nil
+		if permissive, err := p.IsSELinuxMode("permissive"); err == nil && permissive {
+			return SELinuxInstalled, SELinuxPermissive, nil
+		} else if enforcing, err := p.IsSELinuxMode("enforcing"); err == nil && enforcing {
+			return SELinuxInstalled, SELinuxEnforcing, nil
+		} else {
+			return SELinuxInstalled, SELinuxModeUnknown, err
+		}
 	} else if err, ok := err.(*plan.RunError); ok && err.ExitCode == 1 {
 		// SELinux disabled.
-		return false, nil
+		return SELinuxInstalled, SELinuxDisabled, nil
 	} else {
 		// Inconclusive.
-		return false, err
+		return SELinuxInstalled, SELinuxModeUnknown, err
 	}
 }
 
-func (p *OS) IsSELinuxPermissive() (bool, error) {
-	if _, err := p.runner.RunCommand("sestatus | grep 'Current mode' | grep permissive", nil); err == nil {
+func (p *OS) IsSELinuxMode(mode string) (bool, error) {
+	if _, err := p.runner.RunCommand("sestatus | grep 'Current mode' | grep "+mode, nil); err == nil {
 		return true, nil
 	} else if err, ok := err.(*plan.RunError); ok && err.ExitCode == 1 {
 		// not conform with selinux permissive, may be not permissive, maybe command not found
