@@ -52,7 +52,7 @@ const (
 	PemDestDir                = "/etc/pki/weaveworks/wksctl/pem"
 	authCmapName              = "authn-authz"
 	masterConfigKey           = "master-config"
-	sealedSecretVersion       = "v0.7.0"
+	sealedSecretVersion       = "v0.11.0"
 	sealedSecretKeySecretName = "sealed-secrets-key"
 )
 
