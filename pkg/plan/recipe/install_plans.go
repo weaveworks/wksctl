@@ -108,12 +108,15 @@ func BuildCRIPlan(criSpec *baremetalspecv1.ContainerRuntime, cfg *envcfg.EnvSpec
 			plan.DependOn("install:docker"))
 	}
 
+	// this is a special case: if SELinux is not there on RH, CentOS Linux family
+	// installing Docker will also installing SELinux
+	// then we set SELinux mode to be permissive right after the docker installation step
 	if IsDockerOnCentOS {
 		b.AddResource(
 			"selinux:permissive",
 			&resource.Run{
 				Script: object.String("setenforce 0 && sed -i 's/^SELINUX=enforcing$/SELINUX=permissive/' /etc/selinux/config"),
-				// sometime, SELinux not installed yet
+				// sometime, SELinux not installed yet so || true to ignore the error
 				UndoScript: object.String("setenforce 1 && sed -i 's/^SELINUX=permissive$/SELINUX=enforcing/' /etc/selinux/config || true"),
 			},
 			plan.DependOn("install:docker"))
@@ -174,8 +177,8 @@ func BuildK8SPlan(kubernetesVersion string, kubeletNodeIP string, seLinuxInstall
 		}, plan.DependOn("configure:kubernetes-repo-key"))
 	}
 
-	// If we need to set SELinux to permissive mode.
-	if setSELinuxPermissive {
+	// If SELinux is already installed and we need to set SELinux to permissive mode, do it
+	if seLinuxInstalled && setSELinuxPermissive {
 		b.AddResource(
 			"selinux:permissive",
 			&resource.Run{
