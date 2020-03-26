@@ -19,6 +19,7 @@ const (
 	cmdMachineID         = "cat /etc/machine-id 2>/dev/null || cat /var/lib/dbus/machine-id 2>/dev/null"
 	cmdUUID              = "cat /sys/class/dmi/id/product_uuid 2>/dev/null || cat /etc/machine-id 2>/dev/null"
 	cmdSELinuxPermissive = "sestatus | grep 'Current mode' | grep permissive"
+	cmdSELinuxEnforcing  = "sestatus | grep 'Current mode' | grep enforcing"
 
 	relUbuntu    = "ID=ubuntu\nVERSION_ID=\"18.04\""
 	relCentos    = "ID=centos\nVERSION_ID=7\n"
@@ -72,6 +73,7 @@ func TestGetEnvSpecificConfig(t *testing.T) {
 					cmdMachineID:         {out: "01234567"},
 					cmdUUID:              {out: "01234567"},
 					cmdSELinuxPermissive: {},
+					cmdSELinuxEnforcing:  {},
 				},
 			},
 
@@ -92,7 +94,8 @@ func TestGetEnvSpecificConfig(t *testing.T) {
 					cmdSELinuxFound:      {err: &plan.RunError{ExitCode: 1}},
 					cmdMachineID:         {out: "01234567"},
 					cmdUUID:              {out: "01234567"},
-					cmdSELinuxPermissive: {},
+					cmdSELinuxPermissive: {err: &plan.RunError{ExitCode: 1}},
+					cmdSELinuxEnforcing:  {err: &plan.RunError{ExitCode: 1}},
 				},
 			},
 
@@ -115,6 +118,7 @@ func TestGetEnvSpecificConfig(t *testing.T) {
 					cmdMachineID:         {out: "01234567"},
 					cmdUUID:              {out: "01234567"},
 					cmdSELinuxPermissive: {}, //, err: &plan.RunError{ExitCode: 1}},
+					cmdSELinuxEnforcing:  {},
 				},
 			},
 
@@ -137,6 +141,7 @@ func TestGetEnvSpecificConfig(t *testing.T) {
 					cmdMachineID:         {out: "01234567"},
 					cmdUUID:              {out: "01234567"},
 					cmdSELinuxPermissive: {err: &plan.RunError{ExitCode: 1}},
+					cmdSELinuxEnforcing:  {},
 				},
 			},
 
@@ -156,7 +161,8 @@ func TestGetEnvSpecificConfig(t *testing.T) {
 					cmdSELinuxFound:      {err: &plan.RunError{ExitCode: 1}},
 					cmdMachineID:         {out: "01234567"},
 					cmdUUID:              {out: "01234567"},
-					cmdSELinuxPermissive: {},
+					cmdSELinuxPermissive: {err: &plan.RunError{ExitCode: 1}},
+					cmdSELinuxEnforcing:  {err: &plan.RunError{ExitCode: 1}},
 				},
 			},
 
@@ -177,6 +183,7 @@ func TestGetEnvSpecificConfig(t *testing.T) {
 					cmdMachineID:         {out: "01234567"},
 					cmdUUID:              {out: "01234567"},
 					cmdSELinuxPermissive: {},
+					cmdSELinuxEnforcing:  {},
 				},
 			},
 
@@ -197,6 +204,7 @@ func TestGetEnvSpecificConfig(t *testing.T) {
 					cmdMachineID:         {out: "01234567"},
 					cmdUUID:              {out: "01234567"},
 					cmdSELinuxPermissive: {},
+					cmdSELinuxEnforcing:  {},
 				},
 			},
 
@@ -218,6 +226,7 @@ func TestGetEnvSpecificConfig(t *testing.T) {
 					cmdMachineID:         {out: "01234567"},
 					cmdUUID:              {out: "01234567"},
 					cmdSELinuxPermissive: {err: &plan.RunError{ExitCode: 1}},
+					cmdSELinuxEnforcing:  {},
 				},
 			},
 
@@ -239,6 +248,7 @@ func TestGetEnvSpecificConfig(t *testing.T) {
 					cmdMachineID:         {out: "01234567"},
 					cmdUUID:              {out: "01234567"},
 					cmdSELinuxPermissive: {err: &plan.RunError{ExitCode: 1}},
+					cmdSELinuxEnforcing:  {err: &plan.RunError{ExitCode: 1}},
 				},
 			},
 
@@ -259,6 +269,7 @@ func TestGetEnvSpecificConfig(t *testing.T) {
 					cmdMachineID:         {out: "01234567"},
 					cmdUUID:              {out: "01234567"},
 					cmdSELinuxPermissive: {},
+					cmdSELinuxEnforcing:  {},
 				},
 			},
 			wantError: true,
@@ -275,6 +286,7 @@ func TestGetEnvSpecificConfig(t *testing.T) {
 					cmdMachineID:         {out: "01234567"},
 					cmdUUID:              {out: "01234567"},
 					cmdSELinuxPermissive: {},
+					cmdSELinuxEnforcing:  {},
 				},
 			},
 			wantError: true,
@@ -291,6 +303,7 @@ func TestGetEnvSpecificConfig(t *testing.T) {
 					cmdMachineID:         {out: "01234567"},
 					cmdUUID:              {out: "01234567"},
 					cmdSELinuxPermissive: {},
+					cmdSELinuxEnforcing:  {},
 				},
 			},
 			wantError: true,
