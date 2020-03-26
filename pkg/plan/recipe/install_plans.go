@@ -3,6 +3,8 @@ package recipe
 import (
 	"fmt"
 
+	"io/ioutil"
+
 	log "github.com/sirupsen/logrus"
 	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/controller/manifests"
 	baremetalspecv1 "github.com/weaveworks/wksctl/pkg/baremetalproviderspec/v1alpha1"
@@ -10,11 +12,6 @@ import (
 	"github.com/weaveworks/wksctl/pkg/plan/resource"
 	"github.com/weaveworks/wksctl/pkg/utilities/envcfg"
 	"github.com/weaveworks/wksctl/pkg/utilities/object"
-	"io/ioutil"
-)
-
-const (
-	sealedSecretCRDURL = "https://github.com/bitnami-labs/sealed-secrets/releases/download/%s/sealedsecret-crd.yaml"
 )
 
 // BuildBasePlan creates a plan for installing the base building blocks for the node
@@ -284,10 +281,6 @@ func BuildSealedSecretPlan(sealedSecretVersion, ns string, manifest []byte) plan
 	b.AddResource("install:sealed-secrets-controller",
 		&resource.KubectlApply{Manifest: manifestbytes, Filename: object.String("SealedSecretController.yaml")},
 		plan.DependOn("install:sealed-secrets-key"))
-	b.AddResource("install:sealed-secret-crd",
-		&resource.KubectlApply{ManifestURL: object.String(fmt.Sprintf(sealedSecretCRDURL, sealedSecretVersion)),
-			WaitCondition: "condition=Established"},
-		plan.DependOn("install:sealed-secrets-controller"))
 	p, err := b.Plan()
 	if err != nil {
 		log.Fatalf("%v", err)
