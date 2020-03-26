@@ -111,7 +111,7 @@ func BuildCRIPlan(criSpec *baremetalspecv1.ContainerRuntime, cfg *envcfg.EnvSpec
 	// this is a special case: if SELinux is not there on RH, CentOS Linux family
 	// installing Docker will also installing SELinux
 	// then we set SELinux mode to be permissive right after the docker installation step
-	if IsDockerOnCentOS {
+	if IsDockerOnCentOS && cfg.SetSELinuxPermissive {
 		b.AddResource(
 			"selinux:permissive",
 			&resource.Run{
