@@ -117,7 +117,7 @@ func TestGetEnvSpecificConfig(t *testing.T) {
 					cmdSELinuxEnabled:    {},
 					cmdMachineID:         {out: "01234567"},
 					cmdUUID:              {out: "01234567"},
-					cmdSELinuxPermissive: {}, //, err: &plan.RunError{ExitCode: 1}},
+					cmdSELinuxPermissive: {},
 					cmdSELinuxEnforcing:  {},
 				},
 			},
