@@ -169,7 +169,11 @@ function use_image() {
 }
 
 # deprecated
-# NOTE: not sure what the goal of creating images was but it appears to be misbehaving due to gcp not playing nicely with slashes in image names
+#
+# Note 1: not sure what the goal of creating images was but it appears to be
+# misbehaving due to gcp not playing nicely with slashes in image names
+# Note 2: custom images are not using in any integration test path, not sure
+# what custom images were for but I'm guessing build caching?
 function use_or_create_image() {
     setup_gcloud
     image_exists || create_image
