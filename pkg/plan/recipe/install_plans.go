@@ -14,6 +14,10 @@ import (
 	"github.com/weaveworks/wksctl/pkg/utilities/object"
 )
 
+const (
+	sealedSecretCRDURL = "https://github.com/bitnami-labs/sealed-secrets/releases/download/%s/sealedsecret-crd.yaml"
+)
+
 // BuildBasePlan creates a plan for installing the base building blocks for the node
 func BuildBasePlan(pkgType resource.PkgType) plan.Resource {
 	b := plan.NewBuilder()
@@ -281,6 +285,10 @@ func BuildSealedSecretPlan(sealedSecretVersion, ns string, manifest []byte) plan
 	b.AddResource("install:sealed-secrets-controller",
 		&resource.KubectlApply{Manifest: manifestbytes, Filename: object.String("SealedSecretController.yaml")},
 		plan.DependOn("install:sealed-secrets-key"))
+	b.AddResource("install:sealed-secret-crd",
+		&resource.KubectlApply{ManifestURL: object.String(fmt.Sprintf(sealedSecretCRDURL, sealedSecretVersion)),
+			WaitCondition: "condition=Established"},
+		plan.DependOn("install:sealed-secrets-controller"))
 	p, err := b.Plan()
 	if err != nil {
 		log.Fatalf("%v", err)
