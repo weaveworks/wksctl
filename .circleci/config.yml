@@ -188,7 +188,7 @@ jobs:
           KUBECTL_URL: https://dl.k8s.io/v1.10.5/kubernetes-client-linux-amd64.tar.gz
           KUBECTL_CHECKSUM: da9d557989a0b9671a610f21642052febb8f70c3cf144c98a8a4f7ecab6bafe2
           CREATE_IMAGE: 0
-          USE_IMAGE: 0
+          USE_IMAGE: 1
           IMAGE_NAME: centos-cloud/centos-7
     working_directory: /src/github.com/weaveworks/wksctl
     steps:
