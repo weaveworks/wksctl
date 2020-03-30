@@ -162,6 +162,14 @@ function create_image() {
     fi
 }
 
+function use_image() {
+    setup_gcloud
+    export TF_VAR_gcp_image="$IMAGE_NAME" # Override the default image name.
+    export SKIP_CONFIG=1                  # No need to configure the image, since already done when making the template
+}
+
+# deprecated
+# NOTE: not sure what the goal of creating images was but it appears to be misbehaving due to gcp not playing nicely with slashes in image names
 function use_or_create_image() {
     setup_gcloud
     image_exists || create_image
@@ -228,7 +236,7 @@ function provision() {
             export PATH="$PATH:/opt/google-cloud-sdk/bin"
             export CLOUDSDK_CORE_DISABLE_PROMPTS=1
             gcp_on
-            [[ "$1" == "on" ]] && [[ "$USE_IMAGE" == 1 ]] && use_or_create_image
+            [[ "$1" == "on" ]] && [[ "$USE_IMAGE" == 1 ]] && use_image
             provision_remotely "$1" "$2"
             ;;
         'vagrant')
