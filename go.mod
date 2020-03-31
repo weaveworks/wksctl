@@ -43,6 +43,7 @@ require (
 	golang.org/x/crypto v0.0.0-20190617133340-57b3e21c3d56
 	golang.org/x/time v0.0.0-20190308202827-9d24e82272b4 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.0.1 // indirect
+	google.golang.org/appengine v1.4.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/oleiade/reflections.v1 v1.0.0
 	gopkg.in/src-d/go-git.v4 v4.10.0
