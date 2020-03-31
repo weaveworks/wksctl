@@ -26,10 +26,10 @@ func BuildBasePlan(pkgType resource.PkgType) plan.Resource {
 		// Device Mapper
 		b.AddResource("install:device-mapper-persistent-data", &resource.RPM{Name: "device-mapper-persistent-data"})
 		b.AddResource("install:lvm2", &resource.RPM{Name: "lvm2"})
-		if pkgType == resource.PkgTypeRHEL {
-			// RHEL requires installation of container-selinux
-			b.AddResource("install:container-selinux", &resource.RPM{Name: "container-selinux"})
-		}
+		// if pkgType == resource.PkgTypeRHEL {
+		// 	// RHEL requires installation of container-selinux
+		// 	b.AddResource("install:container-selinux", &resource.RPM{Name: "container-selinux"})
+		// }
 
 	case resource.PkgTypeDeb:
 		// Package manager features
