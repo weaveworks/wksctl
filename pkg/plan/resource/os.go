@@ -242,7 +242,7 @@ func (p *OS) IsSELinuxMode(mode string) (bool, error) {
 	if _, err := p.runner.RunCommand("sestatus | grep 'Current mode' | grep "+mode, nil); err == nil {
 		return true, nil
 	} else if err, ok := err.(*plan.RunError); ok && err.ExitCode == 1 {
-		// not conform with selinux permissive, may be not permissive, maybe command not found
+		// selinux not in the permissive mode
 		return false, nil
 	} else {
 		return false, err
