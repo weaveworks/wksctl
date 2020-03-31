@@ -86,10 +86,13 @@ func BuildCRIPlan(criSpec *baremetalspecv1.ContainerRuntime, cfg *envcfg.EnvSpec
 		log.Fatalf("Unknown CRI - %s", criSpec.Kind)
 	}
 
+	IsDockerOnCentOS := false
 	// Docker runtime
 	switch pkgType {
 	case resource.PkgTypeRPM, resource.PkgTypeRHEL:
 		b.AddResource("install:docker", &resource.RPM{Name: criSpec.Package, Version: criSpec.Version})
+		// SELinux will be here along with docker and containerd-selinux packages
+		IsDockerOnCentOS = true
 	case resource.PkgTypeDeb:
 		// TODO(michal): Use the official docker.com repo
 		b.AddResource("install:docker", &resource.Deb{Name: "docker.io"})
@@ -105,6 +108,20 @@ func BuildCRIPlan(criSpec *baremetalspecv1.ContainerRuntime, cfg *envcfg.EnvSpec
 			plan.DependOn("install:docker"))
 	}
 
+	// this is a special case: if SELinux is not there on RH, CentOS Linux family
+	// installing Docker will also installing SELinux
+	// then we set SELinux mode to be permissive right after the docker installation step
+	if IsDockerOnCentOS && cfg.SetSELinuxPermissive {
+		b.AddResource(
+			"selinux:permissive",
+			&resource.Run{
+				Script: object.String("setenforce 0 && sed -i 's/^SELINUX=enforcing$/SELINUX=permissive/' /etc/selinux/config"),
+				// sometime, SELinux not installed yet so || true to ignore the error
+				UndoScript: object.String("setenforce 1 && sed -i 's/^SELINUX=permissive$/SELINUX=enforcing/' /etc/selinux/config || true"),
+			},
+			plan.DependOn("install:docker"))
+	}
+
 	b.AddResource(
 		"systemd:daemon-reload",
 		&resource.Run{Script: object.String("systemctl daemon-reload")},
@@ -114,6 +131,7 @@ func BuildCRIPlan(criSpec *baremetalspecv1.ContainerRuntime, cfg *envcfg.EnvSpec
 		"service-init:docker-service",
 		&resource.Service{Name: "docker", Status: "active", Enabled: true},
 		plan.DependOn("systemd:daemon-reload"))
+
 	p, err := b.Plan()
 
 	p.SetUndoCondition(func(r plan.Runner, _ plan.State) bool {
@@ -135,7 +153,7 @@ ExecStartPre=-/sbin/swapoff -a
 `
 
 // BuildK8SPlan creates a plan for running kubernetes on a node
-func BuildK8SPlan(kubernetesVersion string, kubeletNodeIP string, setSELinuxPermissive, disableSwap, lockYUMPkgs bool, pkgType resource.PkgType, cloudProvider string) plan.Resource {
+func BuildK8SPlan(kubernetesVersion string, kubeletNodeIP string, seLinuxInstalled, setSELinuxPermissive, disableSwap, lockYUMPkgs bool, pkgType resource.PkgType, cloudProvider string) plan.Resource {
 	b := plan.NewBuilder()
 
 	// Kubernetes repos
@@ -159,8 +177,8 @@ func BuildK8SPlan(kubernetesVersion string, kubeletNodeIP string, setSELinuxPerm
 		}, plan.DependOn("configure:kubernetes-repo-key"))
 	}
 
-	// Set SELinux to permissive mode.
-	if setSELinuxPermissive {
+	// If SELinux is already installed and we need to set SELinux to permissive mode, do it
+	if seLinuxInstalled && setSELinuxPermissive {
 		b.AddResource(
 			"selinux:permissive",
 			&resource.Run{
