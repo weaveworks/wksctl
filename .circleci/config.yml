@@ -286,15 +286,12 @@ jobs:
             sudo mv kubectl /usr/local/bin
 
       - run:
-          name: Create VMs
-          command: $SRCDIR/test/integration/bin/up.sh
+          name: rhel integration tests
+          command: |
+            if [ -n "$SECRET_KEY" ]; then
+              $SRCDIR/test/integration/bin/up.sh
+              $SRCDIR/test/integration/bin/test.sh
+              $SRCDIR/test/integration/bin/down.sh
+            fi
 
-      - run:
-          name: Run integration tests
-          command: $SRCDIR/test/integration/bin/test.sh
-
-      - run:
-          name: Destroy VMs
-          command: $SRCDIR/test/integration/bin/down.sh
-          when: always
       - run: "true"
