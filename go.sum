@@ -305,6 +305,7 @@ github.com/tmc/grpc-websocket-proxy v0.0.0-20170815181823-89b8d40f7ca8/go.mod h1
 github.com/ugorji/go/codec v0.0.0-20181204163529-d75b2dcb6bc8/go.mod h1:VFNgLljTbGfSG7qAOspJ7OScBnGdDN/yBr0sguwnwf0=
 github.com/weaveworks/footloose v0.0.0-20190829132911-efbcbb7a6390 h1:+eeBhTQ/e64tnpCm2fQa2lanFJPKzBq5de6ApW6rDdc=
 github.com/weaveworks/footloose v0.0.0-20190829132911-efbcbb7a6390/go.mod h1:nOh5HQLDNC5MgZTPXbfnp+ChzAGRSkKopJmSNIGvi6w=
+github.com/weaveworks/footloose v0.0.0-20190903132036-efbcbb7a6390 h1:kFi0CaTblX4lM4Oi9KeZmcz3eo7NsmwNEXgQrVkVXHw=
 github.com/weaveworks/footloose v0.0.0-20190903132036-efbcbb7a6390/go.mod h1:nOh5HQLDNC5MgZTPXbfnp+ChzAGRSkKopJmSNIGvi6w=
 github.com/weaveworks/go-checkpoint v0.0.0-20170503165305-ebbb8b0518ab h1:mW+hgchD9qUUBqnuaDBj7BkcpFPk/FxeFcUFI5lvvUw=
 github.com/weaveworks/go-checkpoint v0.0.0-20170503165305-ebbb8b0518ab/go.mod h1:qkbvw5GPibQ/Nf7IZJL0UoLwmJ6858b4S/hUWRd+cH4=

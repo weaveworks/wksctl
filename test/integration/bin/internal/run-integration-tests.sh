@@ -15,36 +15,36 @@
 
 set -e
 
-INT_TEST_DIR="$(dirname "$0")/../.."
-REPO_ROOT_DIR="$INT_TEST_DIR/../.."
-PROVISIONING_DIR="$(dirname $0)/provisioning"
+export INT_TEST_DIR="$(dirname "$0")/../.."
+export REPO_ROOT_DIR="$INT_TEST_DIR/../.."
+export PROVISIONING_DIR="$(dirname $0)/provisioning"
 . "$PROVISIONING_DIR/setup.sh" # Import gcp_on, do_on, and aws_on.
 . "$(dirname $0)/colourise.sh"                      # Import greenly.
 
 # Variables:
-APP="wks"
+export APP="wks"
 # shellcheck disable=SC2034
-PROJECT="wks-tests" # Only used when PROVIDER is gcp, by tools/provisioning/config.sh.
-NAME=${NAME:-"$(whoami | sed -e 's/[\.\_]*//g' | cut -c 1-4)"}
-PROVIDER=${PROVIDER:-gcp} # Provision using provided provider, or Google Cloud Platform by default.
-NUM_HOSTS=${NUM_HOSTS:-3}
-PLAYBOOK=${PLAYBOOK:-setup_bare_docker.yml}
-PLAYBOOK_DOCKER_INSTALL_ROLE=${PLAYBOOK_DOCKER_INSTALL_ROLE:-docker-from-get.docker.com}
-TESTS=${TESTS:-}
-RUNNER_ARGS=${RUNNER_ARGS:-""}
+export PROJECT="wks-tests" # Only used when PROVIDER is gcp, by tools/provisioning/config.sh.
+export NAME=${NAME:-"$(whoami | sed -e 's/[\.\_]*//g' | cut -c 1-4)"}
+export PROVIDER=${PROVIDER:-gcp} # Provision using provided provider, or Google Cloud Platform by default.
+export NUM_HOSTS=${NUM_HOSTS:-3}
+export PLAYBOOK=${PLAYBOOK:-setup_bare_docker.yml}
+export PLAYBOOK_DOCKER_INSTALL_ROLE=${PLAYBOOK_DOCKER_INSTALL_ROLE:-docker-from-get.docker.com}
+export TESTS=${TESTS:-}
+export RUNNER_ARGS=${RUNNER_ARGS:-""}
 # Dependencies' versions:
-DOCKER_VERSION=${DOCKER_VERSION:-"$(grep -oP "(?<=DOCKER_VERSION=).*" "$REPO_ROOT_DIR/DEPENDENCIES")"}
+export DOCKER_VERSION=${DOCKER_VERSION:-"$(grep -oP "(?<=DOCKER_VERSION=).*" "$REPO_ROOT_DIR/DEPENDENCIES")"}
 # Google Cloud Platform image's name & usage (only used when PROVIDER is gcp):
-IMAGE_NAME=${IMAGE_NAME:-"$(echo "$APP-centos7-docker$DOCKER_VERSION" | sed -e 's/[\.\_]*//g')"}
-DISK_NAME_PREFIX=${DISK_NAME_PREFIX:-$NAME}
-USE_IMAGE=${USE_IMAGE:-1}
-CREATE_IMAGE=${CREATE_IMAGE:-1}
-CREATE_IMAGE_TIMEOUT_IN_SECS=${CREATE_IMAGE_TIMEOUT_IN_SECS:-600}
+export IMAGE_NAME=${IMAGE_NAME:-"$(echo "$APP-centos7-docker$DOCKER_VERSION" | sed -e 's/[\.\_]*//g')"}
+export DISK_NAME_PREFIX=${DISK_NAME_PREFIX:-$NAME}
+export USE_IMAGE=${USE_IMAGE:-1}
+export CREATE_IMAGE=${CREATE_IMAGE:-1}
+export CREATE_IMAGE_TIMEOUT_IN_SECS=${CREATE_IMAGE_TIMEOUT_IN_SECS:-600}
 # Lifecycle flags:
-SKIP_CONFIG=${SKIP_CONFIG:-}
-SKIP_DESTROY=${SKIP_DESTROY:-}
+export SKIP_CONFIG=${SKIP_CONFIG:-}
+export SKIP_DESTROY=${SKIP_DESTROY:-}
 # Save terraform output for further use in tests
-TERRAFORM_OUTPUT=${TERRAFORM_OUTPUT:-/tmp/terraform_output.json}
+export TERRAFORM_OUTPUT=${TERRAFORM_OUTPUT:-/tmp/terraform_output.json}
 
 function print_vars() {
     echo "--- Variables: Main ---"
@@ -162,6 +162,18 @@ function create_image() {
     fi
 }
 
+function use_image() {
+    setup_gcloud
+    export TF_VAR_gcp_image="$IMAGE_NAME" # Override the default image name.
+    export SKIP_CONFIG=1                  # No need to configure the image, since already done when making the template
+}
+
+# deprecated
+#
+# Note 1: not sure what the goal of creating images was but it appears to be
+# misbehaving due to gcp not playing nicely with slashes in image names
+# Note 2: custom images are not using in any integration test path, not sure
+# what custom images were for but I'm guessing build caching?
 function use_or_create_image() {
     setup_gcloud
     image_exists || create_image
@@ -228,7 +240,7 @@ function provision() {
             export PATH="$PATH:/opt/google-cloud-sdk/bin"
             export CLOUDSDK_CORE_DISABLE_PROMPTS=1
             gcp_on
-            [[ "$1" == "on" ]] && [[ "$USE_IMAGE" == 1 ]] && use_or_create_image
+            [[ "$1" == "on" ]] && [[ "$USE_IMAGE" == 1 ]] && use_image
             provision_remotely "$1" "$2"
             ;;
         'vagrant')

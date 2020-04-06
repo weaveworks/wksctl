@@ -28,6 +28,9 @@ workflows:
       - integration-tests-gcp-ubuntu:
           requires:
             - build
+      - integration-tests-gcp-rhel:
+          requires:
+            - build
       - release:
           requires:
             - build
@@ -192,8 +195,8 @@ jobs:
           SRCDIR: /src/github.com/weaveworks/wksctl
           KUBECTL_URL: https://dl.k8s.io/v1.10.5/kubernetes-client-linux-amd64.tar.gz
           KUBECTL_CHECKSUM: da9d557989a0b9671a610f21642052febb8f70c3cf144c98a8a4f7ecab6bafe2
-          CREATE_IMAGE: 0
-          USE_IMAGE: 0
+          CREATE_IMAGE: 1
+          USE_IMAGE: 1
           IMAGE_NAME: centos-cloud/centos-7
     working_directory: /src/github.com/weaveworks/wksctl
     steps:
@@ -254,4 +257,44 @@ jobs:
               $SRCDIR/test/integration/bin/test.sh
               $SRCDIR/test/integration/bin/down.sh
             fi
+      - run: "true"
+  integration-tests-gcp-rhel:
+    docker:
+      - image: quay.io/wks/build:master-134af34f
+        environment:
+          GOPATH: /go/
+          SRCDIR: /src/github.com/weaveworks/wksctl
+          KUBECTL_URL: https://dl.k8s.io/v1.10.5/kubernetes-client-linux-amd64.tar.gz
+          KUBECTL_CHECKSUM: da9d557989a0b9671a610f21642052febb8f70c3cf144c98a8a4f7ecab6bafe2
+          CREATE_IMAGE: 1
+          USE_IMAGE: 1
+          IMAGE_NAME: rhel-cloud/rhel-7
+    working_directory: /src/github.com/weaveworks/wksctl
+    steps:
+      - checkout
+      - setup_remote_docker
+
+      - attach_workspace:
+          at: /tmp/workspace
+      - run: /tmp/workspace/cmd/wksctl/wksctl version
+      - run:
+          name: Install kubectl
+          command: |
+            curl -L $KUBECTL_URL -o kubectl.tar.gz
+            echo "$KUBECTL_CHECKSUM kubectl.tar.gz" | sha256sum -c
+            tar xvzf kubectl.tar.gz --strip-components=3
+            sudo mv kubectl /usr/local/bin
+
+      - run:
+          name: Create VMs
+          command: $SRCDIR/test/integration/bin/up.sh
+
+      - run:
+          name: Run integration tests
+          command: $SRCDIR/test/integration/bin/test.sh
+
+      - run:
+          name: Destroy VMs
+          command: $SRCDIR/test/integration/bin/down.sh
+          when: always
       - run: "true"
