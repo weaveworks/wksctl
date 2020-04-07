@@ -1210,6 +1210,7 @@ type MachineActuatorParams struct {
 
 // NewMachineActuator creates a new Machine actuator.
 func NewMachineActuator(params MachineActuatorParams) (*MachineActuator, error) {
+	log.SetLevel(log.DebugLevel)
 	codec, err := baremetalspecv1.NewCodec()
 	if err != nil {
 		return nil, gerrors.Wrap(err, "failed to create codec")
