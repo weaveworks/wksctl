@@ -40,7 +40,7 @@ Using the url, branch, and deploy key, `wksctl` will clone the repo and create t
 
 These `--git` arguments are then used to set up and configure [flux](https://www.weave.works/oss/flux/) to automate cluster management via Git aka [GitOps](https://www.weave.works/technologies/gitops/)
 
-We will rely on the user installing [fluxctl](https://docs.fluxcd.io/en/latest/references/fluxctl.html#installing-fluxctl) to interact with flux directly.  `wksctl` does not replicate this functionality.
+We will rely on the user installing [fluxctl](https://docs.fluxcd.io/en/latest/references/fluxctl#installing-fluxctl) to interact with flux directly.  `wksctl` does not replicate this functionality.
 
 ### wksctl apply 
 A complete description of the apply command
