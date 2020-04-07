@@ -33,6 +33,8 @@ type KubeadmJoin struct {
 	CertificateKey string `structs:"certificateKey" plan:"hide"`
 	// IgnorePreflightErrors is optionally used to skip kubeadm's preflight checks.
 	IgnorePreflightErrors []string `structs:"ignorePreflightErrors"`
+	// External Load Balancer name or IP address to be used instead of the master's IP
+	ExternalLoadBalancer string `structs:"externalLoadBalancer"`
 }
 
 var _ plan.Resource = plan.RegisterResource(&KubeadmJoin{})
@@ -48,6 +50,9 @@ func (kj *KubeadmJoin) State() plan.State {
 func (kj *KubeadmJoin) Apply(runner plan.Runner, diff plan.Diff) (bool, error) {
 	log.Info("joining Kubernetes cluster")
 	apiServerEndpoint := fmt.Sprintf("%s:%d", kj.MasterIP, kj.MasterPort)
+	if kj.ExternalLoadBalancer != "" {
+		apiServerEndpoint = fmt.Sprintf("%s:%d", kj.ExternalLoadBalancer, kj.MasterPort)
+	}
 	kubeadmJoinCmd := kj.kubeadmJoinCmd(apiServerEndpoint)
 	if stdouterr, err := runner.RunCommand(withoutProxy(kubeadmJoinCmd), nil); err != nil {
 		log.WithField("stdouterr", stdouterr).Debug("failed to join cluster")

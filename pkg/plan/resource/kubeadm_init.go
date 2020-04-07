@@ -129,7 +129,8 @@ func (ki *KubeadmInit) Apply(runner plan.Runner, diff plan.Diff) (bool, error) {
 	defer removeFile(remotePath, runner)
 
 	var stdOutErr string
-	p := buildKubeadmInitPlan(remotePath, strings.Join(ki.IgnorePreflightErrors, ","), ki.UseIPTables, &stdOutErr)
+	p := buildKubeadmInitPlan(remotePath, strings.Join(ki.IgnorePreflightErrors, ","),
+		ki.UseIPTables, &stdOutErr)
 	_, err = p.Apply(runner, plan.EmptyDiff())
 	if err != nil {
 		return false, errors.Wrap(err, "failed to initialize Kubernetes cluster with kubeadm")
@@ -229,8 +230,10 @@ func (ki *KubeadmInit) deserializeSecret(fileName, namespace string) (*corev1.Se
 func (ki *KubeadmInit) Undo(runner plan.Runner, current plan.State) error {
 	remotePath := "/tmp/wks_kubeadm_init_config.yaml"
 	var ignored string
-	return buildKubeadmInitPlan(remotePath, strings.Join(ki.IgnorePreflightErrors, ","), ki.UseIPTables, &ignored).Undo(
-		runner, plan.EmptyState)
+	return buildKubeadmInitPlan(
+		remotePath,
+		strings.Join(ki.IgnorePreflightErrors, ","),
+		ki.UseIPTables, &ignored).Undo(runner, plan.EmptyState)
 }
 
 func buildKubeadmInitPlan(path string, ignorePreflightErrors string, useIPTables bool, output *string) plan.Resource {
@@ -240,6 +243,7 @@ func buildKubeadmInitPlan(path string, ignorePreflightErrors string, useIPTables
 			"configure:iptables",
 			&Run{Script: object.String("sysctl net.bridge.bridge-nf-call-iptables=1")}) // TODO: undo?
 	}
+
 	b.AddResource(
 		"kubeadm:reset",
 		&Run{Script: object.String("kubeadm reset --force")},
@@ -253,7 +257,8 @@ func buildKubeadmInitPlan(path string, ignorePreflightErrors string, useIPTables
 		// certificates of the primary control plane in the kubeadm-certs
 		// Secret, and prints the value for --certificate-key to STDOUT.
 		&Run{Script: plan.ParamString(
-			withoutProxy("kubeadm init --config=%s --ignore-preflight-errors=%s --experimental-upload-certs"), &path, &ignorePreflightErrors),
+			withoutProxy("kubeadm init --config=%s --ignore-preflight-errors=%s --experimental-upload-certs"),
+			&path, &ignorePreflightErrors),
 			UndoResource: buildKubeadmRunInitUndoPlan(),
 			Output:       output,
 		},
