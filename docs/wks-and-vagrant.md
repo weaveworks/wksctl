@@ -1,10 +1,9 @@
 # WKS and Vagrant
 
 ```console
-$ make install
 $ cd examples/vagrant
 $ vagrant up
-$ wksctl apply --cluster=cluster.yaml --machines=machines2.yaml --ssh-key=$HOME/.vagrant.d/insecure_private_key
+$ wksctl apply --ssh-key=$HOME/.vagrant.d/insecure_private_key
 INFO[0000] installing CRI implementation
 INFO[0054] installing Kubernetes
 INFO[0079] initializing Kubernetes cluster with kubeadm
@@ -23,5 +22,5 @@ kube-01   Ready    master   8m8s    v1.13.3
 kube-02   Ready    <none>   4m53s   v1.13.3
 
 At any time, one can look at what the controller is doing:
-# kubectl logs -n system wks-controller-6cf77fd8cc-wjpw2
+# kubectl logs --tail 100 -f -n weavek8sops -l name=wks-controller
 ```
