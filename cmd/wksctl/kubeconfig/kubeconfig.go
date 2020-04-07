@@ -105,8 +105,7 @@ func writeKubeconfig(cpath, mpath string) error {
 	sp := specs.NewFromPaths(cpath, mpath)
 
 	if kubeconfigOptions.artifactDirectory != "" {
-		wksHome, err = path.CreateDirectory(
-			path.WKSHome(kubeconfigOptions.artifactDirectory))
+		wksHome, err = path.CreateDirectory(path.ExpandHome(kubeconfigOptions.artifactDirectory))
 		if err != nil {
 			return errors.Wrapf(err, "failed to create WKS home directory")
 		}

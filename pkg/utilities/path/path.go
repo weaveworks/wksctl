@@ -7,8 +7,6 @@ import (
 	"os/user"
 	"path/filepath"
 	"strings"
-
-	"k8s.io/client-go/tools/clientcmd"
 )
 
 // UserHomeDirectory returns the user directory.
@@ -28,12 +26,12 @@ func UserHomeDirectory() (string, error) {
 
 // Expand expands the provided path, evaluating all symlinks (including "~").
 func Expand(path string) (string, error) {
-	path = expandHome(path)
+	path = ExpandHome(path)
 	return filepath.EvalSymlinks(path)
 }
 
-func expandHome(s string) string {
-	home, _ := UserHomeDirectory()
+func ExpandHome(s string) string {
+	home, _ := os.UserHomeDir()
 	if strings.HasPrefix(s, "~/") {
 		return filepath.Join(home, s[2:])
 	}
@@ -44,9 +42,13 @@ func expandHome(s string) string {
 func WKSHome(artifactDirectory string) string {
 	// Command line option overrides the default home directory.
 	if artifactDirectory != "" {
-		return expandHome(artifactDirectory)
+		return ExpandHome(artifactDirectory)
 	}
-	return clientcmd.RecommendedHomeFile
+	if userHome, err := os.UserHomeDir(); err == nil {
+		return filepath.Join(userHome, ".wks")
+	}
+	wd, _ := os.Getwd()
+	return wd
 }
 
 // WKSResourcePath joins the provided (optional) artifact directory and the
