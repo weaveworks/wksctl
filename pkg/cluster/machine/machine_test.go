@@ -96,6 +96,41 @@ const machinesValid = `items:
       kubelet: "1.10.12"
 `
 
+const machinesValidWithOnlyKubeletVersion = `items:
+- apiVersion: "cluster.k8s.io/v1alpha1"
+  kind: Machine
+  metadata:
+    generateName: master-
+    labels:
+      set: master
+  spec:
+    providerSpec:
+      value:
+        apiVersion: "baremetalproviderspec/v1alpha1"
+        kind: "BareMetalMachineProviderSpec"
+        address: "172.17.8.101"
+    versions:
+      kubelet: "1.10.12"
+- apiVersion: "cluster.k8s.io/v1alpha1"
+  kind: Machine
+  metadata:
+    generateName: node-
+    labels:
+      set: node
+  spec:
+    providerSpec:
+      value:
+        apiVersion: "baremetalproviderspec/v1alpha1"
+        kind: "BareMetalMachineProviderSpec"
+        address: "172.17.8.102"
+        authenticationWebhook:
+          cacheTTL: 2m0s
+          server:
+            url: http://127.0.0.1:5000/authenticate
+    versions:
+      kubelet: "1.10.12"
+`
+
 // A machine doesn't have a matching Kubelet version.
 const machinesInconsistentKubeletVersion = `items:
 - apiVersion: "cluster.k8s.io/v1alpha1"
@@ -234,6 +269,7 @@ func TestValidateMachines(t *testing.T) {
 		errors []string
 	}{
 		{machinesValid, []string{}},
+		{machinesValidWithOnlyKubeletVersion, []string{}},
 		{machinesInconsistentKubeletVersion, []string{
 			"machines[1].spec.versions.kubelet",
 		}},

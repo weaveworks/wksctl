@@ -2,7 +2,6 @@ package kubeconfig
 
 import (
 	"fmt"
-	"io/ioutil"
 	"path/filepath"
 
 	"github.com/pkg/errors"
@@ -12,6 +11,7 @@ import (
 	"github.com/weaveworks/wksctl/pkg/specs"
 	"github.com/weaveworks/wksctl/pkg/utilities/manifest"
 	"github.com/weaveworks/wksctl/pkg/utilities/path"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 // A new version of the kubeconfig command that retrieves the config from
@@ -19,9 +19,10 @@ import (
 
 // Cmd represents the kubeconfig command
 var Cmd = &cobra.Command{
-	Use:   "kubeconfig",
-	Short: "Generate a kubeconfig file for the cluster",
-	RunE:  kubeconfigRun,
+	Use:          "kubeconfig",
+	Short:        "Generate a kubeconfig file for the cluster",
+	RunE:         kubeconfigRun,
+	SilenceUsage: true,
 }
 
 var kubeconfigOptions struct {
@@ -34,6 +35,7 @@ var kubeconfigOptions struct {
 	artifactDirectory    string
 	namespace            string
 	sshKeyPath           string
+	useContext           bool
 	skipTLSVerify        bool
 	useLocalhost         bool
 	usePublicAddress     bool
@@ -56,6 +58,9 @@ func init() {
 		&kubeconfigOptions.artifactDirectory, "artifact-directory", "", "Write output files in the specified directory")
 	Cmd.Flags().StringVar(
 		&kubeconfigOptions.namespace, "namespace", manifest.DefaultNamespace, "namespace portion of kubeconfig path")
+	Cmd.Flags().BoolVar(
+		&kubeconfigOptions.useContext, "use-context", true,
+		"Set current context to the newly created one")
 	Cmd.Flags().BoolVar(
 		&kubeconfigOptions.skipTLSVerify, "insecure-skip-tls-verify", false,
 		"Enables kubectl to communicate with the API w/o verifying the certificate")
@@ -93,29 +98,47 @@ func kubeconfigRun(cmd *cobra.Command, args []string) error {
 }
 
 func writeKubeconfig(cpath, mpath string) error {
-	wksHome, err := path.CreateDirectory(
-		path.WKSHome(kubeconfigOptions.artifactDirectory))
-	if err != nil {
-		return errors.Wrapf(err, "failed to create WKS home directory")
-	}
+	var wksHome string
+	var err error
+	var configPath string
+
 	sp := specs.NewFromPaths(cpath, mpath)
+
+	if kubeconfigOptions.artifactDirectory != "" {
+		wksHome, err = path.CreateDirectory(path.ExpandHome(kubeconfigOptions.artifactDirectory))
+		if err != nil {
+			return errors.Wrapf(err, "failed to create WKS home directory")
+		}
+
+		_, err = path.CreateDirectory(filepath.Dir(configPath))
+		if err != nil {
+			return errors.Wrapf(err, "failed to create configuration directory")
+		}
+		configPath = path.Kubeconfig(wksHome, kubeconfigOptions.namespace, sp.GetClusterName())
+	} else {
+		configPath = clientcmd.RecommendedHomeFile
+	}
 
 	configStr, err := config.GetRemoteKubeconfig(sp, kubeconfigOptions.sshKeyPath, kubeconfigOptions.verbose, kubeconfigOptions.skipTLSVerify)
 	if err != nil {
-		return errors.Wrapf(err, "GetRemoteKubeconfig")
+		return errors.Wrapf(err, "failed to get remote kubeconfig")
 	}
 
-	configPath := path.Kubeconfig(wksHome, kubeconfigOptions.namespace, sp.GetClusterName())
-
-	_, err = path.CreateDirectory(filepath.Dir(configPath))
+	remoteConfig, err := clientcmd.Load([]byte(configStr))
 	if err != nil {
-		return errors.Wrapf(err, "failed to create configuration directory")
+		return errors.Wrapf(err, "failed to load kubeconfig")
 	}
+	config.RenameConfig(sp, remoteConfig)
 
-	err = ioutil.WriteFile(configPath, []byte(configStr), 0644)
+	configPath, err = config.Write(configPath, *remoteConfig, kubeconfigOptions.useContext)
 	if err != nil {
 		return errors.Wrapf(err, "failed to write Kubernetes configuration locally")
 	}
-	fmt.Printf("To use kubectl with the %s cluster, enter:\n$ export KUBECONFIG=%s\n", sp.GetClusterName(), configPath)
+	if kubeconfigOptions.artifactDirectory != "" {
+		fmt.Printf("To use kubectl with the %s cluster, enter:\n$ export KUBECONFIG=%s\n", sp.GetClusterName(), configPath)
+	} else {
+		fmt.Printf("The kubeconfig file at %q has been updated\n", configPath)
+	}
+
 	return nil
 }

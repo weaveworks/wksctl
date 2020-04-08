@@ -169,7 +169,8 @@ func validateVersions(machines []*clusterv1.Machine) field.ErrorList {
 				fmt.Sprintf("inconsistent kubelet version, expected \"%s\"", reference)))
 		}
 
-		if IsMaster(m) && m.Spec.Versions.ControlPlane != reference {
+		controlPlaneVersion := m.Spec.Versions.ControlPlane
+		if IsMaster(m) && controlPlaneVersion != "" && controlPlaneVersion != reference {
 			errors = append(errors, field.Invalid(
 				machinePath(i, "spec", "versions", "controlPlane"),
 				m.Spec.Versions.ControlPlane,

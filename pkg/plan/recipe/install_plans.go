@@ -2,6 +2,7 @@ package recipe
 
 import (
 	"fmt"
+	"io/ioutil"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/controller/manifests"
@@ -10,11 +11,6 @@ import (
 	"github.com/weaveworks/wksctl/pkg/plan/resource"
 	"github.com/weaveworks/wksctl/pkg/utilities/envcfg"
 	"github.com/weaveworks/wksctl/pkg/utilities/object"
-	"io/ioutil"
-)
-
-const (
-	sealedSecretCRDURL = "https://github.com/bitnami-labs/sealed-secrets/releases/download/%s/sealedsecret-crd.yaml"
 )
 
 // BuildBasePlan creates a plan for installing the base building blocks for the node
@@ -22,7 +18,7 @@ func BuildBasePlan(pkgType resource.PkgType) plan.Resource {
 	b := plan.NewBuilder()
 
 	switch pkgType {
-	case resource.PkgTypeRPM:
+	case resource.PkgTypeRPM, resource.PkgTypeRHEL:
 		// Package manager features
 		b.AddResource("install:yum-utils", &resource.RPM{Name: "yum-utils"})
 		b.AddResource("install:yum-versionlock", &resource.RPM{Name: "yum-plugin-versionlock"})
@@ -30,6 +26,7 @@ func BuildBasePlan(pkgType resource.PkgType) plan.Resource {
 		// Device Mapper
 		b.AddResource("install:device-mapper-persistent-data", &resource.RPM{Name: "device-mapper-persistent-data"})
 		b.AddResource("install:lvm2", &resource.RPM{Name: "lvm2"})
+
 	case resource.PkgTypeDeb:
 		// Package manager features
 		b.AddResource("install:gnupg", &resource.Deb{Name: "gnupg"})
@@ -89,10 +86,13 @@ func BuildCRIPlan(criSpec *baremetalspecv1.ContainerRuntime, cfg *envcfg.EnvSpec
 		log.Fatalf("Unknown CRI - %s", criSpec.Kind)
 	}
 
+	IsDockerOnCentOS := false
 	// Docker runtime
 	switch pkgType {
-	case resource.PkgTypeRPM:
+	case resource.PkgTypeRPM, resource.PkgTypeRHEL:
 		b.AddResource("install:docker", &resource.RPM{Name: criSpec.Package, Version: criSpec.Version})
+		// SELinux will be here along with docker and containerd-selinux packages
+		IsDockerOnCentOS = true
 	case resource.PkgTypeDeb:
 		// TODO(michal): Use the official docker.com repo
 		b.AddResource("install:docker", &resource.Deb{Name: "docker.io"})
@@ -108,6 +108,20 @@ func BuildCRIPlan(criSpec *baremetalspecv1.ContainerRuntime, cfg *envcfg.EnvSpec
 			plan.DependOn("install:docker"))
 	}
 
+	// this is a special case: if SELinux is not there on RH, CentOS Linux family
+	// installing Docker will also installing SELinux
+	// then we set SELinux mode to be permissive right after the docker installation step
+	if IsDockerOnCentOS && cfg.SetSELinuxPermissive {
+		b.AddResource(
+			"selinux:permissive",
+			&resource.Run{
+				Script: object.String("setenforce 0 && sed -i 's/^SELINUX=enforcing$/SELINUX=permissive/' /etc/selinux/config"),
+				// sometime, SELinux not installed yet so || true to ignore the error
+				UndoScript: object.String("setenforce 1 && sed -i 's/^SELINUX=permissive$/SELINUX=enforcing/' /etc/selinux/config || true"),
+			},
+			plan.DependOn("install:docker"))
+	}
+
 	b.AddResource(
 		"systemd:daemon-reload",
 		&resource.Run{Script: object.String("systemctl daemon-reload")},
@@ -117,6 +131,7 @@ func BuildCRIPlan(criSpec *baremetalspecv1.ContainerRuntime, cfg *envcfg.EnvSpec
 		"service-init:docker-service",
 		&resource.Service{Name: "docker", Status: "active", Enabled: true},
 		plan.DependOn("systemd:daemon-reload"))
+
 	p, err := b.Plan()
 
 	p.SetUndoCondition(func(r plan.Runner, _ plan.State) bool {
@@ -138,12 +153,12 @@ ExecStartPre=-/sbin/swapoff -a
 `
 
 // BuildK8SPlan creates a plan for running kubernetes on a node
-func BuildK8SPlan(kubernetesVersion string, kubeletNodeIP string, setSELinuxPermissive, disableSwap, lockYUMPkgs bool, pkgType resource.PkgType, cloudProvider string) plan.Resource {
+func BuildK8SPlan(kubernetesVersion string, kubeletNodeIP string, seLinuxInstalled, setSELinuxPermissive, disableSwap, lockYUMPkgs bool, pkgType resource.PkgType, cloudProvider string) plan.Resource {
 	b := plan.NewBuilder()
 
 	// Kubernetes repos
 	switch pkgType {
-	case resource.PkgTypeRPM:
+	case resource.PkgTypeRPM, resource.PkgTypeRHEL:
 		// do nothing
 	case resource.PkgTypeDeb:
 		// XXX: Workaround for https://github.com/weaveworks/wksctl/issues/654 : *.gpg is a binary format, and currently wks is unable to handle
@@ -162,8 +177,8 @@ func BuildK8SPlan(kubernetesVersion string, kubeletNodeIP string, setSELinuxPerm
 		}, plan.DependOn("configure:kubernetes-repo-key"))
 	}
 
-	// Set SELinux to permissive mode.
-	if setSELinuxPermissive {
+	// If SELinux is already installed and we need to set SELinux to permissive mode, do it
+	if seLinuxInstalled && setSELinuxPermissive {
 		b.AddResource(
 			"selinux:permissive",
 			&resource.Run{
@@ -174,7 +189,7 @@ func BuildK8SPlan(kubernetesVersion string, kubeletNodeIP string, setSELinuxPerm
 
 	// Install k8s packages
 	switch pkgType {
-	case resource.PkgTypeRPM:
+	case resource.PkgTypeRPM, resource.PkgTypeRHEL:
 		b.AddResource("install:kubelet", &resource.RPM{Name: "kubelet", Version: kubernetesVersion, DisableExcludes: "kubernetes"})
 		b.AddResource("install:kubectl", &resource.RPM{Name: "kubectl", Version: kubernetesVersion, DisableExcludes: "kubernetes"})
 		b.AddResource("install:kubeadm",
@@ -272,8 +287,21 @@ func BuildCNIPlan(cni string, manifests [][]byte) plan.Resource {
 //BuildSealedSecretPlan creates a sub-plan to install sealed secrets so we can check secrets into GitHub for GitOps
 func BuildSealedSecretPlan(sealedSecretVersion, ns string, manifest []byte) plan.Resource {
 	b := plan.NewBuilder()
+	fileCRD, err := manifests.Manifests.Open("05_sealed_secret_crd.yaml")
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
+	manifestbytesCRD, err := ioutil.ReadAll(fileCRD)
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
+
+	b.AddResource("install:sealed-secret-crd",
+		&resource.KubectlApply{Manifest: manifestbytesCRD, Filename: object.String("SealedSecretCRD.yaml"),
+			WaitCondition: "condition=Established"})
+
 	b.AddResource("install:sealed-secrets-key", &resource.KubectlApply{Manifest: manifest})
-	file, err := manifests.Manifests.Open("05_sealed_secret_controller.yaml")
+	file, err := manifests.Manifests.Open("06_sealed_secret_controller.yaml")
 	if err != nil {
 		log.Fatalf("%v", err)
 	}
@@ -281,13 +309,10 @@ func BuildSealedSecretPlan(sealedSecretVersion, ns string, manifest []byte) plan
 	if err != nil {
 		log.Fatalf("%v", err)
 	}
+
 	b.AddResource("install:sealed-secrets-controller",
 		&resource.KubectlApply{Manifest: manifestbytes, Filename: object.String("SealedSecretController.yaml")},
 		plan.DependOn("install:sealed-secrets-key"))
-	b.AddResource("install:sealed-secret-crd",
-		&resource.KubectlApply{ManifestURL: object.String(fmt.Sprintf(sealedSecretCRDURL, sealedSecretVersion)),
-			WaitCondition: "condition=Established"},
-		plan.DependOn("install:sealed-secrets-controller"))
 	p, err := b.Plan()
 	if err != nil {
 		log.Fatalf("%v", err)

@@ -28,6 +28,9 @@ workflows:
       - integration-tests-gcp-ubuntu:
           requires:
             - build
+      - integration-tests-gcp-rhel:
+          requires:
+            - build
       - release:
           requires:
             - build
@@ -46,7 +49,6 @@ jobs:
       - setup_remote_docker
       - run: make
       - run: make lint
-      - run: make test-docs
       - run:
           name: Check that generated files haven't been changed since checkout
           command: |
@@ -58,9 +60,14 @@ jobs:
           - kubectl
           - cmd/wksctl/wksctl
           - cmd/mock-https-authz-server/server
-      - run: docker login -u "$QUAY_IO_USER" -p "$QUAY_IO_PASSWORD" quay.io
-      - run: make push
-
+      - run:
+          # Allow builds from forks
+          name: Push image if quay login is available
+          command: |
+            if [ -n "$QUAY_IO_USER" -a -n "$QUAY_IO_PASSWORD" ]; then
+              docker login -u "$QUAY_IO_USER" -p "$QUAY_IO_PASSWORD" quay.io
+              make push
+            fi
   unit-tests:
     docker:
       - image: quay.io/wks/build:master-134af34f
@@ -188,8 +195,8 @@ jobs:
           SRCDIR: /src/github.com/weaveworks/wksctl
           KUBECTL_URL: https://dl.k8s.io/v1.10.5/kubernetes-client-linux-amd64.tar.gz
           KUBECTL_CHECKSUM: da9d557989a0b9671a610f21642052febb8f70c3cf144c98a8a4f7ecab6bafe2
-          CREATE_IMAGE: 0
-          USE_IMAGE: 0
+          CREATE_IMAGE: 1
+          USE_IMAGE: 1
           IMAGE_NAME: centos-cloud/centos-7
     working_directory: /src/github.com/weaveworks/wksctl
     steps:
@@ -206,19 +213,14 @@ jobs:
             echo "$KUBECTL_CHECKSUM kubectl.tar.gz" | sha256sum -c
             tar xvzf kubectl.tar.gz --strip-components=3
             sudo mv kubectl /usr/local/bin
-
       - run:
-          name: Create VMs
-          command: $SRCDIR/test/integration/bin/up.sh
-
-      - run:
-          name: Run integration tests
-          command: $SRCDIR/test/integration/bin/test.sh
-
-      - run:
-          name: Destroy VMs
-          command: $SRCDIR/test/integration/bin/down.sh
-          when: always
+          name: Centos integration tests
+          command: |
+            if [ -n "$SECRET_KEY" ]; then
+              $SRCDIR/test/integration/bin/up.sh
+              $SRCDIR/test/integration/bin/test.sh
+              $SRCDIR/test/integration/bin/down.sh
+            fi
       - run: "true"
   integration-tests-gcp-ubuntu:
     docker:
@@ -248,15 +250,48 @@ jobs:
             sudo mv kubectl /usr/local/bin
 
       - run:
-          name: Create VMs
-          command: $SRCDIR/test/integration/bin/up.sh
+          name: Ubuntu integration tests
+          command: |
+            if [ -n "$SECRET_KEY" ]; then
+              $SRCDIR/test/integration/bin/up.sh
+              $SRCDIR/test/integration/bin/test.sh
+              $SRCDIR/test/integration/bin/down.sh
+            fi
+      - run: "true"
+  integration-tests-gcp-rhel:
+    docker:
+      - image: quay.io/wks/build:master-134af34f
+        environment:
+          GOPATH: /go/
+          SRCDIR: /src/github.com/weaveworks/wksctl
+          KUBECTL_URL: https://dl.k8s.io/v1.10.5/kubernetes-client-linux-amd64.tar.gz
+          KUBECTL_CHECKSUM: da9d557989a0b9671a610f21642052febb8f70c3cf144c98a8a4f7ecab6bafe2
+          CREATE_IMAGE: 1
+          USE_IMAGE: 1
+          IMAGE_NAME: rhel-cloud/rhel-7
+    working_directory: /src/github.com/weaveworks/wksctl
+    steps:
+      - checkout
+      - setup_remote_docker
+
+      - attach_workspace:
+          at: /tmp/workspace
+      - run: /tmp/workspace/cmd/wksctl/wksctl version
+      - run:
+          name: Install kubectl
+          command: |
+            curl -L $KUBECTL_URL -o kubectl.tar.gz
+            echo "$KUBECTL_CHECKSUM kubectl.tar.gz" | sha256sum -c
+            tar xvzf kubectl.tar.gz --strip-components=3
+            sudo mv kubectl /usr/local/bin
 
       - run:
-          name: Run integration tests
-          command: $SRCDIR/test/integration/bin/test.sh
+          name: rhel integration tests
+          command: |
+            if [ -n "$SECRET_KEY" ]; then
+              $SRCDIR/test/integration/bin/up.sh
+              $SRCDIR/test/integration/bin/test.sh
+              $SRCDIR/test/integration/bin/down.sh
+            fi
 
-      - run:
-          name: Destroy VMs
-          command: $SRCDIR/test/integration/bin/down.sh
-          when: always
       - run: "true"

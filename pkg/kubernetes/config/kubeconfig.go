@@ -7,14 +7,23 @@ import (
 
 	yaml "github.com/ghodss/yaml"
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 	"github.com/weaveworks/wksctl/pkg/cluster/machine"
 	"github.com/weaveworks/wksctl/pkg/plan/runners/ssh"
 	"github.com/weaveworks/wksctl/pkg/plan/runners/sudo"
 	"github.com/weaveworks/wksctl/pkg/specs"
 	"github.com/weaveworks/wksctl/pkg/utilities/path"
+	"k8s.io/client-go/tools/clientcmd"
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	clientcmdv1 "k8s.io/client-go/tools/clientcmd/api/v1"
 	clusterv1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 )
+
+// DefaultPath defines the default path
+var DefaultPath = clientcmd.RecommendedHomeFile
+var DefaultClusterName = "kubernetes"
+var DefaultClusterAdminName = "kubernetes-admin"
+var DefaultContextName = fmt.Sprintf("%s@%s", DefaultClusterAdminName, DefaultClusterName)
 
 // NewKubeConfig generates a Kubernetes configuration (e.g. for kubectl to use)
 // from the provided machines, and places it in the provided directory.
@@ -76,6 +85,7 @@ func Sanitize(configStr string, params Params) (string, error) {
 	return configStr, nil
 }
 
+// GetRemoteKubeconfig retrieves Kubernetes configuration from a master node of the cluster
 func GetRemoteKubeconfig(sp *specs.Specs, sshKeyPath string, verbose, skipTLSVerify bool) (string, error) {
 	sshClient, err := ssh.NewClientForMachine(sp.MasterSpec, sp.ClusterSpec.User, sshKeyPath, verbose)
 	if err != nil {
@@ -98,4 +108,71 @@ func GetRemoteKubeconfig(sp *specs.Specs, sshKeyPath string, verbose, skipTLSVer
 		APIServerExternalEndpoint: endpoint,
 		SkipTLSVerify:             skipTLSVerify,
 	})
+}
+
+// Write will write Kubernetes client configuration to a file.
+// If path isn't specified then the path will be determined by client-go.
+// If file pointed to by path doesn't exist it will be created.
+// If the file already exists then the configuration will be merged with the existing file.
+func Write(path string, newConfig clientcmdapi.Config, setContext bool) (string, error) {
+	configAccess := GetConfigAccess(path)
+
+	existingConfig, err := configAccess.GetStartingConfig()
+	if err != nil {
+		return "", errors.Wrapf(err, "Unable to read existing kubeconfig file %q", path)
+	}
+
+	log.Debug("Merging kubeconfig files")
+	mergedConfig := Merge(existingConfig, &newConfig)
+
+	if setContext && newConfig.CurrentContext != "" {
+		log.Debugf("setting current-context to %s", newConfig.CurrentContext)
+		mergedConfig.CurrentContext = newConfig.CurrentContext
+	}
+
+	if err := clientcmd.ModifyConfig(configAccess, *mergedConfig, true); err != nil {
+		return "", errors.Wrapf(err, "unable to modify kubeconfig %s", path)
+	}
+
+	return configAccess.GetDefaultFilename(), nil
+}
+
+func GetConfigAccess(explicitPath string) clientcmd.ConfigAccess {
+	pathOptions := clientcmd.NewDefaultPathOptions()
+	if explicitPath != "" && explicitPath != DefaultPath {
+		pathOptions.LoadingRules.ExplicitPath = explicitPath
+	}
+
+	return interface{}(pathOptions).(clientcmd.ConfigAccess)
+}
+
+// Merge two kubeconfig objects
+func Merge(existing *clientcmdapi.Config, tomerge *clientcmdapi.Config) *clientcmdapi.Config {
+	for k, v := range tomerge.Clusters {
+		existing.Clusters[k] = v
+	}
+	for k, v := range tomerge.AuthInfos {
+		existing.AuthInfos[k] = v
+	}
+	for k, v := range tomerge.Contexts {
+		existing.Contexts[k] = v
+	}
+
+	return existing
+}
+
+// RenameConfig renames the default cluster and context names to the values from cluster.yaml
+func RenameConfig(sp *specs.Specs, newConfig *clientcmdapi.Config) {
+	log.Debug("Renaming cluster")
+	newConfig.Clusters[sp.GetClusterName()] = newConfig.Clusters[DefaultClusterName]
+	delete(newConfig.Clusters, DefaultClusterName)
+
+	log.Debug("Renaming context")
+	newContextName := fmt.Sprintf("%s@%s", DefaultClusterAdminName, sp.GetClusterName())
+	newConfig.Contexts[newContextName] = newConfig.Contexts[DefaultContextName]
+	newConfig.Contexts[newContextName].Cluster = sp.GetClusterName()
+	delete(newConfig.Contexts, DefaultContextName)
+
+	log.Debug("Renaming current context")
+	newConfig.CurrentContext = newContextName
 }

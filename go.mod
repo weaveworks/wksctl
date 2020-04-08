@@ -7,6 +7,7 @@ require (
 	github.com/bitnami-labs/sealed-secrets v0.7.0
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/cavaliercoder/go-rpm v0.0.0-20190131055624-7a9c54e3d83e
+	github.com/chanwit/plandiff v1.0.0
 	github.com/dlespiau/kube-test-harness v0.0.0-20180712150055-7eab798dff48
 	github.com/fatih/structs v1.1.0
 	github.com/ghodss/yaml v1.0.0
@@ -21,16 +22,18 @@ require (
 	github.com/hashicorp/golang-lru v0.5.3 // indirect
 	github.com/imdario/mergo v0.3.7 // indirect
 	github.com/oleiade/reflections v1.0.0 // indirect
+	github.com/pelletier/go-toml v1.2.0
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
 	github.com/pkg/errors v0.8.1
+	github.com/prometheus/client_golang v0.9.3 // indirect
 	github.com/shurcooL/httpfs v0.0.0-20190707220628-8d4bc4ba7749 // indirect
 	github.com/shurcooL/vfsgen v0.0.0-20181202132449-6a9ea43bcacd
 	github.com/sirupsen/logrus v1.4.2
 	github.com/spf13/cobra v0.0.5
 	github.com/spf13/pflag v1.0.3
-	github.com/stretchr/testify v1.3.0
+	github.com/stretchr/testify v1.4.0
 	github.com/thanhpk/randstr v0.0.0-20190104161604-ac5b2d62bffb
-	github.com/weaveworks/footloose v0.0.0-20190829132911-efbcbb7a6390
+	github.com/weaveworks/footloose v0.0.0-20190903132036-efbcbb7a6390
 	github.com/weaveworks/go-checkpoint v0.0.0-20170503165305-ebbb8b0518ab
 	github.com/weaveworks/launcher v0.0.0-20180824102238-59a4fcc32c9c
 	github.com/whilp/git-urls v0.0.0-20160530060445-31bac0d230fa
