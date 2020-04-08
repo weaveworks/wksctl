@@ -57,7 +57,7 @@ spec:
       cri:
         kind: docker
         package: docker-ce
-        version: 18.09.7
+        version: 19.03.3
 `
 
 const machinesYAML = `apiVersion: v1
