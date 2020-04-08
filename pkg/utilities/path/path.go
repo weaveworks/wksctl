@@ -57,6 +57,19 @@ func WKSResourcePath(artifactDirectory string, paths ...string) string {
 	return filepath.Join(args...)
 }
 
+// Prettify returns a path with any present home directory substituted with a tilde.
+// This is useful for help and CLI output on UNIX systems.
+// This behavior can enabled on Windows, but ~ only works in PowerShell.
+func Prettify(path string, enableOnWindows bool) string {
+	if !enableOnWindows && runtime.GOOS == "windows" {
+		return path // ~ only works in PowerShell
+	}
+	if home, err := UserHomeDirectory(); err == nil && strings.HasPrefix(path, home) {
+		return filepath.Join("~", strings.TrimPrefix(path, home))
+	}
+	return path
+}
+
 // CreateDirectory creates directories corresponding to the provided path.
 func CreateDirectory(path string) (string, error) {
 	// Create wksHome if it doesn't exist, or ensure it's a directory if it does
