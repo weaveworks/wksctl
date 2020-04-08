@@ -1,21 +1,22 @@
 package path
 
 import (
-	"os"
 	"testing"
 
+	homedir "github.com/mitchellh/go-homedir"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestWKSHome(t *testing.T) {
-	// explicit path unchanged
-	assert.Equal(t, WKSHome("/aPath"), "/aPath")
-
-	// '~' path expanded
-	homeDir, err := os.UserHomeDir()
+	t.Run("explicit path unchanged", func(t *testing.T) {
+		assert.Equal(t, WKSHome("/aPath"), "/aPath")
+	})
+	homeDir, err := homedir.Dir()
 	assert.NoError(t, err)
-	assert.Equal(t, WKSHome("~/aPath"), homeDir+"/aPath")
-
-	// empty path replaced with homedir/.wks
-	assert.Equal(t, WKSHome(""), homeDir+"/.wks")
+	t.Run("'~' path expanded", func(t *testing.T) {
+		assert.Equal(t, WKSHome("~/aPath"), homeDir+"/aPath")
+	})
+	t.Run("empty path replaced with homedir/.wks", func(t *testing.T) {
+		assert.Equal(t, WKSHome(""), homeDir+"/.wks")
+	})
 }
