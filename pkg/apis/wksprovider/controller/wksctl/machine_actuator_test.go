@@ -30,27 +30,3 @@ func TestJoinTokenExpirationHandling(t *testing.T) {
 		assert.Equal(t, check.exp, bootstrapTokenHasExpired(&s), check.msg)
 	}
 }
-
-func TestVersionLessthanWithBothVs(t *testing.T) {
-	lt, err := versionLessThan("v1.14.7", "v1.15.0")
-	assert.NoError(t, err)
-	assert.True(t, lt)
-}
-
-func TestVersionLessthanWithFormerV(t *testing.T) {
-	lt, err := versionLessThan("v1.14.7", "1.15.0")
-	assert.NoError(t, err)
-	assert.True(t, lt)
-}
-
-func TestVersionLessthanWithLatterV(t *testing.T) {
-	lt, err := versionLessThan("1.14.7", "v1.15.0")
-	assert.NoError(t, err)
-	assert.True(t, lt)
-}
-
-func TestVersionLessthanWithOutV(t *testing.T) {
-	lt, err := versionLessThan("1.14.7", "1.15.0")
-	assert.NoError(t, err)
-	assert.True(t, lt)
-}

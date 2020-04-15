@@ -15,8 +15,6 @@ import (
 	goos "os"
 	"path/filepath"
 	"regexp"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/chanwit/plandiff"
@@ -34,6 +32,7 @@ import (
 	"github.com/weaveworks/wksctl/pkg/plan/runners/ssh"
 	bootstraputils "github.com/weaveworks/wksctl/pkg/utilities/kubeadm"
 	"github.com/weaveworks/wksctl/pkg/utilities/object"
+	"github.com/weaveworks/wksctl/pkg/utilities/version"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
@@ -507,14 +506,14 @@ func (a *MachineActuator) update(ctx context.Context, cluster *clusterv1.Cluster
 }
 
 func (a *MachineActuator) kubeadmUpOrDowngrade(machine *clusterv1.Machine, node *corev1.Node, installer *os.OS,
-	version, planKey, planJSON string, ntype nodeType) error {
+	k8sVersion, planKey, planJSON string, ntype nodeType) error {
 	b := plan.NewBuilder()
 	b.AddResource(
 		"upgrade:node-unlock-kubernetes",
 		&resource.Run{Script: object.String("yum versionlock delete 'kube*' || true")})
 	b.AddResource(
 		"upgrade:node-install-kubeadm",
-		&resource.RPM{Name: "kubeadm", Version: version, DisableExcludes: "kubernetes"},
+		&resource.RPM{Name: "kubeadm", Version: k8sVersion, DisableExcludes: "kubernetes"},
 		plan.DependOn("upgrade:node-unlock-kubernetes"))
 
 	//
@@ -523,7 +522,7 @@ func (a *MachineActuator) kubeadmUpOrDowngrade(machine *clusterv1.Machine, node 
 	// version >= 1.14.0 && < 1.16.0 uses: kubeadm upgrade node experimental-control-plane
 	//
 	secondaryMasterUpgradeControlPlaneFlag := ""
-	if lt, err := versionLessThan(version, "v1.16.0"); err == nil && lt {
+	if lt, err := version.LessThan(k8sVersion, "v1.16.0"); err == nil && lt {
 		secondaryMasterUpgradeControlPlaneFlag = "experimental-control-plane"
 	}
 
@@ -531,7 +530,7 @@ func (a *MachineActuator) kubeadmUpOrDowngrade(machine *clusterv1.Machine, node 
 	case originalMaster:
 		b.AddResource(
 			"upgrade:node-kubeadm-upgrade",
-			&resource.Run{Script: object.String(fmt.Sprintf("kubeadm upgrade plan && kubeadm upgrade apply -y %s", version))},
+			&resource.Run{Script: object.String(fmt.Sprintf("kubeadm upgrade plan && kubeadm upgrade apply -y %s", k8sVersion))},
 			plan.DependOn("upgrade:node-install-kubeadm"))
 	case secondaryMaster:
 		b.AddResource(
@@ -541,12 +540,12 @@ func (a *MachineActuator) kubeadmUpOrDowngrade(machine *clusterv1.Machine, node 
 	case worker:
 		b.AddResource(
 			"upgrade:node-kubeadm-upgrade",
-			&resource.Run{Script: object.String(fmt.Sprintf("kubeadm upgrade node config --kubelet-version %s", version))},
+			&resource.Run{Script: object.String(fmt.Sprintf("kubeadm upgrade node config --kubelet-version %s", k8sVersion))},
 			plan.DependOn("upgrade:node-install-kubeadm"))
 	}
 	b.AddResource(
 		"upgrade:node-kubelet",
-		&resource.RPM{Name: "kubelet", Version: version, DisableExcludes: "kubernetes"},
+		&resource.RPM{Name: "kubelet", Version: k8sVersion, DisableExcludes: "kubernetes"},
 		plan.DependOn("upgrade:node-kubeadm-upgrade"))
 	b.AddResource(
 		"upgrade:node-restart-kubelet",
@@ -554,7 +553,7 @@ func (a *MachineActuator) kubeadmUpOrDowngrade(machine *clusterv1.Machine, node 
 		plan.DependOn("upgrade:node-kubelet"))
 	b.AddResource(
 		"upgrade:node-kubectl",
-		&resource.RPM{Name: "kubectl", Version: version, DisableExcludes: "kubernetes"},
+		&resource.RPM{Name: "kubectl", Version: k8sVersion, DisableExcludes: "kubernetes"},
 		plan.DependOn("upgrade:node-restart-kubelet"))
 	b.AddResource(
 		"upgrade:node-lock-kubernetes",
@@ -701,14 +700,14 @@ func isUpOrDowngrade(machine *clusterv1.Machine, node *corev1.Node) bool {
 func checkForVersionJump(machine *clusterv1.Machine, node *corev1.Node) error {
 	mVersion := machineVersion(machine)
 	nVersion := nodeVersion(node)
-	lt, err := versionLessThan(mVersion, nVersion)
+	lt, err := version.LessThan(mVersion, nVersion)
 	if err != nil {
 		return err
 	}
 	if lt {
 		return fmt.Errorf("Downgrade not supported. Machine version: %s is less than node version: %s", mVersion, nVersion)
 	}
-	isVersionJump, err := versionJump(nVersion, mVersion)
+	isVersionJump, err := version.Jump(nVersion, mVersion)
 	if err != nil {
 		return err
 	}
@@ -717,51 +716,6 @@ func checkForVersionJump(machine *clusterv1.Machine, node *corev1.Node) error {
 			"minor versions differing by no more than 1 - machine version: %s, node version: %s", mVersion, nVersion)
 	}
 	return nil
-}
-
-func versionJump(nodeVersion, machineVersion string) (bool, error) {
-	nodemajor, nodeminor, _, err := parseVersion(nodeVersion)
-	if err != nil {
-		return false, err
-	}
-	machinemajor, machineminor, _, err := parseVersion(machineVersion)
-	if err != nil {
-		return false, err
-	}
-	return machinemajor == nodemajor && machineminor-nodeminor > 1, nil
-}
-
-func versionLessThan(v1, v2 string) (bool, error) {
-	v1major, v1minor, v1patch, err := parseVersion(v1)
-	if err != nil {
-		return false, err
-	}
-	v2major, v2minor, v2patch, err := parseVersion(v2)
-	if err != nil {
-		return false, err
-	}
-	return (v1major < v2major) ||
-		(v1major == v2major && v1minor < v2minor) ||
-		(v1major == v2major && v1minor == v2minor && v1patch < v2patch), nil
-}
-
-func parseVersion(v string) (int, int, int, error) {
-	if strings.HasPrefix(v, "v") {
-		v = v[1:]
-	}
-	chunks := strings.Split(v, ".")
-	if len(chunks) != 3 { // major.minor.patch
-		return -1, -1, -1, fmt.Errorf("Invalid kubernetes version: %s", v)
-	}
-	var results = []int{-1, -1, -1}
-	for idx, item := range chunks {
-		val, err := strconv.Atoi(item)
-		if err != nil {
-			return -1, -1, -1, gerrors.Wrapf(err, "version is invalid")
-		}
-		results[idx] = val
-	}
-	return results[0], results[1], results[2], nil
 }
 
 func (a *MachineActuator) checkIfMasterNotAtVersion(kubernetesVersion string) (bool, error) {
