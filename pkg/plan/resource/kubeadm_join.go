@@ -2,6 +2,7 @@ package resource
 
 import (
 	"fmt"
+	"github.com/weaveworks/wksctl/pkg/utilities/version"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -35,6 +36,8 @@ type KubeadmJoin struct {
 	IgnorePreflightErrors []string `structs:"ignorePreflightErrors"`
 	// External Load Balancer name or IP address to be used instead of the master's IP
 	ExternalLoadBalancer string `structs:"externalLoadBalancer"`
+	// Kubernetes Version is used to prepare different parameters
+	Version string `structs:"version"`
 }
 
 var _ plan.Resource = plan.RegisterResource(&KubeadmJoin{})
@@ -68,8 +71,15 @@ func (kj *KubeadmJoin) kubeadmJoinCmd(apiServerEndpoint string) string {
 		kubeJoinCmd.WriteString(" --ignore-preflight-errors=")
 		kubeJoinCmd.WriteString(strings.Join(kj.IgnorePreflightErrors, ","))
 	}
+
 	if kj.IsMaster {
-		kubeJoinCmd.WriteString(" --experimental-control-plane --certificate-key ")
+
+		if lt, err := version.LessThan(kj.Version, "1.16.0"); err == nil && lt {
+			kubeJoinCmd.WriteString(" --experimental-control-plane --certificate-key ")
+		} else {
+			kubeJoinCmd.WriteString(" --control-plane --certificate-key ")
+		}
+
 		kubeJoinCmd.WriteString(kj.CertificateKey)
 	}
 	kubeJoinCmd.WriteString(" --node-name=")

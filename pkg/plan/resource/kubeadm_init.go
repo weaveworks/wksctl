@@ -17,6 +17,7 @@ import (
 	"github.com/weaveworks/wksctl/pkg/utilities/manifest"
 	"github.com/weaveworks/wksctl/pkg/utilities/object"
 	"github.com/weaveworks/wksctl/pkg/utilities/ssh"
+	"github.com/weaveworks/wksctl/pkg/utilities/version"
 	yml "github.com/weaveworks/wksctl/pkg/utilities/yaml"
 	corev1 "k8s.io/api/core/v1"
 	kubeadmapi "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm/v1beta1"
@@ -129,8 +130,12 @@ func (ki *KubeadmInit) Apply(runner plan.Runner, diff plan.Diff) (bool, error) {
 	defer removeFile(remotePath, runner)
 
 	var stdOutErr string
-	p := buildKubeadmInitPlan(remotePath, strings.Join(ki.IgnorePreflightErrors, ","),
-		ki.UseIPTables, &stdOutErr)
+	p := buildKubeadmInitPlan(
+		remotePath,
+		strings.Join(ki.IgnorePreflightErrors, ","),
+		ki.UseIPTables,
+		ki.KubernetesVersion,
+		&stdOutErr)
 	_, err = p.Apply(runner, plan.EmptyDiff())
 	if err != nil {
 		return false, errors.Wrap(err, "failed to initialize Kubernetes cluster with kubeadm")
@@ -233,10 +238,17 @@ func (ki *KubeadmInit) Undo(runner plan.Runner, current plan.State) error {
 	return buildKubeadmInitPlan(
 		remotePath,
 		strings.Join(ki.IgnorePreflightErrors, ","),
-		ki.UseIPTables, &ignored).Undo(runner, plan.EmptyState)
+		ki.UseIPTables, ki.KubernetesVersion, &ignored).Undo(
+		runner, plan.EmptyState)
 }
 
-func buildKubeadmInitPlan(path string, ignorePreflightErrors string, useIPTables bool, output *string) plan.Resource {
+func buildKubeadmInitPlan(path string, ignorePreflightErrors string, useIPTables bool, k8sVersion string, output *string) plan.Resource {
+	// Detect version for --upload-cert-flags
+	uploadCertsFlag := "--upload-certs"
+	if lt, err := version.LessThan(k8sVersion, "v1.15.0"); err == nil && lt {
+		uploadCertsFlag = "--experimental-upload-certs"
+	}
+
 	b := plan.NewBuilder()
 	if useIPTables {
 		b.AddResource(
@@ -257,8 +269,7 @@ func buildKubeadmInitPlan(path string, ignorePreflightErrors string, useIPTables
 		// certificates of the primary control plane in the kubeadm-certs
 		// Secret, and prints the value for --certificate-key to STDOUT.
 		&Run{Script: plan.ParamString(
-			withoutProxy("kubeadm init --config=%s --ignore-preflight-errors=%s --experimental-upload-certs"),
-			&path, &ignorePreflightErrors),
+			withoutProxy("kubeadm init --config=%s --ignore-preflight-errors=%s %s"), &path, &ignorePreflightErrors, &uploadCertsFlag),
 			UndoResource: buildKubeadmRunInitUndoPlan(),
 			Output:       output,
 		},
