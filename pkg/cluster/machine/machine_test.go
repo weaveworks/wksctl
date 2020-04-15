@@ -74,8 +74,8 @@ const machinesValid = `items:
         kind: "BareMetalMachineProviderSpec"
         address: "172.17.8.101"
     versions:
-      kubelet: "1.10.12"
-      controlPlane: "1.10.12"
+      kubelet: "1.14.12"
+      controlPlane: "1.14.12"
 - apiVersion: "cluster.k8s.io/v1alpha1"
   kind: Machine
   metadata:
@@ -93,7 +93,7 @@ const machinesValid = `items:
           server:
             url: http://127.0.0.1:5000/authenticate
     versions:
-      kubelet: "1.10.12"
+      kubelet: "1.14.12"
 `
 
 const machinesValidWithOnlyKubeletVersion = `items:
@@ -110,7 +110,7 @@ const machinesValidWithOnlyKubeletVersion = `items:
         kind: "BareMetalMachineProviderSpec"
         address: "172.17.8.101"
     versions:
-      kubelet: "1.10.12"
+      kubelet: "1.14.12"
 - apiVersion: "cluster.k8s.io/v1alpha1"
   kind: Machine
   metadata:
@@ -128,7 +128,7 @@ const machinesValidWithOnlyKubeletVersion = `items:
           server:
             url: http://127.0.0.1:5000/authenticate
     versions:
-      kubelet: "1.10.12"
+      kubelet: "1.14.12"
 `
 
 // A machine doesn't have a matching Kubelet version.
@@ -146,8 +146,8 @@ const machinesInconsistentKubeletVersion = `items:
         kind: "BareMetalMachineProviderSpec"
         address: "172.17.8.101"
     versions:
-      kubelet: "1.10.4"
-      controlPlane: "1.10.4"
+      kubelet: "1.14.4"
+      controlPlane: "1.14.4"
 - apiVersion: "cluster.k8s.io/v1alpha1"
   kind: Machine
   metadata:
@@ -161,7 +161,7 @@ const machinesInconsistentKubeletVersion = `items:
         kind: "BareMetalMachineProviderSpec"
         address: "172.17.8.102"
     versions:
-      kubelet: "1.10.3"
+      kubelet: "1.14.3"
 `
 
 // A machine doesn't have a matching controlPlane version.
@@ -179,8 +179,8 @@ const machinesInconsistentControlPlaneVersion = `items:
         kind: "BareMetalMachineProviderSpec"
         address: "172.17.8.101"
     versions:
-      kubelet: "1.10.4"
-      controlPlane: "1.10.3"
+      kubelet: "1.14.4"
+      controlPlane: "1.14.3"
 - apiVersion: "cluster.k8s.io/v1alpha1"
   kind: Machine
   metadata:
@@ -194,7 +194,7 @@ const machinesInconsistentControlPlaneVersion = `items:
         kind: "BareMetalMachineProviderSpec"
         address: "172.17.8.102"
     versions:
-      kubelet: "1.10.4"
+      kubelet: "1.14.4"
 `
 
 // Unsupported Kubernetes version.
@@ -212,8 +212,8 @@ const machinesUnsupportedKubernetesVersion = `items:
         kind: "BareMetalMachineProviderSpec"
         address: "172.17.8.101"
     versions:
-      kubelet: "1.8.2"
-      controlPlane: "1.8.2"
+      kubelet: "1.13.2"
+      controlPlane: "1.13.2"
 - apiVersion: "cluster.k8s.io/v1alpha1"
   kind: Machine
   metadata:
@@ -227,7 +227,7 @@ const machinesUnsupportedKubernetesVersion = `items:
         kind: "BareMetalMachineProviderSpec"
         address: "172.17.8.102"
     versions:
-      kubelet: "1.8.2"
+      kubelet: "1.13.2"
 `
 
 const machinesNoGodNoMaster = `items:
@@ -244,7 +244,7 @@ const machinesNoGodNoMaster = `items:
         kind: "BareMetalMachineProviderSpec"
         address: "172.17.8.101"
     versions:
-      kubelet: "1.10.12"
+      kubelet: "1.14.12"
 `
 
 func machinesFromString(t *testing.T, s string) []*clusterv1.Machine {
@@ -351,15 +351,15 @@ func TestGetKubernetesVersionFromMasterInDefaultsVersionWhenMachinesDoNotSpecify
 func TestGetKubernetesVersionFromMasterInGetsControlPlaneVersion(t *testing.T) {
 	version, err := machine.GetKubernetesVersionFromMasterIn(machinesFromString(t, machinesValid))
 	assert.NoError(t, err)
-	assert.Equal(t, "1.10.12", version)
+	assert.Equal(t, "1.14.12", version)
 }
 
 func TestGetKubernetesVersionFallsbackToKubeletVersionForWorkerNodes(t *testing.T) {
 	machines := machinesFromString(t, machinesInconsistentControlPlaneVersion)
 	version := machine.GetKubernetesVersion(machines[0])
-	assert.Equal(t, "1.10.3", version)
+	assert.Equal(t, "1.14.3", version)
 	version = machine.GetKubernetesVersion(machines[1])
-	assert.Equal(t, "1.10.4", version)
+	assert.Equal(t, "1.14.4", version)
 }
 
 func TestGetKubernetesVersionDefaultsVersionWhenMachinesDoNotSpecifyAny(t *testing.T) {
