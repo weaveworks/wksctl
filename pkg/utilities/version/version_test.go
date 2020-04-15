@@ -35,3 +35,27 @@ func TestMatchesInvalidVersion(t *testing.T) {
 	assert.EqualError(t, err, "invalid version \"bad version\": Invalid character(s) found in major number \"bad version\"")
 	assert.False(t, matches)
 }
+
+func TestVersionLessthanWithBothVs(t *testing.T) {
+	lt, err := version.LessThan("v1.14.7", "v1.15.0")
+	assert.NoError(t, err)
+	assert.True(t, lt)
+}
+
+func TestVersionLessthanWithFormerV(t *testing.T) {
+	lt, err := version.LessThan("v1.14.7", "1.15.0")
+	assert.NoError(t, err)
+	assert.True(t, lt)
+}
+
+func TestVersionLessthanWithLatterV(t *testing.T) {
+	lt, err := version.LessThan("1.14.7", "v1.15.0")
+	assert.NoError(t, err)
+	assert.True(t, lt)
+}
+
+func TestVersionLessthanWithOutV(t *testing.T) {
+	lt, err := version.LessThan("1.14.7", "1.15.0")
+	assert.NoError(t, err)
+	assert.True(t, lt)
+}
