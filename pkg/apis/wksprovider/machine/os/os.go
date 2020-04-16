@@ -176,6 +176,7 @@ type SeedNodeParams struct {
 	ImageRepository      string
 	ExternalLoadBalancer string
 	AdditionalSANs       []string
+	AddonNamespaces      map[string]string
 }
 
 // Validate generally validates this SeedNodeParams struct, e.g. ensures it
@@ -191,6 +192,13 @@ func (params SeedNodeParams) Validate() error {
 		return errors.New("empty API server private IP")
 	}
 	return nil
+}
+
+func (params SeedNodeParams) GetAddonNamespace(name string) string {
+	if ns, ok := params.AddonNamespaces[name]; ok == true {
+		return ns
+	}
+	return params.Namespace
 }
 
 // SetupSeedNode installs Kubernetes on this machine, and store the provided
@@ -280,7 +288,10 @@ func (o OS) CreateSeedNodeSetupPlan(params SeedNodeParams) (*plan.Plan, error) {
 	const cni = "weave-net"
 
 	cniAdddon := baremetalspecv1.Addon{Name: cni}
-	manifests, err := buildAddon(cniAdddon, params.ImageRepository, params.ClusterManifestPath, params.Namespace)
+
+	// we use the namespace defined in addon-namespace map to make weave-net run in kube-system
+	// as weave-net requires to run in the kube-system namespace *only*.
+	manifests, err := buildAddon(cniAdddon, params.ImageRepository, params.ClusterManifestPath, params.GetAddonNamespace(cni))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to generate manifests for CNI plugin")
 	}
@@ -345,7 +356,7 @@ func (o OS) CreateSeedNodeSetupPlan(params SeedNodeParams) (*plan.Plan, error) {
 	}
 
 	// TODO move so this can also be performed when the user updates the cluster.  See issue https://github.com/weaveworks/wksctl/issues/440
-	addons, err := parseAddons(params.ClusterManifestPath, params.Namespace)
+	addons, err := parseAddons(params.ClusterManifestPath, params.Namespace, params.AddonNamespaces)
 	if err != nil {
 		return nil, err
 	}
@@ -451,6 +462,7 @@ func (o OS) createSeedNodePlanConfigMapManifest(params SeedNodeParams, providerS
 		ProviderConfigMaps:   providerConfigMaps,
 		AuthConfigMap:        authConfigMap,
 		Namespace:            params.Namespace,
+		AddonNamespaces:      params.AddonNamespaces,
 		ExternalLoadBalancer: providerSpec.APIServer.ExternalLoadBalancer,
 	}
 	var paramBuffer bytes.Buffer
@@ -826,7 +838,7 @@ func (o OS) configureFlux(b *plan.Builder, params SeedNodeParams) error {
 			return errors.Wrap(err, "failed to process the git deploy key")
 		}
 		fluxAddon := baremetalspecv1.Addon{Name: "flux", Params: gitParams}
-		manifests, err := buildAddon(fluxAddon, params.ImageRepository, params.ClusterManifestPath, params.Namespace)
+		manifests, err := buildAddon(fluxAddon, params.ImageRepository, params.ClusterManifestPath, params.GetAddonNamespace("flux"))
 		if err != nil {
 			return errors.Wrap(err, "failed to generate manifests for flux")
 		}
@@ -898,7 +910,7 @@ func replaceGitFields(templateBody string, gitParams map[string]string) ([]byte,
 }
 
 func createFluxSecretFromGitData(gitData GitParams, params SeedNodeParams) ([]byte, error) {
-	gitParams := map[string]string{"namespace": params.Namespace}
+	gitParams := map[string]string{"namespace": params.GetAddonNamespace("flux")}
 	err := processDeployKey(gitParams, gitData.GitDeployKeyPath)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to process the git deploy key")
@@ -984,6 +996,7 @@ type NodeParams struct {
 	AuthConfigMap            *v1.ConfigMap
 	Namespace                string
 	ExternalLoadBalancer     string // used instead of MasterIP if existed
+	AddonNamespaces          map[string]string
 }
 
 // Validate generally validates this NodeParams struct, e.g. ensures it
@@ -1165,7 +1178,7 @@ func createPlan(b *plan.Builder) (*plan.Plan, error) {
 
 // parseAddons reads the cluster config and if any addons are defined, it generates
 // the manifest and returns the manifest filenames
-func parseAddons(ClusterManifestPath, namespace string) (map[string][][]byte, error) {
+func parseAddons(ClusterManifestPath, namespace string, addonNamespaces map[string]string) (map[string][][]byte, error) {
 	cluster, err := parseCluster(ClusterManifestPath)
 	if err != nil {
 		return nil, err
@@ -1182,7 +1195,11 @@ func parseAddons(ClusterManifestPath, namespace string) (map[string][][]byte, er
 	ret := make(map[string][][]byte)
 	for _, addonDesc := range clusterSpec.Addons {
 		log.WithField("addon", addonDesc.Name).Debug("building addon")
-		retManifests, err := buildAddon(addonDesc, clusterSpec.ImageRepository, ClusterManifestPath, namespace)
+		addonNs := namespace
+		if ns, ok := addonNamespaces[addonDesc.Name]; ok {
+			addonNs = ns
+		}
+		retManifests, err := buildAddon(addonDesc, clusterSpec.ImageRepository, ClusterManifestPath, addonNs)
 		if err != nil {
 			return nil, err
 		}
