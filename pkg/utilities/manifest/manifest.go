@@ -30,6 +30,8 @@ const (
 	DefaultNamespace = `weavek8sops`
 )
 
+var DefaultAddonNamespaces = map[string]string{"weave-net": "kube-system"}
+
 var SchemeGroupVersion = schema.GroupVersion{Group: GroupName, Version: GroupVersion}
 var SchemeBuilder = runtime.NewSchemeBuilder(addKnownTypes)
 var AddToScheme = SchemeBuilder.AddToScheme
