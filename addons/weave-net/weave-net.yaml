@@ -8,7 +8,7 @@ items:
       labels:
         name: weave-net
       namespace: kube-system
-  - apiVersion: rbac.authorization.k8s.io/v1beta1
+  - apiVersion: rbac.authorization.k8s.io/v1
     kind: ClusterRole
     metadata:
       name: weave-net
@@ -26,7 +26,15 @@ items:
           - list
           - watch
       - apiGroups:
-          - networking.k8s.io
+          - extensions
+        resources:
+          - networkpolicies
+        verbs:
+          - get
+          - list
+          - watch
+      - apiGroups:
+          - 'networking.k8s.io'
         resources:
           - networkpolicies
         verbs:
@@ -40,7 +48,7 @@ items:
         verbs:
           - patch
           - update
-  - apiVersion: rbac.authorization.k8s.io/v1beta1
+  - apiVersion: rbac.authorization.k8s.io/v1
     kind: ClusterRoleBinding
     metadata:
       name: weave-net
@@ -54,20 +62,20 @@ items:
       - kind: ServiceAccount
         name: weave-net
         namespace: kube-system
-  - apiVersion: rbac.authorization.k8s.io/v1beta1
+  - apiVersion: rbac.authorization.k8s.io/v1
     kind: Role
     metadata:
       name: weave-net
+      namespace: kube-system
       labels:
         name: weave-net
-      namespace: kube-system
     rules:
       - apiGroups:
           - ''
-        resourceNames:
-          - weave-net
         resources:
           - configmaps
+        resourceNames:
+          - weave-net
         verbs:
           - get
           - update
@@ -77,13 +85,13 @@ items:
           - configmaps
         verbs:
           - create
-  - apiVersion: rbac.authorization.k8s.io/v1beta1
+  - apiVersion: rbac.authorization.k8s.io/v1
     kind: RoleBinding
     metadata:
       name: weave-net
+      namespace: kube-system
       labels:
         name: weave-net
-      namespace: kube-system
     roleRef:
       kind: Role
       name: weave-net
@@ -92,7 +100,7 @@ items:
       - kind: ServiceAccount
         name: weave-net
         namespace: kube-system
-  - apiVersion: extensions/v1beta1
+  - apiVersion: apps/v1
     kind: DaemonSet
     metadata:
       name: weave-net
@@ -100,6 +108,10 @@ items:
         name: weave-net
       namespace: kube-system
     spec:
+      # Wait 5 seconds to let pod connect before rolling next pod
+      selector:
+        matchLabels:
+          name: weave-net
       minReadySeconds: 5
       template:
         metadata:
@@ -117,6 +129,7 @@ items:
                       apiVersion: v1
                       fieldPath: spec.nodeName
               image: 'docker.io/weaveworks/weave-kube:2.5.1'
+              imagePullPolicy: Always
               readinessProbe:
                 httpGet:
                   host: 127.0.0.1
@@ -124,7 +137,7 @@ items:
                   port: 6784
               resources:
                 requests:
-                  cpu: 10m
+                  cpu: 50m
               securityContext:
                 privileged: true
               volumeMounts:
@@ -142,6 +155,7 @@ items:
                   mountPath: /lib/modules
                 - name: xtables-lock
                   mountPath: /run/xtables.lock
+                  readOnly: false
             - name: weave-npc
               env:
                 - name: HOSTNAME
@@ -150,15 +164,19 @@ items:
                       apiVersion: v1
                       fieldPath: spec.nodeName
               image: 'docker.io/weaveworks/weave-npc:2.5.1'
+              imagePullPolicy: Always
+              # npc-args
               resources:
                 requests:
-                  cpu: 10m
+                  cpu: 50m
               securityContext:
                 privileged: true
               volumeMounts:
                 - name: xtables-lock
                   mountPath: /run/xtables.lock
+                  readOnly: false
           hostNetwork: true
+          dnsPolicy: ClusterFirstWithHostNet
           hostPID: true
           restartPolicy: Always
           securityContext:
@@ -166,6 +184,8 @@ items:
           serviceAccountName: weave-net
           tolerations:
             - effect: NoSchedule
+              operator: Exists
+            - effect: NoExecute
               operator: Exists
           volumes:
             - name: weavedb
@@ -190,5 +210,6 @@ items:
               hostPath:
                 path: /run/xtables.lock
                 type: FileOrCreate
+          priorityClassName: system-node-critical
       updateStrategy:
         type: RollingUpdate
