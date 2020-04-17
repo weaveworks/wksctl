@@ -37,7 +37,7 @@ type KubeadmJoin struct {
 	// External Load Balancer name or IP address to be used instead of the master's IP
 	ExternalLoadBalancer string `structs:"externalLoadBalancer"`
 	// Kubernetes Version is used to prepare different parameters
-	Version string `structs:"version"`
+	KubernetesVersion string `structs:"version"`
 }
 
 var _ plan.Resource = plan.RegisterResource(&KubeadmJoin{})
@@ -74,7 +74,7 @@ func (kj *KubeadmJoin) kubeadmJoinCmd(apiServerEndpoint string) string {
 
 	if kj.IsMaster {
 
-		if lt, err := version.LessThan(kj.Version, "1.16.0"); err == nil && lt {
+		if lt, err := version.LessThan(kj.KubernetesVersion, "1.16.0"); err == nil && lt {
 			kubeJoinCmd.WriteString(" --experimental-control-plane --certificate-key ")
 		} else {
 			kubeJoinCmd.WriteString(" --control-plane --certificate-key ")
