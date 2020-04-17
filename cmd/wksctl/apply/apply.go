@@ -2,6 +2,7 @@ package apply
 
 import (
 	"path/filepath"
+	"strings"
 
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -38,6 +39,7 @@ type Params struct {
 	configDirectory      string
 	namespace            string
 	useManifestNamespace bool
+	addonNamespaces      []string
 }
 
 var globalParams Params
@@ -55,6 +57,7 @@ func init() {
 	Cmd.Flags().StringVar(&globalParams.configDirectory, "config-directory", ".", "Directory containing configuration information for the cluster")
 	Cmd.Flags().StringVar(&globalParams.namespace, "namespace", manifest.DefaultNamespace, "namespace override for WKS components")
 	Cmd.Flags().BoolVar(&globalParams.useManifestNamespace, "use-manifest-namespace", false, "use namespaces from supplied manifests (overriding any --namespace argument)")
+	Cmd.Flags().StringSliceVar(&globalParams.addonNamespaces, "addon-namespace", []string{"weave-net=kube-system"}, "override namespace for specific addons")
 
 	// Hide controller-image flag as it is a helper/debug flag.
 	Cmd.Flags().StringVar(&globalParams.controllerImage, "controller-image", "", "Controller image override")
@@ -125,6 +128,18 @@ func (a *Applier) initiateCluster(clusterManifestPath, machinesManifestPath stri
 		ns = a.Params.namespace
 	}
 
+	addonNamespaces := map[string]string{}
+	if len(a.Params.addonNamespaces) > 0 {
+		for _, entry := range a.Params.addonNamespaces {
+			parts := strings.SplitN(entry, "=", 2)
+			if len(parts) == 2 {
+				addonNamespaces[parts[0]] = parts[1]
+			} else {
+				return errors.Errorf("failed to validate the addon namespace (%s)", entry)
+			}
+		}
+	}
+
 	sealedSecretKeyPath := a.Params.sealedSecretKeyPath
 	if sealedSecretKeyPath == "" {
 		// Default to using the git deploy key to decrypt sealed secrets
@@ -164,6 +179,7 @@ func (a *Applier) initiateCluster(clusterManifestPath, machinesManifestPath stri
 		ExternalLoadBalancer: sp.ClusterSpec.APIServer.ExternalLoadBalancer,
 		AdditionalSANs:       sp.ClusterSpec.APIServer.AdditionalSANs,
 		Namespace:            ns,
+		AddonNamespaces:      addonNamespaces,
 	}); err != nil {
 		return errors.Wrapf(err, "failed to set up seed node (%s)", sp.GetMasterPublicAddress())
 	}

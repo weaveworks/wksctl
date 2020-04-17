@@ -123,6 +123,7 @@ func displayPlan(clusterManifestPath, machinesManifestPath string) error {
 		},
 		SealedSecretCertPath: viewOptions.sealedSecretCertPath,
 		Namespace:            manifest.DefaultNamespace,
+		AddonNamespaces:      manifest.DefaultAddonNamespaces,
 		ConfigDirectory:      configDir,
 	}
 	plan, err := installer.CreateSeedNodeSetupPlan(params)
