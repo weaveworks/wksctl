@@ -1072,7 +1072,7 @@ func (o OS) CreateNodeSetupPlan(params NodeParams) (*plan.Plan, error) {
 		CertificateKey:           params.CertificateKey,
 		IgnorePreflightErrors:    cfg.IgnorePreflightErrors,
 		ExternalLoadBalancer:     params.ExternalLoadBalancer,
-		Version:                  params.KubernetesVersion,
+		KubernetesVersion:        params.KubernetesVersion,
 	}
 	b.AddResource("kubeadm:join", kadmJoinRsrc, plan.DependOn("kubeadm:prejoin"))
 	return createPlan(b)
