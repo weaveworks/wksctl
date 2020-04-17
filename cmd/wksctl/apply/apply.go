@@ -134,6 +134,8 @@ func (a *Applier) initiateCluster(clusterManifestPath, machinesManifestPath stri
 			parts := strings.SplitN(entry, "=", 2)
 			if len(parts) == 2 {
 				addonNamespaces[parts[0]] = parts[1]
+			} else {
+				return errors.Errorf("failed to validate the addon namespace (%s)", entry)
 			}
 		}
 	}
