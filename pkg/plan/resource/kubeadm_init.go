@@ -242,6 +242,8 @@ func (ki *KubeadmInit) Undo(runner plan.Runner, current plan.State) error {
 		runner, plan.EmptyState)
 }
 
+// buildKubeadmInitPlan builds a plan for kubeadm init command.
+// Parameter k8sversion specified here represents the version of both Kubernetes and Kubeadm.
 func buildKubeadmInitPlan(path string, ignorePreflightErrors string, useIPTables bool, k8sVersion string, output *string) plan.Resource {
 	// Detect version for --upload-cert-flags
 	uploadCertsFlag := "--upload-certs"

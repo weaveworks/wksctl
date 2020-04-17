@@ -505,6 +505,8 @@ func (a *MachineActuator) update(ctx context.Context, cluster *clusterv1.Cluster
 	return nil
 }
 
+// kubeadmUpOrDowngrade does upgrade or downgrade a machine.
+// Parameter k8sversion specified here represents the version of both Kubernetes and Kubeadm.
 func (a *MachineActuator) kubeadmUpOrDowngrade(machine *clusterv1.Machine, node *corev1.Node, installer *os.OS,
 	k8sVersion, planKey, planJSON string, ntype nodeType) error {
 	b := plan.NewBuilder()
