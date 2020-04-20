@@ -1,13 +1,18 @@
-package v1alpha1
+package v1alpha3
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type BareMetalClusterProviderSpec struct {
-	metav1.TypeMeta `json:",inline"`
+type BareMetalCluster struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
 
+	Spec BareMetalClusterSpec `json:"spec,omitempty"`
+}
+
+type BareMetalClusterSpec struct {
 	User                 string `json:"user"`
 	DeprecatedSSHKeyPath string `json:"sshKeyPath"`
 	HTTPProxy            string `json:"httpProxy,omitempty"`
@@ -82,15 +87,27 @@ type Addon struct {
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-type BareMetalMachineProviderSpec struct {
-	metav1.TypeMeta `json:",inline"`
+type BareMetalMachine struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
 
+	Spec BareMetalMachineSpec `json:"spec,omitempty"`
+}
+
+type BareMetalMachineSpec struct {
 	Address          string   `json:"address"`
 	Port             uint16   `json:"port,omitempty"`
 	PrivateAddress   string   `json:"privateAddress,omitempty"`
 	PrivateInterface string   `json:"privateInterface,omitempty"`
 	Private          EndPoint `json:"private,omitempty"`
 	Public           EndPoint `json:"public,omitempty"`
+}
+
+// BareMetalMachineList contains a list of Machine
+type BareMetalMachineList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty"`
+	Items           []BareMetalMachine `json:"items"`
 }
 
 // EndPoint groups the details required to establish a connection.

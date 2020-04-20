@@ -7,12 +7,12 @@ import (
 
 	yaml "github.com/ghodss/yaml"
 	log "github.com/sirupsen/logrus"
-	baremetalspecv1 "github.com/weaveworks/wksctl/pkg/baremetalproviderspec/v1alpha1"
+	baremetalspecv1 "github.com/weaveworks/wksctl/pkg/baremetal/v1alpha3"
 	"github.com/weaveworks/wksctl/pkg/cluster/machine"
 	"github.com/weaveworks/wksctl/pkg/utilities"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-	clusterv1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
-	apierrors "sigs.k8s.io/cluster-api/pkg/errors"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"
+	apierrors "sigs.k8s.io/cluster-api/errors"
 )
 
 // Utilities for managing cluster and machine specs.

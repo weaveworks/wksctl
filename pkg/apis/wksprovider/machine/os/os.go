@@ -23,7 +23,7 @@ import (
 	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/controller/manifests"
 	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/config"
 	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/crds"
-	baremetalspecv1 "github.com/weaveworks/wksctl/pkg/baremetalproviderspec/v1alpha1"
+	baremetalspecv1 "github.com/weaveworks/wksctl/pkg/baremetal/v1alpha3"
 	"github.com/weaveworks/wksctl/pkg/cluster/machine"
 	"github.com/weaveworks/wksctl/pkg/plan"
 	"github.com/weaveworks/wksctl/pkg/plan/recipe"
@@ -42,8 +42,7 @@ import (
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	certUtil "k8s.io/client-go/util/cert"
 	kubeadmapi "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm/v1beta1"
-	clusterv1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
-	"sigs.k8s.io/yaml"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"
 )
 
 const (
@@ -418,7 +417,7 @@ func storeIfNotEmpty(vals map[string]string, key, value string) {
 	}
 }
 
-func getAPIServerArgs(providerSpec *baremetalspecv1.BareMetalClusterProviderSpec, pemSecretResources map[string]*secretResourceSpec) map[string]string {
+func getAPIServerArgs(providerSpec *baremetalspecv1.BareMetalCluster, pemSecretResources map[string]*secretResourceSpec) map[string]string {
 	result := map[string]string{}
 	authnResourceSpec := pemSecretResources["authentication"]
 	if authnResourceSpec != nil {
@@ -455,7 +454,7 @@ func addClusterAPICRDs(b *plan.Builder) ([]string, error) {
 	return crdIDs, nil
 }
 
-func (o OS) createSeedNodePlanConfigMapManifest(params SeedNodeParams, providerSpec *baremetalspecv1.BareMetalClusterProviderSpec, providerConfigMaps map[string]*v1.ConfigMap, authConfigMap *v1.ConfigMap, kubernetesVersion string) ([]byte, error) {
+func (o OS) createSeedNodePlanConfigMapManifest(params SeedNodeParams, providerSpec *baremetalspecv1.BareMetalCluster, providerConfigMaps map[string]*v1.ConfigMap, authConfigMap *v1.ConfigMap, kubernetesVersion string) ([]byte, error) {
 	nodeParams := NodeParams{
 		IsMaster:             true,
 		MasterIP:             params.PrivateIP,
@@ -504,7 +503,7 @@ func (o OS) applySeedNodePlan(p *plan.Plan) error {
 	return nil
 }
 
-func getClusterProviderSpec(manifestPath string) (*baremetalspecv1.BareMetalClusterProviderSpec, error) {
+func getClusterProviderSpec(manifestPath string) (*baremetalspecv1.BareMetalCluster, error) {
 	cluster, err := parseCluster(manifestPath)
 	if err != nil {
 		return nil, err
@@ -529,7 +528,7 @@ func planParametersToConfigMapManifest(plan []byte, ns string) ([]byte, error) {
 	return yaml.Marshal(cm)
 }
 
-func createConfigFileResourcesFromFiles(providerSpec *baremetalspecv1.BareMetalClusterProviderSpec, configDir, namespace string) (map[string][]byte, map[string]*v1.ConfigMap, []*resource.File, error) {
+func createConfigFileResourcesFromFiles(providerSpec *baremetalspecv1.BareMetalCluster, configDir, namespace string) (map[string][]byte, map[string]*v1.ConfigMap, []*resource.File, error) {
 	fileSpecs := providerSpec.OS.Files
 	configMapManifests, err := getConfigMapManifests(fileSpecs, configDir, namespace)
 	if err != nil {
@@ -623,7 +622,7 @@ type secretResourceSpec struct {
 // directory, decrypts it using the GitHub deploy key, creates file
 // resources for .pem files stored in the secret, and creates a SealedSecret resource
 // for them that can be used by the machine actuator
-func processPemFilesIfAny(builder *plan.Builder, providerSpec *baremetalspecv1.BareMetalClusterProviderSpec, configDir string, ns, privateKeyPath, certPath string) (map[string]*secretResourceSpec, *v1.ConfigMap, []byte, error) {
+func processPemFilesIfAny(builder *plan.Builder, providerSpec *baremetalspecv1.BareMetalCluster, configDir string, ns, privateKeyPath, certPath string) (map[string]*secretResourceSpec, *v1.ConfigMap, []byte, error) {
 	if err := checkPemValues(providerSpec, privateKeyPath, certPath); err != nil {
 		return nil, nil, nil, err
 	}
@@ -687,7 +686,7 @@ func getPrivateKey(privateKeyPath string) (*rsa.PrivateKey, error) {
 	return privateKey, nil
 }
 
-func checkPemValues(providerSpec *baremetalspecv1.BareMetalClusterProviderSpec, privateKeyPath, certPath string) error {
+func checkPemValues(providerSpec *baremetalspecv1.BareMetalCluster, privateKeyPath, certPath string) error {
 	if privateKeyPath == "" || certPath == "" {
 		if providerSpec.Authentication != nil || providerSpec.Authorization != nil {
 			return errors.New("Encryption keys not specified; cannot process authentication and authorization specifications.")

@@ -9,7 +9,7 @@ import (
 	"sync"
 
 	"github.com/pkg/errors"
-	bmv1alpha1 "github.com/weaveworks/wksctl/pkg/baremetalproviderspec/v1alpha1"
+	bmv1alpha3 "github.com/weaveworks/wksctl/pkg/baremetal/v1alpha3"
 	"gopkg.in/oleiade/reflections.v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -17,7 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer/json"
 	"k8s.io/client-go/kubernetes/scheme"
-	clusterv1alpha1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
+	clusterv1alpha3 "sigs.k8s.io/cluster-api/api/v1alpha3"
 	"sigs.k8s.io/yaml"
 )
 
@@ -26,7 +26,7 @@ var mutex *sync.Mutex = &sync.Mutex{}
 // cluster-api types
 const (
 	GroupName        = "sigs.k8s.io"
-	GroupVersion     = "v1alpha1"
+	GroupVersion     = "v1alpha3"
 	DefaultNamespace = `weavek8sops`
 )
 
@@ -38,14 +38,14 @@ var AddToScheme = SchemeBuilder.AddToScheme
 
 func addKnownTypes(scheme *runtime.Scheme) error {
 	scheme.AddKnownTypes(SchemeGroupVersion,
-		&clusterv1alpha1.Cluster{},
-		&clusterv1alpha1.ClusterList{},
-		&clusterv1alpha1.Machine{},
-		&clusterv1alpha1.MachineList{},
+		&clusterv1alpha3.Cluster{},
+		&clusterv1alpha3.ClusterList{},
+		&clusterv1alpha3.Machine{},
+		&clusterv1alpha3.MachineList{},
 	)
-	scheme.AddKnownTypes(bmv1alpha1.SchemeGroupVersion,
-		&bmv1alpha1.BareMetalClusterProviderSpec{},
-		&bmv1alpha1.BareMetalMachineProviderSpec{},
+	scheme.AddKnownTypes(bmv1alpha3.SchemeGroupVersion,
+		&bmv1alpha3.BareMetalCluster{},
+		&bmv1alpha3.BareMetalMachine{},
 	)
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
 	return nil
@@ -56,7 +56,7 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 //Returns the updated manifest or an error if there was a problem updating the manifest.
 func WithNamespace(fileOrString, namespace string) (string, error) {
 	mutex.Lock()
-	clusterv1alpha1.AddToScheme(scheme.Scheme)
+	clusterv1alpha3.AddToScheme(scheme.Scheme)
 	mutex.Unlock()
 
 	content, err := Content(fileOrString)

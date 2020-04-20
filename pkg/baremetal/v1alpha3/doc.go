@@ -2,4 +2,4 @@
 // +k8s:openapi-gen=true
 // +k8s:defaulter-gen=TypeMeta
 
-package v1alpha1
+package v1alpha3
