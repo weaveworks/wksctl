@@ -10,9 +10,9 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/weaveworks/launcher/pkg/kubectl"
 	"github.com/weaveworks/wksctl/pkg/addons"
-	baremetalspecv1 "github.com/weaveworks/wksctl/pkg/baremetalproviderspec/v1alpha1"
+	baremetalspecv1 "github.com/weaveworks/wksctl/pkg/baremetal/v1alpha3"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-	clusterv1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"
 )
 
 func clusterPath(args ...string) *field.Path {
