@@ -251,11 +251,27 @@ func buildKubeadmInitPlan(path string, ignorePreflightErrors string, useIPTables
 		uploadCertsFlag = "--experimental-upload-certs"
 	}
 
+	// If we're at 1.17.0 or greater, we need to upgrade the kubeadm config before running "kubeadm init"
+	upgradeKubeadmConfig := false
+	if lt, err := version.LessThan(k8sVersion, "1.17.0"); err == nil && lt == false {
+		upgradeKubeadmConfig = true
+	}
+
 	b := plan.NewBuilder()
 	if useIPTables {
 		b.AddResource(
 			"configure:iptables",
 			&Run{Script: object.String("sysctl net.bridge.bridge-nf-call-iptables=1")}) // TODO: undo?
+	}
+
+	if upgradeKubeadmConfig {
+		b.AddResource(
+			"kubeadm:config:upgrade",
+			&Run{Script: plan.ParamString(
+				withoutProxy("kubeadm config migrate --old-config %s --new-config %s_upgraded && mv %s_upgraded %s"), &path, &path, &path, &path),
+			},
+			plan.DependOn("configure:iptables"),
+		)
 	}
 
 	b.AddResource(
