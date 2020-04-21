@@ -1,24 +1,20 @@
 package machine
 
 import (
-	"errors"
+	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 
 	"github.com/blang/semver"
-	yaml "github.com/ghodss/yaml"
 	log "github.com/sirupsen/logrus"
-	baremetalspecv1 "github.com/weaveworks/wksctl/pkg/baremetalproviderspec/v1alpha1"
+	baremetalspecv1 "github.com/weaveworks/wksctl/pkg/baremetal/v1alpha3"
 	"github.com/weaveworks/wksctl/pkg/kubernetes"
 	"github.com/weaveworks/wksctl/pkg/utilities/manifest"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-	clientcmd "sigs.k8s.io/cluster-api/cmd/clusterctl/clientcmd"
-	clusterv1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
-	apierrors "sigs.k8s.io/cluster-api/pkg/errors"
-	clusterutil "sigs.k8s.io/cluster-api/pkg/util"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"
+	clusteryaml "sigs.k8s.io/cluster-api/util/yaml"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // IsMaster returns true if the provided machine is a "Master", and false
@@ -43,13 +39,15 @@ func IsNode(machine *clusterv1.Machine) bool {
 
 // FirstMaster scans the provided array of machines and return the first
 // one which is a "Master" or nil if none.
-func FirstMaster(machines []*clusterv1.Machine) *clusterv1.Machine {
-	for _, machine := range machines {
+// Machines and BareMetalMachines must be in the same order
+func FirstMaster(machines []*clusterv1.Machine, bl []*baremetalspecv1.BareMetalMachine) (*clusterv1.Machine, *baremetalspecv1.BareMetalMachine) {
+	// TODO: validate size and ordering of lists
+	for i, machine := range machines {
 		if IsMaster(machine) {
-			return machine
+			return machine, bl[i]
 		}
 	}
-	return nil
+	return nil, nil
 }
 
 // FirstMasterInArray scans the provided array of machines and return the first
@@ -63,52 +61,49 @@ func FirstMasterInArray(machines []clusterv1.Machine) *clusterv1.Machine {
 	return nil
 }
 
-// Config returns the provided machine's configuration.
-func Config(machine *clusterv1.Machine) (*baremetalspecv1.BareMetalMachineProviderSpec, error) {
-	codec, err := baremetalspecv1.NewCodec()
-	if err != nil {
-		return nil, err
-	}
-	machineSpec, err := codec.MachineProviderFromProviderSpec(machine.Spec.ProviderSpec)
-	if err != nil {
-		return nil, apierrors.InvalidMachineConfiguration("Cannot unmarshal machine's providerSpec field: %v", err)
-	}
-	return machineSpec, err
-}
-
 // ParseManifest parses the provided machines manifest file.
-func ParseManifest(file string) ([]*clusterv1.Machine, error) {
+func ParseManifest(file string) (ml []*clusterv1.Machine, bl []*baremetalspecv1.BareMetalMachine, err error) {
 	f, err := os.Open(file)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	return Parse(f)
 }
 
 // Parse parses the provided machines io.Reader.
-func Parse(r io.Reader) ([]*clusterv1.Machine, error) {
-	bytes, err := ioutil.ReadAll(r)
-	if err != nil {
-		return nil, err
+func Parse(r io.ReadCloser) (ml []*clusterv1.Machine, bl []*baremetalspecv1.BareMetalMachine, err error) {
+	decoder := clusteryaml.NewYAMLDecoder(r)
+	defer decoder.Close()
+
+	for {
+		obj, _, err := decoder.Decode(nil, nil)
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			return nil, nil, err
+		}
+
+		switch v := obj.(type) {
+		case *clusterv1.Machine:
+			ml = append(ml, v)
+		case *baremetalspecv1.BareMetalMachine:
+			bl = append(bl, v)
+		default:
+			return nil, nil, fmt.Errorf("unexpected type %T", v)
+		}
 	}
 
-	list := &clusterv1.MachineList{}
-	err = yaml.Unmarshal(bytes, &list)
-	if err != nil {
-		return nil, err
-	}
-
-	if list == nil {
-		return []*clusterv1.Machine{}, nil
-	}
-
-	return clusterutil.MachineP(list.Items), nil
+	return ml, bl, nil
 }
 
 type machineValidationFunc func(int, *clusterv1.Machine) field.ErrorList
 
 // Validate validates the provided machines.
-func Validate(machines []*clusterv1.Machine) field.ErrorList {
+func Validate(machines []*clusterv1.Machine, bl []*baremetalspecv1.BareMetalMachine) field.ErrorList {
+	if len(machines) == 0 { // Some other validations crash on empty list
+		return field.ErrorList{nonFieldError("no machines")}
+	}
+
 	var errors field.ErrorList
 
 	// Run global validation functions that operate on the full list of machines.
@@ -120,7 +115,26 @@ func Validate(machines []*clusterv1.Machine) field.ErrorList {
 		errors = append(errors, f(machines)...)
 	}
 
+	// Check 1-1 correspondence between lists
+	if len(machines) != len(bl) {
+		errors = append(errors, nonFieldError("mismatch: %d Machines and %d BareMetalMachines", len(machines), len(bl)))
+	} else {
+		// TODO: what if the user has a mixture of our machines and someone else's?
+		for i, m := range machines {
+			ref := m.Spec.InfrastructureRef
+			if ref.Name != bl[i].ObjectMeta.Name {
+				errors = append(errors, nonFieldError("mismatch [%d]: reference %q != %q", i, ref.Name, bl[i].ObjectMeta.Name))
+			}
+		}
+	}
+
 	return errors
+}
+
+// Map an error which can't be expressed as a single-field error into one,
+// TODO: fix the rest of the code which assumes all errors are field errors
+func nonFieldError(format string, args ...interface{}) *field.Error {
+	return field.Invalid(field.NewPath("spec"), "[...]", fmt.Sprintf(format, args...))
 }
 
 func machinePath(i int, args ...string) *field.Path {
@@ -142,8 +156,8 @@ func validateAtLeastOneMaster(machines []*clusterv1.Machine) field.ErrorList {
 	if numMasters == 0 {
 		return field.ErrorList{
 			field.Invalid(
-				field.NewPath("spec", "versions", "controlPlane"),
-				machines[0].Spec.Versions.ControlPlane,
+				field.NewPath("metadata", "labels", "set"),
+				"",
 				"no master node defined, need at least one master"),
 		}
 	}
@@ -159,22 +173,28 @@ func validateAtLeastOneMaster(machines []*clusterv1.Machine) field.ErrorList {
 // (and they can't be left empty)
 func validateVersions(machines []*clusterv1.Machine) field.ErrorList {
 	var errors field.ErrorList
-	reference := machines[0].Spec.Versions.Kubelet
+	reference := machines[0].Spec.Version
 
 	for i, m := range machines {
-		if m.Spec.Versions.Kubelet != reference {
-			errors = append(errors, field.Invalid(
-				machinePath(i, "spec", "versions", "kubelet"),
-				m.Spec.Versions.Kubelet,
-				fmt.Sprintf("inconsistent kubelet version, expected \"%s\"", reference)))
-		}
-
-		controlPlaneVersion := m.Spec.Versions.ControlPlane
-		if IsMaster(m) && controlPlaneVersion != "" && controlPlaneVersion != reference {
-			errors = append(errors, field.Invalid(
-				machinePath(i, "spec", "versions", "controlPlane"),
-				m.Spec.Versions.ControlPlane,
-				fmt.Sprintf("inconsistent controlPlane version, expected \"%s\"", reference)))
+		if reference == nil {
+			if m.Spec.Version != nil {
+				errors = append(errors, field.Invalid(
+					machinePath(i, "spec", "version"),
+					m.Spec.Version,
+					fmt.Sprintf("inconsistent kubernetes version, expected nil")))
+			}
+		} else {
+			if m.Spec.Version == nil {
+				errors = append(errors, field.Invalid(
+					machinePath(i, "spec", "version"),
+					nil,
+					fmt.Sprintf("inconsistent kubernetes version, expected %q", *reference)))
+			} else if *reference != *m.Spec.Version {
+				errors = append(errors, field.Invalid(
+					machinePath(i, "spec", "version"),
+					*m.Spec.Version,
+					fmt.Sprintf("inconsistent kubernetes version, expected %q", *reference)))
+			}
 		}
 	}
 
@@ -186,17 +206,17 @@ func validateVersions(machines []*clusterv1.Machine) field.ErrorList {
 // per-machine test to not repeat the validation errors many times if the
 // specified versions don't match the ranges.
 func validateKubernetesVersion(machines []*clusterv1.Machine) field.ErrorList {
-	s := machines[0].Spec.Versions.Kubelet
-	if s == "" {
+	s := machines[0].Spec.Version
+	if s == nil {
 		return field.ErrorList{}
 	}
 
-	version, err := semver.ParseTolerant(s)
+	version, err := semver.ParseTolerant(*s)
 	if err != nil {
 		return field.ErrorList{
 			field.Invalid(
-				machinePath(0, "spec", "versions", "kubelet"),
-				machines[0].Spec.Versions.Kubelet,
+				machinePath(0, "spec", "version"),
+				machines[0].Spec.Version,
 				"version isn't a semver version"),
 		}
 	}
@@ -209,8 +229,8 @@ func validateKubernetesVersion(machines []*clusterv1.Machine) field.ErrorList {
 		if !r(version) {
 			return field.ErrorList{
 				field.Invalid(
-					machinePath(0, "spec", "versions", "kubelet"),
-					machines[0].Spec.Versions.Kubelet,
+					machinePath(0, "spec", "version"),
+					machines[0].Spec.Version,
 					fmt.Sprintf("version doesn't match range: %s", ranges[i])),
 			}
 		}
@@ -224,13 +244,11 @@ type machinePopulateFunc func(*clusterv1.Machine)
 func populateVersions(m *clusterv1.Machine) {
 	// We have already validated the version fields are either all empty or have
 	// the same value. Only populate them if they are empty.
-	if m.Spec.Versions.Kubelet != "" {
+	if m.Spec.Version != nil {
 		return
 	}
-	m.Spec.Versions.Kubelet = kubernetes.DefaultVersion
-	if IsMaster(m) {
-		m.Spec.Versions.ControlPlane = kubernetes.DefaultVersion
-	}
+	versionCopy := kubernetes.DefaultVersion
+	m.Spec.Version = &versionCopy
 }
 
 // Kubeadm adds the master role label, but not the node one. Add it ourselves so
@@ -260,7 +278,7 @@ func Populate(machines []*clusterv1.Machine) {
 
 // InvalidMachinesHandler encapsulates logic to apply in case of an invalid
 // machines manifest being provided.
-type InvalidMachinesHandler = func(machines []*clusterv1.Machine, errors field.ErrorList) ([]*clusterv1.Machine, error)
+type InvalidMachinesHandler = func(machines []*clusterv1.Machine, bl []*baremetalspecv1.BareMetalMachine, errors field.ErrorList) ([]*clusterv1.Machine, []*baremetalspecv1.BareMetalMachine, error)
 
 // NoOpInvalidMachinesHandler does nothing when an invalid machines manifest
 // is being provided.
@@ -270,38 +288,45 @@ var NoOpInvalidMachinesHandler = func(machines []*clusterv1.Machine, errors fiel
 
 // ParseAndDefaultAndValidate parses the provided manifest, validates it and
 // defaults values where possible.
-func ParseAndDefaultAndValidate(machinesManifestPath string, errorsHandler InvalidMachinesHandler) ([]*clusterv1.Machine, error) {
-	machines, err := ParseManifest(machinesManifestPath)
+func ParseAndDefaultAndValidate(machinesManifestPath string, errorsHandler InvalidMachinesHandler) ([]*clusterv1.Machine, []*baremetalspecv1.BareMetalMachine, error) {
+	machines, bl, err := ParseManifest(machinesManifestPath)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	Populate(machines)
 
-	errors := Validate(machines)
-	return errorsHandler(machines, errors)
+	errors := Validate(machines, bl)
+	return errorsHandler(machines, bl, errors)
 }
 
 // GetKubernetesVersionFromManifest reads the version of the Kubernetes control
 // plane from the provided machines' manifest. If no version is configured, the
 // default Kubernetes version will be returned.
-func GetKubernetesVersionFromManifest(machinesManifestPath string) (string, error) {
-	machines, err := ParseManifest(machinesManifestPath)
+func GetKubernetesVersionFromManifest(machinesManifestPath string) (string, string, error) {
+	machines, bl, err := ParseManifest(machinesManifestPath)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
-	return GetKubernetesVersionFromMasterIn(machines)
+	return GetKubernetesVersionFromMasterIn(machines, bl)
 }
 
 // GetKubernetesVersionFromMasterIn reads the version of the Kubernetes control
 // plane from the provided machines. If no version is configured, the default
 // Kubernetes version will be returned.
-func GetKubernetesVersionFromMasterIn(machines []*clusterv1.Machine) (string, error) {
+func GetKubernetesVersionFromMasterIn(machines []*clusterv1.Machine, bl []*baremetalspecv1.BareMetalMachine) (string, string, error) {
 	// Ensures all machines have the same version (either specified or empty):
-	errs := Validate(machines)
+	errs := Validate(machines, bl)
 	if len(errs) > 0 {
-		return "", errs.ToAggregate()
+		return "", "", errs.ToAggregate()
 	}
-	return GetKubernetesVersion(FirstMaster(machines)), nil
+	machine, _ := FirstMaster(machines, bl)
+	version := GetKubernetesVersion(machine)
+	ns := machine.ObjectMeta.Namespace
+	if ns == "" {
+		ns = manifest.DefaultNamespace
+	}
+	log.WithField("machine", machine.Name).WithField("version", version).WithField("namespace", ns).Debug("Kubernetes version used")
+	return version, ns, nil
 }
 
 // GetKubernetesVersion reads the Kubernetes version of the provided machine,
@@ -310,38 +335,24 @@ func GetKubernetesVersion(machine *clusterv1.Machine) string {
 	if machine == nil {
 		return kubernetes.DefaultVersion
 	}
-	version := getKubernetesVersion(machine)
-	log.WithField("machine", machine.Name).WithField("version", version).Debug("Kubernetes version used")
-	return version
+	return getKubernetesVersion(machine)
 }
 
 func getKubernetesVersion(machine *clusterv1.Machine) string {
-	if machine.Spec.Versions.ControlPlane != "" {
-		return machine.Spec.Versions.ControlPlane
+	if machine.Spec.Version != nil {
+		return *machine.Spec.Version
 	}
-	log.WithField("machine", machine.Name).Debug("No Kubernetes control plane version configured in manifest, falling back to kubelet version")
-	if machine.Spec.Versions.Kubelet != "" {
-		return machine.Spec.Versions.Kubelet
-	}
-	log.WithField("machine", machine.Name).WithField("defaultVersion", kubernetes.DefaultVersion).Debug("No kubelet version configured in manifest, falling back to default")
+	log.WithField("machine", machine.Name).WithField("defaultVersion", kubernetes.DefaultVersion).Debug("No kubernetes version configured in manifest, falling back to default")
 	return kubernetes.DefaultVersion
 }
 
 // GetKubernetesNamespaceFromMachines reads the namespace of the Kubernetes control
 // plane from the applied machines. If no namespace is found, the
 // default Kubernetes namespace will be returned.
-func GetKubernetesNamespaceFromMachines() (string, error) {
-	cs, err := clientcmd.NewClusterApiClientForDefaultSearchPath("", clientcmd.NewConfigOverrides())
-	if err != nil {
-		return "", err
-	}
-	client := cs.ClusterV1alpha1()
-	mi := client.Machines("")
-	if mi == nil {
-		return "", errors.New("No MachineInterface found")
-	}
-	mlist, err := mi.List(v1.ListOptions{})
-	if err != nil {
+func GetKubernetesNamespaceFromMachines(ctx context.Context, c client.Client) (string, error) {
+	mlist := &clusterv1.MachineList{}
+
+	if err := c.List(ctx, mlist); err != nil {
 		return "", err
 	}
 	for _, m := range mlist.Items {

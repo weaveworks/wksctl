@@ -6,7 +6,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/thanhpk/randstr"
-	clusterv1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"
 	"sigs.k8s.io/yaml"
 )
 
@@ -27,6 +27,8 @@ func GetMachinesManifest(path string) (string, error) {
 // Note that if the customer updates the manifest with their own names, we'll
 // honor those.
 func UpdateWithGeneratedNames(manifest string) (string, error) {
+	return "", errors.New("generateName not implemented for v1alpha3")
+
 	var machineList clusterv1.MachineList
 	if err := yaml.Unmarshal([]byte(manifest), &machineList); err != nil {
 		return "", errors.Wrap(err, "failed to deserialize machines' manifest")
