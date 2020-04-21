@@ -1,15 +1,20 @@
 package machine_test
 
 import (
+	"fmt"
+	"io/ioutil"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	baremetalspecv1 "github.com/weaveworks/wksctl/pkg/baremetal/v1alpha3"
 	"github.com/weaveworks/wksctl/pkg/cluster/machine"
 	"github.com/weaveworks/wksctl/pkg/kubernetes"
+	"github.com/weaveworks/wksctl/pkg/utilities/manifest"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-	clusterv1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
+	"k8s.io/client-go/kubernetes/scheme"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"
 )
 
 var master = clusterv1.Machine{
@@ -39,14 +44,18 @@ func TestIsNode(t *testing.T) {
 }
 
 func TestFirstMasterInPointersArray(t *testing.T) {
-	assert.Equal(t, master, *machine.FirstMaster([]*clusterv1.Machine{
+	bl := []*baremetalspecv1.BareMetalMachine{nil, nil}
+	v1, _ := machine.FirstMaster([]*clusterv1.Machine{
 		&worker,
 		&master,
-	}))
-	assert.Nil(t, machine.FirstMaster([]*clusterv1.Machine{
+	}, bl)
+	assert.Equal(t, &master, v1)
+	v2, _ := machine.FirstMaster([]*clusterv1.Machine{
 		&worker,
-	}))
-	assert.Nil(t, machine.FirstMaster([]*clusterv1.Machine{}))
+	}, bl)
+	assert.Nil(t, v2)
+	v3, _ := machine.FirstMaster([]*clusterv1.Machine{}, bl)
+	assert.Nil(t, v3)
 }
 
 func TestFirstMasterInArray(t *testing.T) {
@@ -60,198 +69,157 @@ func TestFirstMasterInArray(t *testing.T) {
 	assert.Nil(t, machine.FirstMasterInArray([]clusterv1.Machine{}))
 }
 
-const machinesValid = `items:
-- apiVersion: "cluster.k8s.io/v1alpha1"
+const machinesValid = `
+  apiVersion: "cluster.x-k8s.io/v1alpha3"
   kind: Machine
   metadata:
-    generateName: master-
+    name: master-0
     labels:
       set: master
   spec:
-    providerSpec:
-      value:
-        apiVersion: "baremetalproviderspec/v1alpha1"
-        kind: "BareMetalMachineProviderSpec"
-        address: "172.17.8.101"
-    versions:
-      kubelet: "1.14.12"
-      controlPlane: "1.14.12"
-- apiVersion: "cluster.k8s.io/v1alpha1"
+    infrastructureRef:
+        kind: BareMetalMachine
+        name: master-0
+    version: "1.14.12"
+---
+  apiVersion: "cluster.weave.works/v1alpha3"
+  kind: "BareMetalMachine"
+  metadata:
+    name: master-0
+  spec:
+    address: "172.17.8.101"
+---
+  apiVersion: "cluster.x-k8s.io/v1alpha3"
   kind: Machine
   metadata:
-    generateName: node-
+    name: node-0
     labels:
       set: node
   spec:
-    providerSpec:
-      value:
-        apiVersion: "baremetalproviderspec/v1alpha1"
-        kind: "BareMetalMachineProviderSpec"
-        address: "172.17.8.102"
-        authenticationWebhook:
-          cacheTTL: 2m0s
-          server:
-            url: http://127.0.0.1:5000/authenticate
-    versions:
-      kubelet: "1.14.12"
+    infrastructureRef:
+        kind: BareMetalMachine
+        name: node-0
+    version: "1.14.12"
+---
+  apiVersion: "cluster.weave.works/v1alpha3"
+  kind: "BareMetalMachine"
+  metadata:
+    name: node-0
+  spec:
+    address: "172.17.8.102"
+    authenticationWebhook:
+      cacheTTL: 2m0s
+      server:
+        url: http://127.0.0.1:5000/authenticate
 `
 
-const machinesValidWithOnlyKubeletVersion = `items:
-- apiVersion: "cluster.k8s.io/v1alpha1"
+// A machine doesn't have a matching Kubernetes version.
+const machinesInconsistentKubeVersion = `
+  apiVersion: "cluster.x-k8s.io/v1alpha3"
   kind: Machine
   metadata:
-    generateName: master-
+    name: master-0
     labels:
       set: master
   spec:
-    providerSpec:
-      value:
-        apiVersion: "baremetalproviderspec/v1alpha1"
-        kind: "BareMetalMachineProviderSpec"
-        address: "172.17.8.101"
-    versions:
-      kubelet: "1.14.12"
-- apiVersion: "cluster.k8s.io/v1alpha1"
+    infrastructureRef:
+        kind: BareMetalMachine
+        name: master-0
+    version: "1.14.4"
+---
+  apiVersion: "cluster.weave.works/v1alpha3"
+  kind: "BareMetalMachine"
+  metadata:
+    name: master-0
+  spec:
+    address: "172.17.8.101"
+---
+  apiVersion: "cluster.x-k8s.io/v1alpha3"
   kind: Machine
   metadata:
-    generateName: node-
+    name: node-0
     labels:
       set: node
   spec:
-    providerSpec:
-      value:
-        apiVersion: "baremetalproviderspec/v1alpha1"
-        kind: "BareMetalMachineProviderSpec"
-        address: "172.17.8.102"
-        authenticationWebhook:
-          cacheTTL: 2m0s
-          server:
-            url: http://127.0.0.1:5000/authenticate
-    versions:
-      kubelet: "1.14.12"
-`
-
-// A machine doesn't have a matching Kubelet version.
-const machinesInconsistentKubeletVersion = `items:
-- apiVersion: "cluster.k8s.io/v1alpha1"
-  kind: Machine
+    infrastructureRef:
+        kind: BareMetalMachine
+        name: node-0
+    version: "1.14.3"
+---
+  apiVersion: "cluster.weave.works/v1alpha3"
+  kind: "BareMetalMachine"
   metadata:
-    generateName: master-
-    labels:
-      set: master
+    name: node-0
   spec:
-    providerSpec:
-      value:
-        apiVersion: "baremetalproviderspec/v1alpha1"
-        kind: "BareMetalMachineProviderSpec"
-        address: "172.17.8.101"
-    versions:
-      kubelet: "1.14.4"
-      controlPlane: "1.14.4"
-- apiVersion: "cluster.k8s.io/v1alpha1"
-  kind: Machine
-  metadata:
-    generateName: node-
-    labels:
-      set: node
-  spec:
-    providerSpec:
-      value:
-        apiVersion: "baremetalproviderspec/v1alpha1"
-        kind: "BareMetalMachineProviderSpec"
-        address: "172.17.8.102"
-    versions:
-      kubelet: "1.14.3"
-`
-
-// A machine doesn't have a matching controlPlane version.
-const machinesInconsistentControlPlaneVersion = `items:
-- apiVersion: "cluster.k8s.io/v1alpha1"
-  kind: Machine
-  metadata:
-    generateName: master-
-    labels:
-      set: master
-  spec:
-    providerSpec:
-      value:
-        apiVersion: "baremetalproviderspec/v1alpha1"
-        kind: "BareMetalMachineProviderSpec"
-        address: "172.17.8.101"
-    versions:
-      kubelet: "1.14.4"
-      controlPlane: "1.14.3"
-- apiVersion: "cluster.k8s.io/v1alpha1"
-  kind: Machine
-  metadata:
-    generateName: node-
-    labels:
-      set: node
-  spec:
-    providerSpec:
-      value:
-        apiVersion: "baremetalproviderspec/v1alpha1"
-        kind: "BareMetalMachineProviderSpec"
-        address: "172.17.8.102"
-    versions:
-      kubelet: "1.14.4"
+    address: "172.17.8.102"
 `
 
 // Unsupported Kubernetes version.
-const machinesUnsupportedKubernetesVersion = `items:
-- apiVersion: "cluster.k8s.io/v1alpha1"
+const machinesUnsupportedKubernetesVersion = `  apiVersion: "cluster.x-k8s.io/v1alpha3"
   kind: Machine
   metadata:
-    generateName: master-
+    name: master-0
     labels:
       set: master
   spec:
-    providerSpec:
-      value:
-        apiVersion: "baremetalproviderspec/v1alpha1"
-        kind: "BareMetalMachineProviderSpec"
-        address: "172.17.8.101"
-    versions:
-      kubelet: "1.13.2"
-      controlPlane: "1.13.2"
-- apiVersion: "cluster.k8s.io/v1alpha1"
+    infrastructureRef:
+        kind: BareMetalMachine
+        name: master-0
+    version: "1.13.2"
+---
+  apiVersion: "cluster.weave.works/v1alpha3"
+  kind: "BareMetalMachine"
+  metadata:
+    name: master-0
+  spec:
+    address: "172.17.8.101"
+---
+  apiVersion: "cluster.x-k8s.io/v1alpha3"
   kind: Machine
   metadata:
-    generateName: node-
+    name: node-0
     labels:
       set: node
   spec:
-    providerSpec:
-      value:
-        apiVersion: "baremetalproviderspec/v1alpha1"
-        kind: "BareMetalMachineProviderSpec"
-        address: "172.17.8.102"
-    versions:
-      kubelet: "1.13.2"
+    infrastructureRef:
+        kind: BareMetalMachine
+        name: node-0
+    version: "1.13.2"
+---
+  apiVersion: "cluster.weave.works/v1alpha3"
+  kind: "BareMetalMachine"
+  metadata:
+    name: node-0
+  spec:
+    address: "172.17.8.102"
 `
 
-const machinesNoGodNoMaster = `items:
-- apiVersion: "cluster.k8s.io/v1alpha1"
+const machinesNoGodNoMaster = `
+  apiVersion: "cluster.x-k8s.io/v1alpha3"
   kind: Machine
   metadata:
-    generateName: node-
+    name: node-0
     labels:
       set: node
   spec:
-    providerSpec:
-      value:
-        apiVersion: "baremetalproviderspec/v1alpha1"
-        kind: "BareMetalMachineProviderSpec"
-        address: "172.17.8.101"
-    versions:
-      kubelet: "1.14.12"
+    infrastructureRef:
+        kind: BareMetalMachine
+        name: node-0
+    version: "1.14.12"
+---
+  apiVersion: "cluster.weave.works/v1alpha3"
+  kind: "BareMetalMachine"
+  metadata:
+    name: node-0
+  spec:
+    address: "172.17.8.102"
 `
 
-func machinesFromString(t *testing.T, s string) []*clusterv1.Machine {
-	r := strings.NewReader(s)
-	machines, err := machine.Parse(r)
+func machinesFromString(t *testing.T, s string) ([]*clusterv1.Machine, []*baremetalspecv1.BareMetalMachine) {
+	r := ioutil.NopCloser(strings.NewReader(s))
+	machines, bml, err := machine.Parse(r)
 	assert.NoError(t, err)
-	return machines
+	return machines, bml
 }
 
 // Gather the list of fields paths that didn't pass validation.
@@ -264,105 +232,108 @@ func fieldsInError(errors field.ErrorList) []string {
 }
 
 func TestValidateMachines(t *testing.T) {
+	assert.NoError(t, clusterv1.AddToScheme(scheme.Scheme))
+	assert.NoError(t, baremetalspecv1.AddToScheme(scheme.Scheme))
+
 	tests := []struct {
 		input  string
 		errors []string
 	}{
 		{machinesValid, []string{}},
-		{machinesValidWithOnlyKubeletVersion, []string{}},
-		{machinesInconsistentKubeletVersion, []string{
-			"machines[1].spec.versions.kubelet",
-		}},
-		{machinesInconsistentControlPlaneVersion, []string{
-			"machines[0].spec.versions.controlPlane",
+		{machinesInconsistentKubeVersion, []string{
+			"machines[1].spec.version",
 		}},
 		{machinesUnsupportedKubernetesVersion, []string{
-			"machines[0].spec.versions.kubelet",
+			"machines[0].spec.version",
 		}},
 		{machinesNoGodNoMaster, []string{
-			"spec.versions.controlPlane",
+			"metadata.labels.set",
 		}},
 	}
 
-	for _, test := range tests {
-		machines := machinesFromString(t, test.input)
-		errors := machine.Validate(machines)
-		assert.Equal(t, len(test.errors), len(errors))
-		assert.Equal(t, test.errors, fieldsInError(errors))
+	for i, test := range tests {
+		t.Run(fmt.Sprint(i), func(t *testing.T) {
+			machines, bl := machinesFromString(t, test.input)
+			errors := machine.Validate(machines, bl)
+			assert.Equal(t, len(test.errors), len(errors))
+			assert.Equal(t, test.errors, fieldsInError(errors))
 
-		if t.Failed() {
-			t.Log(errors)
-			t.FailNow()
-		}
+			if t.Failed() {
+				t.Log(errors)
+				t.FailNow()
+			}
+		})
 	}
 }
 
-const machinesWithoutVersions = `items:
-- apiVersion: "cluster.k8s.io/v1alpha1"
+const machinesWithoutVersions = `
+  apiVersion: "cluster.x-k8s.io/v1alpha3"
   kind: Machine
   metadata:
-    generateName: master-
+    name: master-0
     labels:
       set: master
   spec:
-    providerSpec:
-      value:
-        apiVersion: "baremetalproviderspec/v1alpha1"
-        kind: "BareMetalMachineProviderSpec"
-        address: "172.17.8.101"
-- apiVersion: "cluster.k8s.io/v1alpha1"
+    infrastructureRef:
+        kind: BareMetalMachine
+        name: master-0
+---
+  apiVersion: "cluster.weave.works/v1alpha3"
+  kind: "BareMetalMachine"
+  metadata:
+    name: master-0
+  spec:
+    address: "172.17.8.101"
+---
+  apiVersion: "cluster.x-k8s.io/v1alpha3"
   kind: Machine
   metadata:
-    generateName: node-
+    name: node-0
     labels:
       set: node
   spec:
-    providerSpec:
-      value:
-        apiVersion: "baremetalproviderspec/v1alpha1"
-        kind: "BareMetalMachineProviderSpec"
-        address: "172.17.8.102"
-        authenticationWebhook:
-          cacheTTL: 2m0s
-          server:
-            url: http://127.0.0.1:5000/authenticate
+    infrastructureRef:
+        kind: BareMetalMachine
+        name: node-0
+---
+  apiVersion: "cluster.weave.works/v1alpha3"
+  kind: "BareMetalMachine"
+  metadata:
+    name: node-0
+  spec:
+    address: "172.17.8.102"
+    authenticationWebhook:
+      cacheTTL: 2m0s
+      server:
+        url: http://127.0.0.1:5000/authenticate
 `
 
 // Ensure we populate the Kubernetes version if not provided.
 func TestPopulateVersions(t *testing.T) {
-	machinesWithoutVersions := machinesFromString(t, machinesWithoutVersions)
+	machinesWithoutVersions, _ := machinesFromString(t, machinesWithoutVersions)
 	machine.Populate(machinesWithoutVersions)
 
 	for _, m := range machinesWithoutVersions {
-		v := &m.Spec.Versions
-		assert.Equal(t, kubernetes.DefaultVersion, v.Kubelet)
-		if machine.IsMaster(m) {
-			assert.Equal(t, kubernetes.DefaultVersion, v.ControlPlane)
-		}
+		v := *m.Spec.Version
+		assert.Equal(t, kubernetes.DefaultVersion, v)
 	}
 }
 
 func TestGetKubernetesVersionFromMasterInDefaultsVersionWhenMachinesDoNotSpecifyAny(t *testing.T) {
-	version, err := machine.GetKubernetesVersionFromMasterIn(machinesFromString(t, machinesWithoutVersions))
+	version, namespace, err := machine.GetKubernetesVersionFromMasterIn(machinesFromString(t, machinesWithoutVersions))
 	assert.NoError(t, err)
 	assert.Equal(t, kubernetes.DefaultVersion, version)
+	assert.Equal(t, manifest.DefaultNamespace, namespace)
 }
 
 func TestGetKubernetesVersionFromMasterInGetsControlPlaneVersion(t *testing.T) {
-	version, err := machine.GetKubernetesVersionFromMasterIn(machinesFromString(t, machinesValid))
+	version, _, err := machine.GetKubernetesVersionFromMasterIn(machinesFromString(t, machinesValid))
 	assert.NoError(t, err)
 	assert.Equal(t, "1.14.12", version)
 }
 
-func TestGetKubernetesVersionFallsbackToKubeletVersionForWorkerNodes(t *testing.T) {
-	machines := machinesFromString(t, machinesInconsistentControlPlaneVersion)
-	version := machine.GetKubernetesVersion(machines[0])
-	assert.Equal(t, "1.14.3", version)
-	version = machine.GetKubernetesVersion(machines[1])
-	assert.Equal(t, "1.14.4", version)
-}
-
 func TestGetKubernetesVersionDefaultsVersionWhenMachinesDoNotSpecifyAny(t *testing.T) {
-	version := machine.GetKubernetesVersion(machinesFromString(t, machinesWithoutVersions)[0])
+	machines, _ := machinesFromString(t, machinesWithoutVersions)
+	version := machine.GetKubernetesVersion(machines[0])
 	assert.Equal(t, kubernetes.DefaultVersion, version)
 }
