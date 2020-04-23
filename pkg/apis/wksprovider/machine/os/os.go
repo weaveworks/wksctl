@@ -17,6 +17,7 @@ import (
 	"time"
 
 	ssv1alpha1 "github.com/bitnami-labs/sealed-secrets/pkg/apis/sealed-secrets/v1alpha1"
+	"github.com/bitnami-labs/sealed-secrets/pkg/crypto"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/weaveworks/wksctl/pkg/addons"
@@ -41,7 +42,7 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
-	certUtil "k8s.io/client-go/util/cert"
+	"k8s.io/client-go/util/keyutil"
 	kubeadmapi "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm/v1beta1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"
 )
@@ -792,7 +793,7 @@ func getPrivateKey(privateKeyPath string) (*rsa.PrivateKey, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "Could not read private key")
 	}
-	privateKeyData, err := certUtil.ParsePrivateKeyPEM(privateKeyBytes)
+	privateKeyData, err := keyutil.ParsePrivateKeyPEM(privateKeyBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -858,9 +859,14 @@ func processSecret(b *plan.Builder, key *rsa.PrivateKey, configDir, secretFileNa
 	if err != nil {
 		return nil, "", nil, err
 	}
+	fingerprint, err := crypto.PublicKeyFingerprint(&key.PublicKey)
+	if err != nil {
+		return nil, "", nil, err
+	}
+	keys := map[string]*rsa.PrivateKey{fingerprint: key}
 	switch s := object.(type) {
 	case *ssv1alpha1.SealedSecret:
-		secret, err := s.Unseal(scheme.Codecs, key)
+		secret, err := s.Unseal(scheme.Codecs, keys)
 		if err != nil {
 			return nil, "", nil, errors.Wrap(err, "Could not unseal auth secret")
 		}
