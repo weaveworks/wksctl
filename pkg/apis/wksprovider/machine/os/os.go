@@ -31,6 +31,7 @@ import (
 	"github.com/weaveworks/wksctl/pkg/plan/resource"
 	"github.com/weaveworks/wksctl/pkg/plan/runners/ssh"
 	"github.com/weaveworks/wksctl/pkg/plan/runners/sudo"
+	"github.com/weaveworks/wksctl/pkg/specs"
 	"github.com/weaveworks/wksctl/pkg/utilities/envcfg"
 	"github.com/weaveworks/wksctl/pkg/utilities/manifest"
 	"github.com/weaveworks/wksctl/pkg/utilities/object"
@@ -43,7 +44,7 @@ import (
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/client-go/util/keyutil"
 	kubeadmapi "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm/v1beta1"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"
+	"sigs.k8s.io/yaml"
 )
 
 const (
@@ -226,7 +227,7 @@ func (o OS) CreateSeedNodeSetupPlan(params SeedNodeParams) (*plan.Plan, error) {
 	if err != nil {
 		return nil, err
 	}
-	providerSpec, err := getClusterProviderSpec(params.ClusterManifestPath)
+	cluster, err := parseCluster(params.ClusterManifestPath)
 	if err != nil {
 		return nil, err
 	}
@@ -499,22 +500,6 @@ func (o OS) applySeedNodePlan(p *plan.Plan) error {
 		return err
 	}
 	return nil
-}
-
-func getClusterProviderSpec(manifestPath string) (*baremetalspecv1.BareMetalCluster, error) {
-	cluster, err := parseCluster(manifestPath)
-	if err != nil {
-		return nil, err
-	}
-	codec, err := baremetalspecv1.NewCodec()
-	if err != nil {
-		return nil, err
-	}
-	providerSpec, err := codec.ClusterProviderFromProviderSpec(cluster.Spec.ProviderSpec)
-	if err != nil {
-		return nil, err
-	}
-	return providerSpec, nil
 }
 
 func planParametersToConfigMapManifest(plan []byte, ns string) ([]byte, error) {
@@ -1155,23 +1140,13 @@ func fetchOSID(sshClient *ssh.Client) (string, error) {
 }
 
 // parseCluster converts the manifest file into a Cluster
-func parseCluster(clusterManifestPath string) (*clusterv1.Cluster, error) {
+func parseCluster(clusterManifestPath string) (bmc *baremetalspecv1.BareMetalCluster, err error) {
 	f, err := os.Open(clusterManifestPath)
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
-	bytes, err := ioutil.ReadAll(f)
-	if err != nil {
-		return nil, err
-	}
-
-	cluster := &clusterv1.Cluster{}
-	err = yaml.Unmarshal(bytes, cluster)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to parse cluster manifest")
-	}
-	return cluster, nil
+	_, b, err := specs.ParseCluster(f)
+	return b, err
 }
 
 // createPlan generates a plan from a plan builder
@@ -1191,15 +1166,7 @@ func parseAddons(ClusterManifestPath, namespace string, addonNamespaces map[stri
 	if err != nil {
 		return nil, err
 	}
-	codec, err := baremetalspecv1.NewCodec()
-	if err != nil {
-		log.Fatal("Failed to create codec: ", err)
-	}
 
-	clusterSpec, err := codec.ClusterProviderFromProviderSpec(cluster.Spec.ProviderSpec)
-	if err != nil {
-		log.Fatal("Failed to parse cluster manifest: ", err)
-	}
 	ret := make(map[string][][]byte)
 	for _, addonDesc := range cluster.Spec.Addons {
 		log.WithField("addon", addonDesc.Name).Debug("building addon")
