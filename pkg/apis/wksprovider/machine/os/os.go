@@ -222,7 +222,7 @@ func (o OS) CreateSeedNodeSetupPlan(params SeedNodeParams) (*plan.Plan, error) {
 	if err != nil {
 		return nil, err
 	}
-	kubernetesVersion, err := machine.GetKubernetesVersionFromManifest(params.MachinesManifestPath)
+	kubernetesVersion, kubernetesNamespace, err := machine.GetKubernetesVersionFromManifest(params.MachinesManifestPath)
 	if err != nil {
 		return nil, err
 	}
@@ -476,10 +476,7 @@ func (o OS) createSeedNodePlanConfigMapManifest(params SeedNodeParams, providerS
 		return nil, err
 	}
 	if params.Namespace == "" {
-		params.Namespace, err = machine.GetKubernetesNamespaceFromMachines()
-		if err != nil {
-			return nil, err
-		}
+		params.Namespace = kubernetesNamespace
 	}
 
 	seedNodePlanConfigMapManifest, err := planParametersToConfigMapManifest(paramBuffer.Bytes(), params.Namespace)
