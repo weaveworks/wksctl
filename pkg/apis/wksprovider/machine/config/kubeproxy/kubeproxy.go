@@ -17,7 +17,7 @@ func NewConfig(conntrackMax int32) *kubeproxycfg.KubeProxyConfiguration {
 			APIVersion: kubeproxycfg.SchemeGroupVersion.String(),
 		},
 		Conntrack: kubeproxycfg.KubeProxyConntrackConfiguration{
-			Max: pointer.Int32Ptr(conntrackMax),
+			MaxPerCore: pointer.Int32Ptr(conntrackMax),
 		},
 	}
 }
