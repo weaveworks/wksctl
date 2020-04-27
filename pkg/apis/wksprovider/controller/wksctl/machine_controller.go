@@ -24,7 +24,7 @@ import (
 	fconfig "github.com/weaveworks/footloose/pkg/config"
 	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/config"
 	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/os"
-	baremetalspecv1 "github.com/weaveworks/wksctl/pkg/baremetalproviderspec/v1alpha1"
+	baremetalspecv1 "github.com/weaveworks/wksctl/pkg/baremetal/v1alpha3"
 	machineutil "github.com/weaveworks/wksctl/pkg/cluster/machine"
 	"github.com/weaveworks/wksctl/pkg/kubernetes/drain"
 	"github.com/weaveworks/wksctl/pkg/plan"
@@ -45,8 +45,13 @@ import (
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
 	bootstrapapi "k8s.io/cluster-bootstrap/token/api"
-	clusterv1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"
+	"sigs.k8s.io/cluster-api/util"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
 const (
@@ -92,34 +97,92 @@ type FootlooseMachine struct {
 	// maps containerPort -> hostPort.
 }
 
-// MachineActuator is responsible for managing this cluster's machines, and
+// TODO: should this be renamed 'reconciler' to match other CAPI providers ?
+
+// MachineController is responsible for managing this cluster's machines, and
 // ensuring their state converge towards their definitions.
-type MachineActuator struct {
+type MachineController struct {
 	client              client.Client
 	clientSet           *kubernetes.Clientset
-	codec               *baremetalspecv1.BareMetalProviderSpecCodec
 	controllerNamespace string
 	eventRecorder       record.EventRecorder
 	verbose             bool
 }
 
-// Create the machine.
-func (a *MachineActuator) Create(ctx context.Context, cluster *clusterv1.Cluster, machine *clusterv1.Machine) error {
-	contextLog := log.WithFields(log.Fields{"context": ctx, "cluster": *cluster, "machine": *machine})
-	contextLog.Info("creating machine...")
-	if err := a.create(ctx, cluster, machine); err != nil {
-		contextLog.Errorf("failed to create machine: %v", err)
-		return err
+func (r *MachineController) Reconcile(req ctrl.Request) (_ ctrl.Result, reterr error) {
+	ctx := context.TODO() // upstream will add this eventually
+	contextLog := log.WithField("name", req.NamespacedName)
+
+	// request only contains the name of the object, so fetch it from the api-server
+	bmm := &baremetalspecv1.BareMetalMachine{}
+	err := r.client.Get(ctx, req.NamespacedName, bmm)
+	if err != nil {
+		if apierrs.IsNotFound(err) { // isn't there; give in
+			return ctrl.Result{}, nil
+		}
+		return ctrl.Result{}, err
 	}
-	return nil
+
+	// Get Machine via OwnerReferences
+	machine, err := util.GetOwnerMachine(ctx, r.client, bmm.ObjectMeta)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	if machine == nil {
+		contextLog.Info("Machine Controller has not yet set ownerReferences")
+		return ctrl.Result{}, nil
+	}
+	contextLog = contextLog.WithField("machine", machine.Name)
+
+	// Get Cluster via label "cluster.x-k8s.io/cluster-name"
+	cluster, err := util.GetClusterFromMetadata(ctx, r.client, machine.ObjectMeta)
+	if err != nil {
+		contextLog.Info("Machine is missing cluster label or cluster does not exist")
+		return ctrl.Result{}, nil
+	}
+
+	if util.IsPaused(cluster, bmm) {
+		contextLog.Info("BareMetalMachine or linked Cluster is marked as paused. Won't reconcile")
+		return ctrl.Result{}, nil
+	}
+	contextLog = contextLog.WithField("cluster", cluster.Name)
+
+	// Now go from the Cluster to the BareMetalCluster
+	bmc := &baremetalspecv1.BareMetalCluster{}
+	if err := r.client.Get(ctx, client.ObjectKey{
+		Namespace: bmm.Namespace,
+		Name:      cluster.Spec.InfrastructureRef.Name,
+	}, bmc); err != nil {
+		contextLog.Info("BareMetalCluster is not available yet")
+		return ctrl.Result{}, nil
+	}
+
+	// Object still there but with deletion timestamp => run our finalizer
+	if !bmm.ObjectMeta.DeletionTimestamp.IsZero() {
+		err := r.delete(ctx, bmc, machine, bmm)
+		if err != nil {
+			contextLog.Errorf("failed to delete machine: %v", err)
+		}
+		return ctrl.Result{}, err
+	}
+
+	// FIXME!  assuming everything else is create
+	{
+		err := r.create(ctx, bmc, machine, bmm)
+		if err != nil {
+			contextLog.Errorf("failed to create machine: %v", err)
+		}
+		return ctrl.Result{}, err
+	}
+
+	return ctrl.Result{}, nil
 }
 
-func (a *MachineActuator) create(ctx context.Context, cluster *clusterv1.Cluster, machine *clusterv1.Machine) error {
-	c, m, err := a.parse(cluster, machine)
-	if err != nil {
-		return err
-	}
-	installer, closer, err := a.connectTo(machine, c, m)
+func (a *MachineController) create(ctx context.Context, c *baremetalspecv1.BareMetalCluster, machine *clusterv1.Machine, bmm *baremetalspecv1.BareMetalMachine) error {
+	contextLog := log.WithFields(log.Fields{"context": ctx, "cluster": *c, "machine": *machine})
+	contextLog.Info("creating machine...")
+
+	installer, closer, err := a.connectTo(c, bmm)
 	if err != nil {
 		return gerrors.Wrapf(err, "failed to establish connection to machine %s", machine.Name)
 	}
@@ -140,7 +203,7 @@ func (a *MachineActuator) create(ctx context.Context, cluster *clusterv1.Cluster
 	}
 	log.Infof("FOOTLOOSE ADDR: %s", footlooseAddr)
 	log.Infof("FOOTLOOSE BACKEND: %s", footlooseBackend)
-	nodePlan, err := a.getNodePlan(c, machine, a.getMachineAddress(machine), installer)
+	nodePlan, err := a.getNodePlan(c, machine, a.getMachineAddress(bmm), installer)
 	if err != nil {
 		return err
 	}
@@ -165,7 +228,7 @@ func (a *MachineActuator) create(ctx context.Context, cluster *clusterv1.Cluster
 // We set the plan annotation for a seed node at the first create of another mode so we
 // don't miss any updates. The plan is derived from the original seed node plan and stored in a config map
 // for use by the actuator.
-func (a *MachineActuator) initializeMasterPlanIfNecessary(installer *os.OS) error {
+func (a *MachineController) initializeMasterPlanIfNecessary(installer *os.OS) error {
 
 	// we also use this method to mark the first master as the "originalMaster"
 	originalMasterNode, err := a.getOriginalMasterNode()
@@ -196,26 +259,14 @@ func (a *MachineActuator) initializeMasterPlanIfNecessary(installer *os.OS) erro
 	return nil
 }
 
-func (a *MachineActuator) parse(cluster *clusterv1.Cluster, machine *clusterv1.Machine) (*baremetalspecv1.BareMetalClusterProviderSpec, *baremetalspecv1.BareMetalMachineProviderSpec, error) {
-	c, err := a.codec.ClusterProviderFromProviderSpec(cluster.Spec.ProviderSpec)
-	if err != nil {
-		return nil, nil, gerrors.Wrapf(err, "failed to parse cluster %v", cluster.Spec.ProviderSpec)
-	}
-	m, err := a.codec.MachineProviderFromProviderSpec(machine.Spec.ProviderSpec)
-	if err != nil {
-		return nil, nil, gerrors.Wrapf(err, "failed to parse machine %v", machine.Spec.ProviderSpec)
-	}
-	return c, m, nil
-}
-
-func (a *MachineActuator) connectTo(machine *clusterv1.Machine, c *baremetalspecv1.BareMetalClusterProviderSpec, m *baremetalspecv1.BareMetalMachineProviderSpec) (*os.OS, io.Closer, error) {
+func (a *MachineController) connectTo(c *baremetalspecv1.BareMetalCluster, m *baremetalspecv1.BareMetalMachine) (*os.OS, io.Closer, error) {
 	sshKey, err := a.sshKey()
 	if err != nil {
 		return nil, nil, gerrors.Wrap(err, "failed to read SSH key")
 	}
 	sshClient, err := ssh.NewClient(ssh.ClientParams{
 		User:         c.User,
-		Host:         a.getMachineAddress(machine),
+		Host:         a.getMachineAddress(m),
 		Port:         m.Private.Port,
 		PrivateKey:   sshKey,
 		PrintOutputs: a.verbose,
@@ -225,12 +276,12 @@ func (a *MachineActuator) connectTo(machine *clusterv1.Machine, c *baremetalspec
 	}
 	os, err := os.Identify(sshClient)
 	if err != nil {
-		return nil, nil, gerrors.Wrapf(err, "failed to identify machine %s's operating system", a.getMachineAddress(machine))
+		return nil, nil, gerrors.Wrapf(err, "failed to identify machine %s's operating system", a.getMachineAddress(m))
 	}
 	return os, sshClient, nil
 }
 
-func (a *MachineActuator) sshKey() ([]byte, error) {
+func (a *MachineController) sshKey() ([]byte, error) {
 	secret, err := a.clientSet.CoreV1().Secrets(a.controllerNamespace).Get(controllerSecret, metav1.GetOptions{})
 	if err != nil {
 		return nil, gerrors.Wrap(err, "failed to get WKS' secret")
@@ -252,7 +303,7 @@ type kubeadmJoinSecrets struct {
 	CertificateKey string
 }
 
-func (a *MachineActuator) kubeadmJoinSecrets() (*kubeadmJoinSecrets, error) {
+func (a *MachineController) kubeadmJoinSecrets() (*kubeadmJoinSecrets, error) {
 	secret, err := a.clientSet.CoreV1().Secrets(a.controllerNamespace).Get(controllerSecret, metav1.GetOptions{})
 	if err != nil {
 		return nil, gerrors.Wrap(err, "failed to get WKS' secret")
@@ -264,7 +315,7 @@ func (a *MachineActuator) kubeadmJoinSecrets() (*kubeadmJoinSecrets, error) {
 	}, nil
 }
 
-func (a *MachineActuator) updateKubeadmJoinSecrets(ID string) error {
+func (a *MachineController) updateKubeadmJoinSecrets(ID string) error {
 	len := base64.StdEncoding.EncodedLen(len(ID))
 	enc := make([]byte, len)
 	base64.StdEncoding.Encode(enc, []byte(ID))
@@ -276,7 +327,7 @@ func (a *MachineActuator) updateKubeadmJoinSecrets(ID string) error {
 	return err
 }
 
-func (a *MachineActuator) token(ID string) (string, error) {
+func (a *MachineController) token(ID string) (string, error) {
 	ns := "kube-system"
 	name := fmt.Sprintf("%s%s", bootstrapapi.BootstrapTokenSecretPrefix, ID)
 	secret, err := a.clientSet.CoreV1().Secrets(ns).Get(name, metav1.GetOptions{})
@@ -323,7 +374,7 @@ func bootstrapTokenHasExpired(secret *corev1.Secret) bool {
 	// if the token expires within 60 seconds, we need to generate a new one
 	return time.Until(expirationTime).Seconds() < 60
 }
-func (a *MachineActuator) installNewBootstrapToken(ns string) (*corev1.Secret, error) {
+func (a *MachineController) installNewBootstrapToken(ns string) (*corev1.Secret, error) {
 	secret, err := bootstraputils.GenerateBootstrapSecret(ns)
 	if err != nil {
 		return nil, gerrors.Errorf("failed to create new bootstrap token %s/%s", ns, secret.ObjectMeta.Name)
@@ -343,22 +394,11 @@ func (a *MachineActuator) installNewBootstrapToken(ns string) (*corev1.Secret, e
 }
 
 // Delete the machine. If no error is returned, it is assumed that all dependent resources have been cleaned up.
-func (a *MachineActuator) Delete(ctx context.Context, cluster *clusterv1.Cluster, machine *clusterv1.Machine) error {
-	contextLog := log.WithFields(log.Fields{"machine": machine.Name, "cluster": cluster.Name})
+func (a *MachineController) delete(ctx context.Context, c *baremetalspecv1.BareMetalCluster, machine *clusterv1.Machine, bmm *baremetalspecv1.BareMetalMachine) error {
+	contextLog := log.WithFields(log.Fields{"machine": machine.Name, "cluster": c.Name})
 	contextLog.Info("deleting machine ...")
-	if err := a.delete(ctx, cluster, machine); err != nil {
-		contextLog.Errorf("failed to delete machine: %v", err)
-		return err
-	}
-	return nil
-}
 
-func (a *MachineActuator) delete(ctx context.Context, cluster *clusterv1.Cluster, machine *clusterv1.Machine) error {
-	c, m, err := a.parse(cluster, machine)
-	if err != nil {
-		return err
-	}
-	os, closer, err := a.connectTo(machine, c, m)
+	os, closer, err := a.connectTo(c, bmm)
 	if err != nil {
 		return gerrors.Wrapf(err, "failed to establish connection to machine %s", machine.Name)
 	}
@@ -386,22 +426,10 @@ func (a *MachineActuator) delete(ctx context.Context, cluster *clusterv1.Cluster
 }
 
 // Update the machine to the provided definition.
-func (a *MachineActuator) Update(ctx context.Context, cluster *clusterv1.Cluster, machine *clusterv1.Machine) error {
-	contextLog := log.WithFields(log.Fields{"machine": machine.Name, "cluster": cluster.Name})
+func (a *MachineController) update(ctx context.Context, c *baremetalspecv1.BareMetalCluster, machine *clusterv1.Machine, bmm *baremetalspecv1.BareMetalMachine) error {
+	contextLog := log.WithFields(log.Fields{"machine": machine.Name, "cluster": c.Name})
 	contextLog.Info("updating machine...")
-	if err := a.update(ctx, cluster, machine); err != nil {
-		contextLog.Errorf("failed to update machine: %v", err)
-		return err
-	}
-	return nil
-}
-func (a *MachineActuator) update(ctx context.Context, cluster *clusterv1.Cluster, machine *clusterv1.Machine) error {
-	log.Infof("........................UPDATING: %s...........................", machine.Name)
-	c, m, err := a.parse(cluster, machine)
-	if err != nil {
-		return err
-	}
-	installer, closer, err := a.connectTo(machine, c, m)
+	installer, closer, err := a.connectTo(c, bmm)
 	if err != nil {
 		return gerrors.Wrapf(err, "failed to establish connection to machine %s", machine.Name)
 	}
@@ -419,8 +447,8 @@ func (a *MachineActuator) update(ctx context.Context, cluster *clusterv1.Cluster
 	if err != nil {
 		return gerrors.Wrapf(err, "failed to find node by id: %s/%s", ids.MachineID, ids.SystemUUID)
 	}
-	contextLog := log.WithFields(log.Fields{"machine": machine.Name, "cluster": cluster.Name, "node": node.Name})
-	nodePlan, err := a.getNodePlan(c, machine, a.getMachineAddress(machine), installer)
+	contextLog = contextLog.WithFields(log.Fields{"node": node.Name})
+	nodePlan, err := a.getNodePlan(c, machine, a.getMachineAddress(bmm), installer)
 	if err != nil {
 		return gerrors.Wrapf(err, "Failed to get node plan for machine %s", machine.Name)
 	}
@@ -508,7 +536,7 @@ func (a *MachineActuator) update(ctx context.Context, cluster *clusterv1.Cluster
 
 // kubeadmUpOrDowngrade does upgrade or downgrade a machine.
 // Parameter k8sversion specified here represents the version of both Kubernetes and Kubeadm.
-func (a *MachineActuator) kubeadmUpOrDowngrade(machine *clusterv1.Machine, node *corev1.Node, installer *os.OS,
+func (a *MachineController) kubeadmUpOrDowngrade(machine *clusterv1.Machine, node *corev1.Node, installer *os.OS,
 	k8sVersion, planKey, planJSON string, ntype nodeType) error {
 	b := plan.NewBuilder()
 	b.AddResource(
@@ -584,7 +612,7 @@ func (a *MachineActuator) kubeadmUpOrDowngrade(machine *clusterv1.Machine, node 
 	return nil
 }
 
-func (a *MachineActuator) prepareForMasterUpdate() error {
+func (a *MachineController) prepareForMasterUpdate() error {
 	// Check if it's safe to update a master
 	if err := a.checkMasterHAConstraint(); err != nil {
 		return gerrors.Wrap(err, "Not enough available master nodes to allow master update")
@@ -592,12 +620,12 @@ func (a *MachineActuator) prepareForMasterUpdate() error {
 	return nil
 }
 
-func (a *MachineActuator) performActualUpdate(
+func (a *MachineController) performActualUpdate(
 	installer *os.OS,
 	machine *clusterv1.Machine,
 	node *corev1.Node,
 	nodePlan *plan.Plan,
-	cluster *baremetalspecv1.BareMetalClusterProviderSpec) error {
+	cluster *baremetalspecv1.BareMetalCluster) error {
 	if err := drain.Drain(node, a.clientSet, drain.Params{
 		Force:               true,
 		DeleteLocalData:     true,
@@ -614,7 +642,7 @@ func (a *MachineActuator) performActualUpdate(
 	return nil
 }
 
-func (a *MachineActuator) getNodePlan(providerSpec *baremetalspecv1.BareMetalClusterProviderSpec, machine *clusterv1.Machine, machineAddress string, installer *os.OS) (*plan.Plan, error) {
+func (a *MachineController) getNodePlan(providerSpec *baremetalspecv1.BareMetalCluster, machine *clusterv1.Machine, machineAddress string, installer *os.OS) (*plan.Plan, error) {
 	namespace := a.controllerNamespace
 	secrets, err := a.kubeadmJoinSecrets()
 	if err != nil {
@@ -666,7 +694,7 @@ func (a *MachineActuator) getNodePlan(providerSpec *baremetalspecv1.BareMetalClu
 	return plan, nil
 }
 
-func (a *MachineActuator) getAuthConfigMap() (*v1.ConfigMap, error) {
+func (a *MachineController) getAuthConfigMap() (*v1.ConfigMap, error) {
 	client := a.clientSet.CoreV1().ConfigMaps(a.controllerNamespace)
 	maps, err := client.List(metav1.ListOptions{})
 	if err != nil {
@@ -680,7 +708,7 @@ func (a *MachineActuator) getAuthConfigMap() (*v1.ConfigMap, error) {
 	return nil, nil
 }
 
-func (a *MachineActuator) getProviderConfigMaps(providerSpec *baremetalspecv1.BareMetalClusterProviderSpec) (map[string]*v1.ConfigMap, error) {
+func (a *MachineController) getProviderConfigMaps(providerSpec *baremetalspecv1.BareMetalCluster) (map[string]*v1.ConfigMap, error) {
 	fileSpecs := providerSpec.OS.Files
 	client := a.clientSet.CoreV1().ConfigMaps(a.controllerNamespace)
 	configMaps := map[string]*v1.ConfigMap{}
@@ -722,7 +750,7 @@ func checkForVersionJump(machine *clusterv1.Machine, node *corev1.Node) error {
 	return nil
 }
 
-func (a *MachineActuator) checkIfMasterNotAtVersion(kubernetesVersion string) (bool, error) {
+func (a *MachineController) checkIfMasterNotAtVersion(kubernetesVersion string) (bool, error) {
 	nodes, err := a.getMasterNodes()
 	if err != nil {
 		// If we can't read the nodes, return the error so we don't
@@ -737,7 +765,7 @@ func (a *MachineActuator) checkIfMasterNotAtVersion(kubernetesVersion string) (b
 	return false, nil
 }
 
-func (a *MachineActuator) checkIfOriginalMasterNotAtVersion(kubernetesVersion string) (bool, error) {
+func (a *MachineController) checkIfOriginalMasterNotAtVersion(kubernetesVersion string) (bool, error) {
 	node, err := a.getOriginalMasterNode()
 	if err != nil {
 		// If we can't read the nodes, return the error so we don't
@@ -747,7 +775,7 @@ func (a *MachineActuator) checkIfOriginalMasterNotAtVersion(kubernetesVersion st
 	return nodeVersion(node) != kubernetesVersion, nil
 }
 
-func (a *MachineActuator) getOriginalMasterNode() (*corev1.Node, error) {
+func (a *MachineController) getOriginalMasterNode() (*corev1.Node, error) {
 	nodes, err := a.getMasterNodes()
 	if err != nil {
 		return nil, err
@@ -775,7 +803,7 @@ func (a *MachineActuator) getOriginalMasterNode() (*corev1.Node, error) {
 	return originalMasterNode, nil
 }
 
-func (a *MachineActuator) isOriginalMaster(node *corev1.Node) (bool, error) {
+func (a *MachineController) isOriginalMaster(node *corev1.Node) (bool, error) {
 	masterNode, err := a.getOriginalMasterNode()
 	if err != nil {
 		return false, err
@@ -799,7 +827,7 @@ func nodeVersion(node *corev1.Node) string {
 	return node.Status.NodeInfo.KubeletVersion
 }
 
-func (a *MachineActuator) uncordon(node *corev1.Node) error {
+func (a *MachineController) uncordon(node *corev1.Node) error {
 	contextLog := log.WithFields(log.Fields{"node": node.Name})
 	client := a.clientSet.CoreV1().Nodes()
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
@@ -823,7 +851,7 @@ func (a *MachineActuator) uncordon(node *corev1.Node) error {
 	return nil
 }
 
-func (a *MachineActuator) setNodeAnnotation(node *corev1.Node, key, value string) error {
+func (a *MachineController) setNodeAnnotation(node *corev1.Node, key, value string) error {
 	err := a.modifyNode(node, func(node *corev1.Node) {
 		node.Annotations[key] = value
 	})
@@ -833,7 +861,7 @@ func (a *MachineActuator) setNodeAnnotation(node *corev1.Node, key, value string
 	return nil
 }
 
-func (a *MachineActuator) setNodeLabel(node *corev1.Node, label, value string) error {
+func (a *MachineController) setNodeLabel(node *corev1.Node, label, value string) error {
 	err := a.modifyNode(node, func(node *corev1.Node) {
 		node.Labels[label] = value
 	})
@@ -843,7 +871,7 @@ func (a *MachineActuator) setNodeLabel(node *corev1.Node, label, value string) e
 	return nil
 }
 
-func (a *MachineActuator) removeNodeLabel(node *corev1.Node, label string) error {
+func (a *MachineController) removeNodeLabel(node *corev1.Node, label string) error {
 	err := a.modifyNode(node, func(node *corev1.Node) {
 		delete(node.Labels, label)
 	})
@@ -853,7 +881,7 @@ func (a *MachineActuator) removeNodeLabel(node *corev1.Node, label string) error
 	return nil
 }
 
-func (a *MachineActuator) modifyNode(node *corev1.Node, updater func(node *corev1.Node)) error {
+func (a *MachineController) modifyNode(node *corev1.Node, updater func(node *corev1.Node)) error {
 	contextLog := log.WithFields(log.Fields{"node": node.Name})
 	client := a.clientSet.CoreV1().Nodes()
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
@@ -877,7 +905,7 @@ func (a *MachineActuator) modifyNode(node *corev1.Node, updater func(node *corev
 	return nil
 }
 
-func (a *MachineActuator) checkMasterHAConstraint() error {
+func (a *MachineController) checkMasterHAConstraint() error {
 	nodes, err := a.getMasterNodes()
 	if err != nil {
 		// If we can't read the nodes, return the error so we don't
@@ -914,59 +942,7 @@ func hasTaint(node *corev1.Node, value string) bool {
 	return false
 }
 
-// Exists checks if the machine currently exists.
-func (a *MachineActuator) Exists(ctx context.Context, cluster *clusterv1.Cluster, machine *clusterv1.Machine) (bool, error) {
-	contextLog := log.WithFields(log.Fields{"machine": machine.Name, "cluster": cluster.Name})
-	contextLog.Info("checking existence of machine...")
-	exists, err := a.exists(ctx, cluster, machine)
-	if err != nil {
-		contextLog.Errorf("failed to check existence of machine: %s", err)
-		return false, err
-	}
-	return exists, nil
-}
-
-func (a *MachineActuator) exists(ctx context.Context, cluster *clusterv1.Cluster, machine *clusterv1.Machine) (bool, error) {
-	c, m, err := a.parse(cluster, machine)
-	if err != nil {
-		return false, err
-	}
-	contextLog := log.WithFields(log.Fields{"machine": machine.Name})
-	// In a managed environment, machine IPs are added by an underlying controller; if no IP is currently present, wait
-	// for the IP to be added before operating on the machine
-	if a.getMachineAddress(machine) == "" {
-		contextLog.Info("Creating underlying machine")
-		ip, err := invokeFootlooseCreate(machine)
-		if err != nil {
-			return false, err
-		}
-		contextLog.Infof("Created underlying machine: %s", ip)
-		a.updateMachine(machine, ip)
-		contextLog.Infof("Updated machine: %s", ip)
-	}
-	os, closer, err := a.connectTo(machine, c, m)
-	if err != nil {
-		return false, gerrors.Wrapf(err, "failed to establish connection to machine %s", machine.Name)
-	}
-	defer closer.Close()
-	ids, err := os.IDs()
-	if err != nil {
-		return false, gerrors.Wrapf(err, "failed to read machine %s's IDs", machine.Name)
-	}
-	node, err := a.findNodeByID(ids.MachineID, ids.SystemUUID)
-	if err != nil {
-		// If the error is that the machine was not found; record the event. Otherwise, error out
-		if apierrs.IsNotFound(err) {
-			a.recordEvent(machine, corev1.EventTypeNormal, "Exists", "machine %s (%s ; %s) is not a node", machine.Name, ids.SystemUUID, ids.MachineID)
-			return false, nil
-		}
-		return false, err
-	}
-	a.recordEvent(machine, corev1.EventTypeNormal, "Exists", "machine %s (%s ; %s) is a node (%s)", machine.Name, ids.SystemUUID, ids.MachineID, node.Name)
-	return true, nil
-}
-
-func (a *MachineActuator) findNodeByID(machineID, systemUUID string) (*corev1.Node, error) {
+func (a *MachineController) findNodeByID(machineID, systemUUID string) (*corev1.Node, error) {
 	nodes, err := a.clientSet.CoreV1().Nodes().List(metav1.ListOptions{})
 	if err != nil {
 		return nil, gerrors.Wrap(err, "failed to list nodes")
@@ -979,9 +955,9 @@ func (a *MachineActuator) findNodeByID(machineID, systemUUID string) (*corev1.No
 	return nil, apierrs.NewNotFound(schema.GroupResource{Group: "", Resource: "nodes"}, "")
 }
 
-var r = rand.New(rand.NewSource(time.Now().Unix()))
+var staticRand = rand.New(rand.NewSource(time.Now().Unix()))
 
-func (a *MachineActuator) getMasterNode() (*corev1.Node, error) {
+func (a *MachineController) getMasterNode() (*corev1.Node, error) {
 	masters, err := a.getMasterNodes()
 	if err != nil {
 		return nil, err
@@ -990,11 +966,11 @@ func (a *MachineActuator) getMasterNode() (*corev1.Node, error) {
 		return nil, errors.New("no master node found")
 	}
 	// Randomise to limit chances of always hitting the same master node:
-	index := r.Intn(len(masters))
+	index := staticRand.Intn(len(masters))
 	return masters[index], nil
 }
 
-func (a *MachineActuator) getMasterNodes() ([]*corev1.Node, error) {
+func (a *MachineController) getMasterNodes() ([]*corev1.Node, error) {
 	nodes, err := a.clientSet.CoreV1().Nodes().List(metav1.ListOptions{})
 	if err != nil {
 		return nil, gerrors.Wrap(err, "failed to list nodes")
@@ -1009,7 +985,7 @@ func (a *MachineActuator) getMasterNodes() ([]*corev1.Node, error) {
 	return masters, nil
 }
 
-func (a *MachineActuator) getControllerNode() (*corev1.Node, error) {
+func (a *MachineController) getControllerNode() (*corev1.Node, error) {
 	name, err := a.getControllerNodeName()
 	if err != nil {
 		return nil, err
@@ -1026,7 +1002,7 @@ func (a *MachineActuator) getControllerNode() (*corev1.Node, error) {
 	return nil, errors.New("Could not find controller node")
 }
 
-func (a *MachineActuator) isControllerNode(node *corev1.Node) (bool, error) {
+func (a *MachineController) isControllerNode(node *corev1.Node) (bool, error) {
 	name, err := a.getControllerNodeName()
 	if err != nil {
 		return false, err
@@ -1034,7 +1010,7 @@ func (a *MachineActuator) isControllerNode(node *corev1.Node) (bool, error) {
 	return node.Name == name, nil
 }
 
-func (a *MachineActuator) getControllerNodeName() (string, error) {
+func (a *MachineController) getControllerNodeName() (string, error) {
 	pods, err := a.clientSet.CoreV1().Pods(a.controllerNamespace).List(metav1.ListOptions{})
 	if err != nil {
 		return "", err
@@ -1047,7 +1023,7 @@ func (a *MachineActuator) getControllerNodeName() (string, error) {
 	return "", err
 }
 
-func (a *MachineActuator) updateMachine(machine *clusterv1.Machine, ip string) {
+func (a *MachineController) updateMachine(machine *baremetalspecv1.BareMetalMachine, ip string) {
 	machineIPs[getMachineID(machine)] = ip
 }
 
@@ -1131,7 +1107,7 @@ func getInternalAddress(node *corev1.Node) (string, error) {
 	return "", errors.New("no InternalIP address found")
 }
 
-func (a *MachineActuator) recordEvent(object runtime.Object, eventType, reason, messageFmt string, args ...interface{}) {
+func (a *MachineController) recordEvent(object runtime.Object, eventType, reason, messageFmt string, args ...interface{}) {
 	a.eventRecorder.Eventf(object, eventType, reason, messageFmt, args...)
 	switch eventType {
 	case corev1.EventTypeWarning:
@@ -1143,39 +1119,52 @@ func (a *MachineActuator) recordEvent(object runtime.Object, eventType, reason, 
 	}
 }
 
-func getMachineID(machine *clusterv1.Machine) string {
+func getMachineID(machine *baremetalspecv1.BareMetalMachine) string {
 	return machine.Namespace + ":" + machine.Name
 }
 
-func (a *MachineActuator) getMachineAddress(machine *clusterv1.Machine) string {
-	m, _ := a.codec.MachineProviderFromProviderSpec(machine.Spec.ProviderSpec)
-
+func (a *MachineController) getMachineAddress(m *baremetalspecv1.BareMetalMachine) string {
 	if m.Private.Address != "" {
 		return m.Private.Address
 	}
-	return machineIPs[getMachineID(machine)]
+	return machineIPs[getMachineID(m)]
 }
 
-// MachineActuatorParams groups required inputs to create a machine actuator.
-type MachineActuatorParams struct {
+func (a *MachineController) SetupWithManager(mgr ctrl.Manager, options controller.Options) error {
+	controller, err := ctrl.NewControllerManagedBy(mgr).
+		WithOptions(options).
+		For(&baremetalspecv1.BareMetalMachine{}).
+		Watches(
+			&source.Kind{Type: &clusterv1.Machine{}},
+			&handler.EnqueueRequestsFromMapFunc{
+				ToRequests: util.MachineToInfrastructureMapFunc(baremetalspecv1.SchemeGroupVersion.WithKind("BareMetalMachine")),
+			},
+		).
+		// TODO: add watch to reconcile all machines that need it
+		WithEventFilter(pausedPredicates()).
+		Build(a)
+
+	if err != nil {
+		return err
+	}
+	_ = controller // not currently using it here, but it will run in the background
+	return nil
+}
+
+// MachineControllerParams groups required inputs to create a machine actuator.
+type MachineControllerParams struct {
 	Client              client.Client
 	ClientSet           *kubernetes.Clientset
 	ControllerNamespace string
 	EventRecorder       record.EventRecorder
-	Scheme              *runtime.Scheme
 	Verbose             bool
 }
 
-// NewMachineActuator creates a new Machine actuator.
-func NewMachineActuator(params MachineActuatorParams) (*MachineActuator, error) {
-	codec, err := baremetalspecv1.NewCodec()
-	if err != nil {
-		return nil, gerrors.Wrap(err, "failed to create codec")
-	}
-	return &MachineActuator{
+// NewMachineController creates a new baremetal machine reconciler.
+func NewMachineController(params MachineControllerParams) (*MachineController, error) {
+	return &MachineController{
 		client:              params.Client,
 		clientSet:           params.ClientSet,
-		codec:               codec,
 		controllerNamespace: params.ControllerNamespace,
 		eventRecorder:       params.EventRecorder,
 		verbose:             params.Verbose,
