@@ -1,20 +1,20 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/weaveworks/wksctl/pkg/apis"
-	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/controller/wksctl"
+	wks "github.com/weaveworks/wksctl/pkg/apis/wksprovider/controller/wksctl"
 	machineutil "github.com/weaveworks/wksctl/pkg/cluster/machine"
 	"k8s.io/client-go/kubernetes"
-	clusterapis "sigs.k8s.io/cluster-api/pkg/apis"
-	clustercommon "sigs.k8s.io/cluster-api/pkg/apis/cluster/common"
-	capicluster "sigs.k8s.io/cluster-api/pkg/controller/cluster"
-	capimachine "sigs.k8s.io/cluster-api/pkg/controller/machine"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/signals"
 )
@@ -28,8 +28,8 @@ func main() {
 	Execute()
 }
 
-func initializeControllerNamespace() (string, error) {
-	controllerNamespace, err := machineutil.GetKubernetesNamespaceFromMachines()
+func initializeControllerNamespace(c client.Client) (string, error) {
+	controllerNamespace, err := machineutil.GetKubernetesNamespaceFromMachines(context.Background(), c)
 	if err != nil {
 		return "", err
 	}
@@ -87,47 +87,41 @@ func run(cmd *cobra.Command, args []string) {
 	if err != nil {
 		log.Fatalf("failed to create the cluster manager: %v", err)
 	}
-	ctlrNamespace, err := initializeControllerNamespace()
+	ctlrNamespace, err := initializeControllerNamespace(mgr.GetClient())
 	if err != nil {
 		log.Fatalf("failed to get controller namespace: %s", err)
 	}
-	log.Info("initializing machine actuator")
-	machineActuator, err := wks.NewMachineActuator(wks.MachineActuatorParams{
-		EventRecorder:       mgr.GetRecorder(wks.ProviderName + "-controller"),
-		Client:              mgr.GetClient(),
-		ClientSet:           clientSet,
-		ControllerNamespace: ctlrNamespace,
-		Scheme:              mgr.GetScheme(),
-		Verbose:             options.verbose,
-	})
-	if err != nil {
-		log.Fatalf("failed to create the machine actuator: %v", err)
-	}
-
-	log.Info("initializing cluster actuator")
-	clusterActuator, err := wks.NewClusterActuator(wks.ClusterActuatorParams{
-		EventRecorder: mgr.GetRecorder(wks.ProviderName + "-controller"),
-		Client:        mgr.GetClient(),
-		ClientSet:     clientSet,
-		Scheme:        mgr.GetScheme(),
-	})
-	if err != nil {
-		log.Fatalf("failed to create the cluster actuator: %v", err)
-	}
-
-	clustercommon.RegisterClusterProvisioner(wks.ProviderName, clusterActuator)
 
 	log.Info("registering scheme for all resources")
 	if err := apis.AddToScheme(mgr.GetScheme()); err != nil {
 		log.Fatal(err)
 	}
-	if err := clusterapis.AddToScheme(mgr.GetScheme()); err != nil {
+	if err := clusterv1.AddToScheme(mgr.GetScheme()); err != nil {
 		log.Fatal(err)
 	}
 
 	log.Info("registering controllers to the cluster manager")
-	capimachine.AddWithActuator(mgr, machineActuator)
-	capicluster.AddWithActuator(mgr, clusterActuator)
+	clusterReconciler, err := wks.NewClusterReconciler(mgr.GetClient(), mgr.GetEventRecorderFor(wks.ProviderName+"-controller"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	if err = clusterReconciler.SetupWithManager(mgr, controller.Options{MaxConcurrentReconciles: 1}); err != nil {
+		log.Fatal(err)
+	}
+
+	machineController, err := wks.NewMachineController(wks.MachineControllerParams{
+		EventRecorder:       mgr.GetEventRecorderFor(wks.ProviderName + "-controller"),
+		Client:              mgr.GetClient(),
+		ClientSet:           clientSet,
+		ControllerNamespace: ctlrNamespace,
+		Verbose:             options.verbose,
+	})
+	if err != nil {
+		log.Fatalf("failed to create the machine actuator: %v", err)
+	}
+	if err = machineController.SetupWithManager(mgr, controller.Options{MaxConcurrentReconciles: 1}); err != nil {
+		log.Fatal(err)
+	}
 
 	log.Info("starting the cluster manager")
 	log.Fatal(mgr.Start(signals.SetupSignalHandler()))
