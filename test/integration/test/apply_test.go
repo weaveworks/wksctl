@@ -22,6 +22,7 @@ import (
 	spawn "github.com/weaveworks/wksctl/test/integration/spawn"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -392,7 +393,7 @@ func TestApply(t *testing.T) {
 
 	// Prepare the machines manifest from terraform output.
 	terraform, err := newTerraformOutputFromFile(options.terraform.outputPath)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	machines, bmMachines := makeMachinesFromTerraform(t, terraform, terraform.numMachines()-1)
 	setKubernetesVersion(machines, kubernetes.DefaultVersion)
