@@ -6,6 +6,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	baremetalv1 "github.com/weaveworks/wksctl/pkg/baremetal/v1alpha3"
+	"k8s.io/client-go/kubernetes/scheme"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"
 )
 
 const (
@@ -129,7 +132,7 @@ subjects:
   name: default
   namespace: system
 `
-	clusteryaml = `apiVersion: cluster.k8s.io/v1alpha1
+	clusteryaml = `apiVersion: cluster.x-k8s.io/v1alpha3
 kind: Cluster
 metadata:
   name: example
@@ -140,10 +143,15 @@ spec:
     pods:
       cidrBlocks: [192.168.0.0/16]
     serviceDomain: cluster.local
-  providerSpec:
-    value:
-      apiVersion: baremetalproviderspec/v1alpha1
-      kind: BareMetalClusterProviderSpec
+    infrastructureRef:
+      kind: BareMetalCluster
+      name: example
+---
+apiVersion: cluster.weave.works/v1alpha3
+kind: "BareMetalCluster"
+metadata:
+  name: example
+spec:
       sshKeyPath: cluster-key
       user: root
       os:
@@ -165,37 +173,46 @@ spec:
         package: docker-ce
         version: 19.03.8
 `
-	machinesyaml = `apiVersion: v1
-kind: List
-items:
-- apiVersion: cluster.k8s.io/v1alpha1
+	machinesyaml = `
+  apiVersion: cluster.x-k8s.io/v1alpha3
   kind: Machine
   metadata:
-    generateName: master-
+    name: master-0
     labels:
       set: master
   spec:
-    providerSpec:
-      value:
-        apiVersion: baremetalproviderspec/v1alpha1
-        kind: BareMetalMachineProviderSpec
+    infrastructureRef:
+      kind: BareMetalMachine
+      name: master-0
+---
+  apiVersion: "cluster.weave.works/v1alpha3"
+  kind: "BareMetalMachine"
+  metadata:
+    name: master-0
+  spec:
         public:
           address: 127.0.0.1
           port: 2222
         private:
           address: 172.17.0.2
           port: 22
-- apiVersion: cluster.k8s.io/v1alpha1
+---
+  apiVersion: cluster.x-k8s.io/v1alpha3
   kind: Machine
   metadata:
-    generateName: node-
+    name: node-0
     labels:
       set: node
   spec:
-    providerSpec:
-      value:
-        apiVersion: baremetalproviderspec/v1alpha1
-        kind: BareMetalMachineProviderSpec
+    infrastructureRef:
+        kind: BareMetalMachine
+        name: node-0
+---
+  apiVersion: "cluster.weave.works/v1alpha3"
+  kind: "BareMetalMachine"
+  metadata:
+    name: node-0
+  spec:
         public:
           address: 127.0.0.1
           port: 2223
@@ -233,6 +250,8 @@ var nstests = []struct {
 }
 
 func TestManifestWithNamespace(t *testing.T) {
+	assert.NoError(t, clusterv1.AddToScheme(scheme.Scheme))
+	assert.NoError(t, baremetalv1.AddToScheme(scheme.Scheme))
 	for _, tt := range nstests {
 		t.Run(tt.name, func(t *testing.T) {
 			fname := createFile(t, tt.content, tt.fileName).Name()
