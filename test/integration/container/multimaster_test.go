@@ -20,7 +20,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-const clusterYAML = `apiVersion: cluster.k8s.io/v1alpha1
+const clusterYAML = `apiVersion: cluster.x-k8s.io/v1alpha3
 kind: Cluster
 metadata:
   name: test-multimaster
@@ -31,10 +31,15 @@ spec:
     pods:
       cidrBlocks: [192.168.0.0/16]
     serviceDomain: cluster.local
+  infrastructureRef:
+    kind: BareMetalCluster
+    name: test-multimaster
+---
+apiVersion: cluster.weave.works/v1alpha3
+kind: "BareMetalCluster"
+metadata:
+  name: test-multimaster
   providerSpec:
-    value:
-      apiVersion: baremetalproviderspec/v1alpha1
-      kind: BareMetalClusterProviderSpec
       user: root
       imageRepository: %s:%d
       os:
@@ -72,71 +77,96 @@ spec:
           value: "10000"
 `
 
-const machinesYAML = `apiVersion: v1
-kind: List
-items:
-- apiVersion: cluster.k8s.io/v1alpha1
+const machinesYAML = `
+  apiVersion: cluster.x-k8s.io/v1alpha3
   kind: Machine
   metadata:
     name: master-1
     labels:
       set: master
   spec:
-    providerSpec:
-      value:
-        apiVersion: baremetalproviderspec/v1alpha1
-        kind: BareMetalMachineProviderSpec
+    clusterName: test-multimaster
+    infrastructureRef:
+      kind: BareMetalMachine
+      name: master-1
+---
+  apiVersion: "cluster.weave.works/v1alpha3"
+  kind: "BareMetalMachine"
+  metadata:
+    name: master-1
+  spec:
         public:
           address: 127.0.0.1
           port: 2222
         private:
           address: %s
           port: 22
-- apiVersion: cluster.k8s.io/v1alpha1
+---
+  apiVersion: cluster.x-k8s.io/v1alpha3
   kind: Machine
   metadata:
     name: master-2
     labels:
       set: master
   spec:
-    providerSpec:
-      value:
-        apiVersion: baremetalproviderspec/v1alpha1
-        kind: BareMetalMachineProviderSpec
+    clusterName: test-multimaster
+    infrastructureRef:
+      kind: BareMetalMachine
+      name: master-2
+---
+  apiVersion: "cluster.weave.works/v1alpha3"
+  kind: "BareMetalMachine"
+  metadata:
+    name: master-2
+  spec:
         public:
           address: 127.0.0.1
           port: 2223
         private:
           address: %s
           port: 22
-- apiVersion: cluster.k8s.io/v1alpha1
+---
+  apiVersion: cluster.x-k8s.io/v1alpha3
   kind: Machine
   metadata:
     name: master-3
     labels:
       set: master
   spec:
-    providerSpec:
-      value:
-        apiVersion: baremetalproviderspec/v1alpha1
-        kind: BareMetalMachineProviderSpec
+    clusterName: test-multimaster
+    infrastructureRef:
+      kind: BareMetalMachine
+      name: master-3
+---
+  apiVersion: "cluster.weave.works/v1alpha3"
+  kind: "BareMetalMachine"
+  metadata:
+    name: master-3
+  spec:
         public:
           address: 127.0.0.1
           port: 2224
         private:
           address: %s
           port: 22
-- apiVersion: cluster.k8s.io/v1alpha1
+---
+  apiVersion: cluster.x-k8s.io/v1alpha3
   kind: Machine
   metadata:
     name: worker-1
     labels:
       set: worker
   spec:
-    providerSpec:
-      value:
-        apiVersion: baremetalproviderspec/v1alpha1
-        kind: BareMetalMachineProviderSpec
+    clusterName: test-multimaster
+    infrastructureRef:
+      kind: BareMetalMachine
+      name: worker-1
+---
+  apiVersion: "cluster.weave.works/v1alpha3"
+  kind: "BareMetalMachine"
+  metadata:
+    name: worker-1
+  spec:
         public:
           address: 127.0.0.1
           port: 2225
