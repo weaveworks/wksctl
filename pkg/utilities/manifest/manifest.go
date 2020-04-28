@@ -55,10 +55,6 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 //use the namespace specified.
 //Returns the updated manifest or an error if there was a problem updating the manifest.
 func WithNamespace(fileOrString, namespace string) (string, error) {
-	mutex.Lock()
-	clusterv1alpha3.AddToScheme(scheme.Scheme)
-	mutex.Unlock()
-
 	content, err := Content(fileOrString)
 	if err != nil {
 		return "", err
