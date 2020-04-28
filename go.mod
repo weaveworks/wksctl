@@ -6,6 +6,7 @@ require (
 	github.com/bitnami-labs/sealed-secrets v0.12.1
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/cavaliercoder/go-rpm v0.0.0-20190131055624-7a9c54e3d83e
+	github.com/chanwit/plandiff v1.0.0
 	github.com/dlespiau/kube-test-harness v0.0.0-20190930170435-ec3f93e1a754
 	github.com/fatih/structs v1.1.0
 	github.com/ghodss/yaml v1.0.0
