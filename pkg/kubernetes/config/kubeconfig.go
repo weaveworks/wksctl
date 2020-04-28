@@ -8,6 +8,7 @@ import (
 	yaml "github.com/ghodss/yaml"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	baremetalv1 "github.com/weaveworks/wksctl/pkg/baremetal/v1alpha3"
 	"github.com/weaveworks/wksctl/pkg/cluster/machine"
 	"github.com/weaveworks/wksctl/pkg/plan/runners/ssh"
 	"github.com/weaveworks/wksctl/pkg/plan/runners/sudo"
@@ -16,7 +17,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	clientcmdv1 "k8s.io/client-go/tools/clientcmd/api/v1"
-	clusterv1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"
 )
 
 // DefaultPath defines the default path
@@ -27,16 +28,12 @@ var DefaultContextName = fmt.Sprintf("%s@%s", DefaultClusterAdminName, DefaultCl
 
 // NewKubeConfig generates a Kubernetes configuration (e.g. for kubectl to use)
 // from the provided machines, and places it in the provided directory.
-func NewKubeConfig(artifactDirectory string, machines []*clusterv1.Machine) (string, error) {
-	master := machine.FirstMaster(machines)
+func NewKubeConfig(artifactDirectory string, machines []*clusterv1.Machine, bl []*baremetalv1.BareMetalMachine) (string, error) {
+	master, bmm := machine.FirstMaster(machines, bl)
 	if master == nil {
 		return "", errors.New("at least one master node is required to create a Kubernetes configuration file")
 	}
-	config, err := machine.Config(master)
-	if err != nil {
-		return "", err
-	}
-	return path.WKSResourcePath(artifactDirectory, config.Address), nil
+	return path.WKSResourcePath(artifactDirectory, bmm.Spec.Address), nil
 }
 
 // Params groups the various settings to transform Kubernetes configurations.
