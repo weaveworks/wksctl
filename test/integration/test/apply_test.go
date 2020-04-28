@@ -20,14 +20,14 @@ import (
 	"github.com/weaveworks/wksctl/pkg/plan/runners/ssh"
 
 	yaml "github.com/ghodss/yaml"
-	baremetalspecv1 "github.com/weaveworks/wksctl/pkg/baremetalproviderspec/v1alpha1"
+	baremetalspecv1 "github.com/weaveworks/wksctl/pkg/baremetal/v1alpha3"
 	spawn "github.com/weaveworks/wksctl/test/integration/spawn"
 
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	clusterv1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"
 )
 
 // Runs a basic set of tests for apply.
@@ -45,12 +45,12 @@ var (
 	configDir = filepath.Join(srcDir, "test", "integration", "test", "assets")
 )
 
-func generateName(role role) string {
+func generateName(role role, i int) string {
 	switch role {
 	case master:
-		return "master-"
+		return fmt.Sprintf("master-%d", i)
 	case node:
-		return "node-"
+		return fmt.Sprintf("node-%d", i)
 	default:
 		panic(fmt.Errorf("unknown role: %s", role))
 	}
@@ -67,41 +67,48 @@ func setLabel(role role) string {
 	}
 }
 
-func appendMachine(t *testing.T, l *clusterv1.MachineList, role role, publicIP, privateIP string) {
-	// Create a BareMetalMachineProviderSpec and encode it.
-	spec := &baremetalspecv1.BareMetalMachineProviderSpec{
-		Public: baremetalspecv1.EndPoint{
-			Address: publicIP,
-			Port:    22,
+func appendMachine(t *testing.T, ordinal int, ml *clusterv1.MachineList, bl *baremetalspecv1.BareMetalMachineList, role role, publicIP, privateIP string) {
+	spec := baremetalspecv1.BareMetalMachine{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "cluster.weave.works/v1alpha3",
+			Kind:       "BareMetalMachine",
 		},
-		Private: baremetalspecv1.EndPoint{
-			Address: privateIP,
-			Port:    22,
+		ObjectMeta: metav1.ObjectMeta{
+			GenerateName: generateName(role, ordinal),
 		},
+		Spec: baremetalspecv1.BareMetalMachineSpec{
+			Public: baremetalspecv1.EndPoint{
+				Address: publicIP,
+				Port:    22,
+			},
+			Private: baremetalspecv1.EndPoint{
+				Address: privateIP,
+				Port:    22,
+			}},
 	}
-	codec, err := baremetalspecv1.NewCodec()
-	assert.NoError(t, err)
-	encodedSpec, err := codec.EncodeToProviderSpec(spec)
-	assert.NoError(t, err)
+	bl.Items = append(bl.Items, spec)
 
 	// Create a machine.
 	machine := clusterv1.Machine{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: "cluster.k8s.io/v1alpha1",
+			APIVersion: "cluster.k8s.io/v1alpha3",
 			Kind:       "Machine",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			GenerateName: generateName(role),
+			GenerateName: generateName(role, ordinal),
 			Labels: map[string]string{
 				"set": setLabel(role),
 			},
 		},
 		Spec: clusterv1.MachineSpec{
-			ProviderSpec: *encodedSpec,
+			InfrastructureRef: v1.ObjectReference{
+				Kind: spec.TypeMeta.Kind,
+				Name: spec.ObjectMeta.Name,
+			},
 		},
 	}
 
-	l.Items = append(l.Items, machine)
+	ml.Items = append(ml.Items, machine)
 }
 
 // makeMachinesFromTerraform creates cluster-api Machine objects from a
@@ -112,11 +119,17 @@ func appendMachine(t *testing.T, l *clusterv1.MachineList, role role, publicIP, 
 // numMachines is the number of machines to use. It can be less than the number
 // of provisionned terraform machines. -1 means use all machines setup by
 // terraform. The minimum number of machines to use is 2.
-func makeMachinesFromTerraform(t *testing.T, terraform *terraformOutput, numMachines int) *clusterv1.MachineList {
-	l := &clusterv1.MachineList{
+func makeMachinesFromTerraform(t *testing.T, terraform *terraformOutput, numMachines int) (*clusterv1.MachineList, *baremetalspecv1.BareMetalMachineList) {
+	ml := &clusterv1.MachineList{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: "cluster.k8s.io/v1alpha1",
+			APIVersion: "cluster.k8s.io/v1alpha3",
 			Kind:       "MachineList",
+		},
+	}
+	bl := &baremetalspecv1.BareMetalMachineList{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "baremetal.weave.works/v1alpha3",
+			Kind:       "BareMetalMachineList",
 		},
 	}
 	publicIPs := terraform.stringArrayVar(keyPublicIPs)
@@ -134,32 +147,36 @@ func makeMachinesFromTerraform(t *testing.T, terraform *terraformOutput, numMach
 	const numMasters = 1
 
 	for i := 0; i < numMasters; i++ {
-		appendMachine(t, l, master, publicIPs[i], privateIPs[i])
+		appendMachine(t, i, ml, bl, master, publicIPs[i], privateIPs[i])
 	}
 
 	// Subsequent machines will be nodes.
 	for i := numMasters; i < numMachines; i++ {
-		appendMachine(t, l, node, publicIPs[i], privateIPs[i])
+		appendMachine(t, i, ml, bl, node, publicIPs[i], privateIPs[i])
 	}
 
-	return l
+	return ml, bl
 }
 
-func writeYamlManifest(t *testing.T, o interface{}, path string) {
-	data, err := yaml.Marshal(o)
-	assert.NoError(t, err)
-	err = ioutil.WriteFile(path, data, 0644)
+func writeYamlManifests(t *testing.T, path string, objects ...interface{}) {
+	var data []byte
+	for _, o := range objects {
+		y, err := yaml.Marshal(o)
+		assert.NoError(t, err)
+		data = append(data, y...)
+	}
+	err := ioutil.WriteFile(path, data, 0644)
 	assert.NoError(t, err)
 }
 
-func firstMaster(l *clusterv1.MachineList) *clusterv1.Machine {
+func firstMaster(l *clusterv1.MachineList, bl *baremetalspecv1.BareMetalMachineList) (*clusterv1.Machine, *baremetalspecv1.BareMetalMachine) {
 	for i := range l.Items {
 		m := &l.Items[i]
 		if machine.IsMaster(m) {
-			return m
+			return m, &bl.Items[i]
 		}
 	}
-	return nil
+	return nil, nil
 }
 
 func numMasters(l *clusterv1.MachineList) int {
@@ -186,56 +203,28 @@ func numWorkers(l *clusterv1.MachineList) int {
 
 func setKubernetesVersion(l *clusterv1.MachineList, version string) {
 	for i := range l.Items {
-		m := &l.Items[i]
-		m.Spec.Versions.Kubelet = version
-		if machine.IsMaster(m) {
-			m.Spec.Versions.ControlPlane = version
-		}
+		l.Items[i].Spec.Version = &version
 	}
 }
 
-func machineSpec(t *testing.T, machine *clusterv1.Machine) *baremetalspecv1.BareMetalMachineProviderSpec {
-	codec, err := baremetalspecv1.NewCodec()
-	assert.NoError(t, err)
-	spec, err := codec.MachineProviderFromProviderSpec(machine.Spec.ProviderSpec)
-	assert.NoError(t, err)
-	return spec
-}
-
-func clusterSpec(t *testing.T, cluster *clusterv1.Cluster) *baremetalspecv1.BareMetalClusterProviderSpec {
-	codec, err := baremetalspecv1.NewCodec()
-	assert.NoError(t, err)
-	spec, err := codec.ClusterProviderFromProviderSpec(cluster.Spec.ProviderSpec)
-	assert.NoError(t, err)
-	return spec
-}
-
-func parseCluster(t *testing.T, r io.Reader) *clusterv1.Cluster {
+func parseCluster(t *testing.T, r io.Reader) (*clusterv1.Cluster, *baremetalspecv1.BareMetalCluster) {
 	bytes, err := ioutil.ReadAll(r)
 	assert.NoError(t, err)
-	cluster := &clusterv1.Cluster{}
-	err = yaml.Unmarshal(bytes, cluster)
+	list := v1.List{}
+	err = yaml.Unmarshal(bytes, list)
 	assert.NoError(t, err)
-	return cluster
+	assert.Equal(t, 2, len(list.Items))
+	cluster := list.Items[0].Object.(*clusterv1.Cluster)
+	bmCluster := list.Items[1].Object.(*baremetalspecv1.BareMetalCluster)
+	return cluster, bmCluster
 
 }
 
-func parseClusterManifest(t *testing.T, file string) *clusterv1.Cluster {
+func parseClusterManifest(t *testing.T, file string) (*clusterv1.Cluster, *baremetalspecv1.BareMetalCluster) {
 	f, err := os.Open(file)
 	assert.NoError(t, err)
 	defer f.Close()
 	return parseCluster(t, f)
-}
-
-func getClusterNamespaceAndName(t *testing.T) (string, string) {
-	cluster := parseClusterManifest(t, "assets/cluster.yaml")
-	meta := cluster.ObjectMeta
-	name := meta.Name
-	namespace := meta.Namespace
-	if namespace == "" {
-		return "default", name
-	}
-	return namespace, name
 }
 
 // The installer names the kubeconfig file from the cluster namespace and name
@@ -443,9 +432,9 @@ func TestApply(t *testing.T) {
 	terraform, err := newTerraformOutputFromFile(options.terraform.outputPath)
 	assert.NoError(t, err)
 
-	machines := makeMachinesFromTerraform(t, terraform, terraform.numMachines()-1)
+	machines, bmMachines := makeMachinesFromTerraform(t, terraform, terraform.numMachines()-1)
 	setKubernetesVersion(machines, kubernetes.DefaultVersion)
-	writeYamlManifest(t, machines, configPath("machines.yaml"))
+	writeYamlManifests(t, configPath("machines.yaml"), machines, bmMachines)
 
 	spec := machineSpec(t, &machines.Items[0])
 	// Generate bad version to check failure return codes
@@ -465,18 +454,12 @@ func TestApply(t *testing.T) {
 
 	clusterManifestPath := configPath("cluster.yaml")
 	machinesManifestPath := configPath("machines.yaml")
-	clusterBytes, err := ioutil.ReadFile(clusterManifestPath)
-	assert.NoError(t, err)
-	cluster := &clusterv1.Cluster{}
-	err = yaml.Unmarshal(clusterBytes, cluster)
-	assert.NoError(t, err)
-	cSpec := clusterSpec(t, cluster)
-	master := firstMaster(machines)
-	mSpec := machineSpec(t, master)
-	ip := mSpec.Public.Address
-	port := mSpec.Public.Port
+	_, c := parseClusterManifest(t, clusterManifestPath)
+	_, m := firstMaster(machines, bmMachines)
+	ip := m.Spec.Public.Address
+	port := m.Spec.Public.Port
 	sshClient, err := ssh.NewClient(ssh.ClientParams{
-		User:           cSpec.User,
+		User:           c.Spec.User,
 		Host:           ip,
 		Port:           port,
 		PrivateKeyPath: sshKeyPath,
