@@ -271,7 +271,7 @@ func testKubectl(t *testing.T, kubeconfig string) {
 	assert.True(t, run.Contains("Ready"))
 }
 
-func testDebugLogging(t *testing.T, kubeconfig string, verbose bool) {
+func testDebugLogging(t *testing.T, kubeconfig string) {
 	exe := run.NewExecutor()
 
 	run, err := exe.RunV(kubectl,
