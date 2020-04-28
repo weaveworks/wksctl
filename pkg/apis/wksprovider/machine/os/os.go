@@ -231,7 +231,7 @@ func (o OS) CreateSeedNodeSetupPlan(params SeedNodeParams) (*plan.Plan, error) {
 		return nil, err
 	}
 	// Get configuration file resources from config map manifests referenced by the cluster spec
-	configMapManifests, configMaps, configFileResources, err := createConfigFileResourcesFromFiles(providerSpec, params.ConfigDirectory, params.Namespace)
+	configMapManifests, configMaps, configFileResources, err := createConfigFileResourcesFromFiles(&cluster.Spec, params.ConfigDirectory, params.Namespace)
 	if err != nil {
 		return nil, err
 	}
@@ -244,18 +244,18 @@ func (o OS) CreateSeedNodeSetupPlan(params SeedNodeParams) (*plan.Plan, error) {
 	configRes := recipe.BuildConfigPlan(configFileResources)
 	b.AddResource("install:config", configRes, plan.DependOn("install:base"))
 
-	pemSecretResources, authConfigMap, authConfigManifest, err := processPemFilesIfAny(b, providerSpec, params.ConfigDirectory, params.Namespace, params.SealedSecretKeyPath, params.SealedSecretCertPath)
+	pemSecretResources, authConfigMap, authConfigManifest, err := processPemFilesIfAny(b, &cluster.Spec, params.ConfigDirectory, params.Namespace, params.SealedSecretKeyPath, params.SealedSecretCertPath)
 	if err != nil {
 		return nil, err
 	}
 
-	criRes := recipe.BuildCRIPlan(&providerSpec.CRI, cfg, o.PkgType)
+	criRes := recipe.BuildCRIPlan(&cluster.Spec.CRI, cfg, o.PkgType)
 	b.AddResource("install:cri", criRes, plan.DependOn("install:config"))
 
 	k8sRes := recipe.BuildK8SPlan(kubernetesVersion, params.KubeletConfig.NodeIP, cfg.SELinuxInstalled, cfg.SetSELinuxPermissive, cfg.DisableSwap, cfg.LockYUMPkgs, o.PkgType, params.KubeletConfig.CloudProvider, params.KubeletConfig.ExtraArguments)
 	b.AddResource("install:k8s", k8sRes, plan.DependOn("install:cri"))
 
-	apiServerArgs := getAPIServerArgs(providerSpec, pemSecretResources)
+	apiServerArgs := getAPIServerArgs(&cluster.Spec, pemSecretResources)
 
 	controlPlaneEndpointIP := params.ExternalLoadBalancer
 	if controlPlaneEndpointIP == "" {
@@ -318,7 +318,7 @@ func (o OS) CreateSeedNodeSetupPlan(params SeedNodeParams) (*plan.Plan, error) {
 	// Create a config map containing a standard node plan for the seed node so the controller can add it
 	// to the seed node as an annotation. Otherwise, we won't be able to determine if the seed node is changed
 	// in a later update (this removes a dependency on flux)
-	seedNodePlanConfigMapManifest, err := o.createSeedNodePlanConfigMapManifest(params, providerSpec, configMaps, authConfigMap, kubernetesVersion)
+	seedNodePlanConfigMapManifest, err := o.createSeedNodePlanConfigMapManifest(params, &cluster.Spec, configMaps, authConfigMap, kubernetesVersion, kubernetesNamespace)
 	if err != nil {
 		return nil, err
 	}
@@ -418,7 +418,7 @@ func storeIfNotEmpty(vals map[string]string, key, value string) {
 	}
 }
 
-func getAPIServerArgs(providerSpec *baremetalspecv1.BareMetalCluster, pemSecretResources map[string]*secretResourceSpec) map[string]string {
+func getAPIServerArgs(providerSpec *baremetalspecv1.BareMetalClusterSpec, pemSecretResources map[string]*secretResourceSpec) map[string]string {
 	result := map[string]string{}
 	authnResourceSpec := pemSecretResources["authentication"]
 	if authnResourceSpec != nil {
@@ -455,7 +455,7 @@ func addClusterAPICRDs(b *plan.Builder) ([]string, error) {
 	return crdIDs, nil
 }
 
-func (o OS) createSeedNodePlanConfigMapManifest(params SeedNodeParams, providerSpec *baremetalspecv1.BareMetalCluster, providerConfigMaps map[string]*v1.ConfigMap, authConfigMap *v1.ConfigMap, kubernetesVersion string) ([]byte, error) {
+func (o OS) createSeedNodePlanConfigMapManifest(params SeedNodeParams, providerSpec *baremetalspecv1.BareMetalClusterSpec, providerConfigMaps map[string]*v1.ConfigMap, authConfigMap *v1.ConfigMap, kubernetesVersion, kubernetesNamespace string) ([]byte, error) {
 	nodeParams := NodeParams{
 		IsMaster:             true,
 		MasterIP:             params.PrivateIP,
@@ -529,7 +529,7 @@ func planParametersToConfigMapManifest(plan []byte, ns string) ([]byte, error) {
 	return yaml.Marshal(cm)
 }
 
-func createConfigFileResourcesFromFiles(providerSpec *baremetalspecv1.BareMetalCluster, configDir, namespace string) (map[string][]byte, map[string]*v1.ConfigMap, []*resource.File, error) {
+func createConfigFileResourcesFromFiles(providerSpec *baremetalspecv1.BareMetalClusterSpec, configDir, namespace string) (map[string][]byte, map[string]*v1.ConfigMap, []*resource.File, error) {
 	fileSpecs := providerSpec.OS.Files
 	configMapManifests, err := getConfigMapManifests(fileSpecs, configDir, namespace)
 	if err != nil {
@@ -623,7 +623,7 @@ type secretResourceSpec struct {
 // directory, decrypts it using the GitHub deploy key, creates file
 // resources for .pem files stored in the secret, and creates a SealedSecret resource
 // for them that can be used by the machine actuator
-func processPemFilesIfAny(builder *plan.Builder, providerSpec *baremetalspecv1.BareMetalCluster, configDir string, ns, privateKeyPath, certPath string) (map[string]*secretResourceSpec, *v1.ConfigMap, []byte, error) {
+func processPemFilesIfAny(builder *plan.Builder, providerSpec *baremetalspecv1.BareMetalClusterSpec, configDir string, ns, privateKeyPath, certPath string) (map[string]*secretResourceSpec, *v1.ConfigMap, []byte, error) {
 	if err := checkPemValues(providerSpec, privateKeyPath, certPath); err != nil {
 		return nil, nil, nil, err
 	}
@@ -687,7 +687,7 @@ func getPrivateKey(privateKeyPath string) (*rsa.PrivateKey, error) {
 	return privateKey, nil
 }
 
-func checkPemValues(providerSpec *baremetalspecv1.BareMetalCluster, privateKeyPath, certPath string) error {
+func checkPemValues(providerSpec *baremetalspecv1.BareMetalClusterSpec, privateKeyPath, certPath string) error {
 	if privateKeyPath == "" || certPath == "" {
 		if providerSpec.Authentication != nil || providerSpec.Authorization != nil {
 			return errors.New("Encryption keys not specified; cannot process authentication and authorization specifications.")
@@ -1204,13 +1204,13 @@ func parseAddons(ClusterManifestPath, namespace string, addonNamespaces map[stri
 		log.Fatal("Failed to parse cluster manifest: ", err)
 	}
 	ret := make(map[string][][]byte)
-	for _, addonDesc := range clusterSpec.Addons {
+	for _, addonDesc := range cluster.Spec.Addons {
 		log.WithField("addon", addonDesc.Name).Debug("building addon")
 		addonNs := namespace
 		if ns, ok := addonNamespaces[addonDesc.Name]; ok {
 			addonNs = ns
 		}
-		retManifests, err := buildAddon(addonDesc, clusterSpec.ImageRepository, ClusterManifestPath, addonNs)
+		retManifests, err := buildAddon(addonDesc, cluster.Spec.ImageRepository, ClusterManifestPath, addonNs)
 		if err != nil {
 			return nil, err
 		}
