@@ -265,14 +265,14 @@ func (a *MachineController) connectTo(c *baremetalspecv1.BareMetalCluster, m *ba
 		return nil, nil, gerrors.Wrap(err, "failed to read SSH key")
 	}
 	sshClient, err := ssh.NewClient(ssh.ClientParams{
-		User:         c.User,
+		User:         c.Spec.User,
 		Host:         a.getMachineAddress(m),
-		Port:         m.Private.Port,
+		Port:         m.Spec.Private.Port,
 		PrivateKey:   sshKey,
 		PrintOutputs: a.verbose,
 	})
 	if err != nil {
-		return nil, nil, gerrors.Wrapf(err, "failed to create SSH client using %v", m.Private)
+		return nil, nil, gerrors.Wrapf(err, "failed to create SSH client using %v", m.Spec.Private)
 	}
 	os, err := os.Identify(sshClient)
 	if err != nil {
@@ -642,7 +642,7 @@ func (a *MachineController) performActualUpdate(
 	return nil
 }
 
-func (a *MachineController) getNodePlan(providerSpec *baremetalspecv1.BareMetalCluster, machine *clusterv1.Machine, machineAddress string, installer *os.OS) (*plan.Plan, error) {
+func (a *MachineController) getNodePlan(provider *baremetalspecv1.BareMetalCluster, machine *clusterv1.Machine, machineAddress string, installer *os.OS) (*plan.Plan, error) {
 	namespace := a.controllerNamespace
 	secrets, err := a.kubeadmJoinSecrets()
 	if err != nil {
@@ -660,7 +660,7 @@ func (a *MachineController) getNodePlan(providerSpec *baremetalspecv1.BareMetalC
 	if err != nil {
 		return nil, err
 	}
-	configMaps, err := a.getProviderConfigMaps(providerSpec)
+	configMaps, err := a.getProviderConfigMaps(provider)
 	if err != nil {
 		return nil, err
 	}
@@ -677,16 +677,16 @@ func (a *MachineController) getNodePlan(providerSpec *baremetalspecv1.BareMetalC
 		CertificateKey:           secrets.CertificateKey,
 		KubeletConfig: config.KubeletConfig{
 			NodeIP:         machineAddress,
-			CloudProvider:  providerSpec.CloudProvider,
-			ExtraArguments: specs.TranslateServerArgumentsToStringMap(providerSpec.KubeletArguments),
+			CloudProvider:  provider.Spec.CloudProvider,
+			ExtraArguments: specs.TranslateServerArgumentsToStringMap(provider.Spec.KubeletArguments),
 		},
 		KubernetesVersion:    machineutil.GetKubernetesVersion(machine),
-		CRI:                  providerSpec.CRI,
-		ConfigFileSpecs:      providerSpec.OS.Files,
+		CRI:                  provider.Spec.CRI,
+		ConfigFileSpecs:      provider.Spec.OS.Files,
 		ProviderConfigMaps:   configMaps,
 		AuthConfigMap:        authConfigMap,
 		Namespace:            namespace,
-		ExternalLoadBalancer: providerSpec.APIServer.ExternalLoadBalancer,
+		ExternalLoadBalancer: provider.Spec.APIServer.ExternalLoadBalancer,
 	})
 	if err != nil {
 		return nil, gerrors.Wrapf(err, "failed to create machine plan for %s", machine.Name)
@@ -708,8 +708,8 @@ func (a *MachineController) getAuthConfigMap() (*v1.ConfigMap, error) {
 	return nil, nil
 }
 
-func (a *MachineController) getProviderConfigMaps(providerSpec *baremetalspecv1.BareMetalCluster) (map[string]*v1.ConfigMap, error) {
-	fileSpecs := providerSpec.OS.Files
+func (a *MachineController) getProviderConfigMaps(provider *baremetalspecv1.BareMetalCluster) (map[string]*v1.ConfigMap, error) {
+	fileSpecs := provider.Spec.OS.Files
 	client := a.clientSet.CoreV1().ConfigMaps(a.controllerNamespace)
 	configMaps := map[string]*v1.ConfigMap{}
 	for _, fileSpec := range fileSpecs {
@@ -1124,8 +1124,8 @@ func getMachineID(machine *baremetalspecv1.BareMetalMachine) string {
 }
 
 func (a *MachineController) getMachineAddress(m *baremetalspecv1.BareMetalMachine) string {
-	if m.Private.Address != "" {
-		return m.Private.Address
+	if m.Spec.Private.Address != "" {
+		return m.Spec.Private.Address
 	}
 	return machineIPs[getMachineID(m)]
 }
