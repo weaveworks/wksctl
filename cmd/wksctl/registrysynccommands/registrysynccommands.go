@@ -10,11 +10,7 @@ import (
 	"github.com/weaveworks/wksctl/pkg/cluster/machine"
 	"github.com/weaveworks/wksctl/pkg/kubernetes"
 	"github.com/weaveworks/wksctl/pkg/registry"
-	"github.com/weaveworks/wksctl/pkg/utilities"
 	v "github.com/weaveworks/wksctl/pkg/utilities/version"
-	"k8s.io/apimachinery/pkg/util/validation/field"
-	clusterv1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
-	apierrors "sigs.k8s.io/cluster-api/pkg/errors"
 )
 
 var Cmd = &cobra.Command{
@@ -78,7 +74,7 @@ func registrySyncRun(cmd *cobra.Command, args []string) {
 
 func kubernetesVersionsRange() string {
 	if registrySyncOptions.machinesManifestPath != "" {
-		version, err := extractKubernetesVersionFromMachines(registrySyncOptions.machinesManifestPath)
+		version, _, err := machine.GetKubernetesVersionFromManifest(registrySyncOptions.machinesManifestPath)
 		if err != nil {
 			log.Fatalf("Failed to extract Kubernetes version from machines manifest: %s", err)
 		}
@@ -88,19 +84,4 @@ func kubernetesVersionsRange() string {
 		return registrySyncOptions.versionsRange
 	}
 	return v.AnyRange
-}
-
-func extractKubernetesVersionFromMachines(machinesManifestPath string) (string, error) {
-	errorsHandler := func(machines []*clusterv1.Machine, errors field.ErrorList) ([]*clusterv1.Machine, error) {
-		if len(errors) > 0 {
-			utilities.PrintErrors(errors)
-			return nil, apierrors.InvalidMachineConfiguration("%s failed validation", machinesManifestPath)
-		}
-		return machines, nil
-	}
-	machines, err := machine.ParseAndDefaultAndValidate(machinesManifestPath, errorsHandler)
-	if err != nil {
-		return "", err
-	}
-	return machines[0].Spec.Versions.Kubelet, nil
 }
