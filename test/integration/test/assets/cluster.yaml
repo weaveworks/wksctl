@@ -1,24 +1,23 @@
-apiVersion: v1
-kind: List
-items:
-- apiVersion: "cluster.k8s.io/v1alpha3"
-  kind: Cluster
-  metadata:
-    name: integration-tests
-  spec:
-    clusterNetwork:
-        services:
-            cidrBlocks: ["10.96.0.0/12"]
-        pods:
-            cidrBlocks: ["192.168.0.0/16"]
-        serviceDomain: "cluster.local"
-    infrastructureRef:
-        kind: BareMetalCluster
-        name: integration-tests
-- apiVersion: "cluster.weave.works/v1alpha3"
-  kind: "BareMetalCluster"
-  metadata:
-    name: integration-tests
+apiVersion: "cluster.k8s.io/v1alpha3"
+kind: Cluster
+metadata:
+  name: integration-tests
+spec:
+  clusterNetwork:
+      services:
+          cidrBlocks: ["10.96.0.0/12"]
+      pods:
+          cidrBlocks: ["192.168.0.0/16"]
+      serviceDomain: "cluster.local"
+  infrastructureRef:
+      kind: BareMetalCluster
+      name: integration-tests
+---
+apiVersion: "cluster.weave.works/v1alpha3"
+kind: "BareMetalCluster"
+metadata:
+  name: integration-tests
+spec:
   user: "wksctl-cit"
   os:
     files:
