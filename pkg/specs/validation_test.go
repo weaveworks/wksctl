@@ -1,16 +1,19 @@
 package specs
 
 import (
+	"io/ioutil"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	baremetalspecv1 "github.com/weaveworks/wksctl/pkg/baremetal/v1alpha3"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"k8s.io/client-go/kubernetes/scheme"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"
 )
 
 const clusterMinimumValid = `
-apiVersion: "cluster.k8s.io/v1alpha1"
+apiVersion: "cluster.x-k8s.io/v1alpha3"
 kind: Cluster
 metadata:
   name: example
@@ -20,15 +23,20 @@ spec:
       cidrBlocks: ["10.96.0.0/12"]
     pods:
       cidrBlocks: ["192.168.0.0/16"]
-  providerSpec:
-    value:
-      apiVersion: "baremetalproviderspec/v1alpha1"
-      kind: "BareMetalClusterProviderSpec"
-      user: "vagrant"
+    infrastructureRef:
+      kind: BareMetalCluster
+      name: example
+---
+apiVersion: "cluster.weave.works/v1alpha3"
+kind: "BareMetalCluster"
+metadata:
+  name: example
+spec:
+  user: "vagrant"
 `
 
 const clusterHasSSHKey = `
-apiVersion: "cluster.k8s.io/v1alpha1"
+apiVersion: "cluster.x-k8s.io/v1alpha3"
 kind: Cluster
 metadata:
   name: example
@@ -38,16 +46,21 @@ spec:
       cidrBlocks: ["10.96.0.0/12"]
     pods:
       cidrBlocks: ["192.168.0.0/16"]
-  providerSpec:
-    value:
-      apiVersion: "baremetalproviderspec/v1alpha1"
-      kind: "BareMetalClusterProviderSpec"
-      sshKeyPath: "/etc/hosts"
-      user: "vagrant"
+    infrastructureRef:
+      kind: BareMetalCluster
+      name: example
+---
+apiVersion: "cluster.weave.works/v1alpha3"
+kind: "BareMetalCluster"
+metadata:
+  name: example
+spec:
+  sshKeyPath: "/etc/hosts"
+  user: "vagrant"
 `
 
 const clusterNonDefaultServiceDomain = `
-apiVersion: "cluster.k8s.io/v1alpha1"
+apiVersion: "cluster.x-k8s.io/v1alpha3"
 kind: Cluster
 metadata:
   name: example
@@ -58,15 +71,17 @@ spec:
     pods:
       cidrBlocks: ["192.168.0.0/16"]
     serviceDomain: "foo.bar"
-  providerSpec:
-    value:
-      apiVersion: "baremetalproviderspec/v1alpha1"
-      kind: "BareMetalClusterProviderSpec"
-      user: "vagrant"
+---
+apiVersion: "cluster.weave.works/v1alpha3"
+kind: "BareMetalCluster"
+metadata:
+  name: example
+spec:
+  user: "vagrant"
 `
 
 const clusterBadCIDRBlocks = `
-apiVersion: "cluster.k8s.io/v1alpha1"
+apiVersion: "cluster.x-k8s.io/v1alpha3"
 kind: Cluster
 metadata:
   name: example
@@ -76,15 +91,17 @@ spec:
       cidrBlocks: ["10.96.0.0/12", "10.100.0.0/12"]
     pods:
       cidrBlocks: ["192.168.0.0/72"]
-  providerSpec:
-    value:
-      apiVersion: "baremetalproviderspec/v1alpha1"
-      kind: "BareMetalClusterProviderSpec"
-      user: "vagrant"
+---
+apiVersion: "cluster.weave.works/v1alpha3"
+kind: "BareMetalCluster"
+metadata:
+  name: example
+spec:
+  user: "vagrant"
 `
 
 const clusterServicePodNetworksOverlap = `
-apiVersion: "cluster.k8s.io/v1alpha1"
+apiVersion: "cluster.x-k8s.io/v1alpha3"
 kind: Cluster
 metadata:
   name: example
@@ -94,15 +111,17 @@ spec:
       cidrBlocks: ["10.96.0.0/12"]
     pods:
       cidrBlocks: ["10.96.0.0/16"]
-  providerSpec:
-    value:
-      apiVersion: "baremetalproviderspec/v1alpha1"
-      kind: "BareMetalClusterProviderSpec"
-      user: "vagrant"
+---
+apiVersion: "cluster.weave.works/v1alpha3"
+kind: "BareMetalCluster"
+metadata:
+  name: example
+spec:
+  user: "vagrant"
 `
 
 const ClusterAuthenticationBadCacheTTL = `items:
-apiVersion: "cluster.k8s.io/v1alpha1"
+apiVersion: "cluster.x-k8s.io/v1alpha3"
 kind: Cluster
 metadata:
   name: example
@@ -112,19 +131,21 @@ spec:
       cidrBlocks: ["10.96.0.0/12"]
     pods:
       cidrBlocks: ["192.168.0.0/16"]
-  providerSpec:
-    value:
-      apiVersion: "baremetalproviderspec/v1alpha1"
-      kind: "BareMetalClusterProviderSpec"
-      user: "vagrant"
-      authenticationWebhook:
-        cacheTTL: foo
-        server:
-          url: http://127.0.0.1:5000/authenticate
+---
+apiVersion: "cluster.weave.works/v1alpha3"
+kind: "BareMetalCluster"
+metadata:
+  name: example
+spec:
+  user: "vagrant"
+  authenticationWebhook:
+    cacheTTL: foo
+    server:
+      url: http://127.0.0.1:5000/authenticate
 `
 
 const ClusterAuthenticationBadServerURL = `items:
-apiVersion: "cluster.k8s.io/v1alpha1"
+apiVersion: "cluster.x-k8s.io/v1alpha3"
 kind: Cluster
 metadata:
   name: example
@@ -134,19 +155,21 @@ spec:
       cidrBlocks: ["10.96.0.0/12"]
     pods:
       cidrBlocks: ["192.168.0.0/16"]
-  providerSpec:
-    value:
-      apiVersion: "baremetalproviderspec/v1alpha1"
-      kind: "BareMetalClusterProviderSpec"
-      user: "vagrant"
-      authenticationWebhook:
-        cacheTTL: 2m0s
-        server:
-          url: file:///127.0.0.1:5000/authenticate
+---
+apiVersion: "cluster.weave.works/v1alpha3"
+kind: "BareMetalCluster"
+metadata:
+  name: example
+spec:
+  user: "vagrant"
+  authenticationWebhook:
+	cacheTTL: 2m0s
+	server:
+	  url: file:///127.0.0.1:5000/authenticate
 `
 
 const ClusterAuthenticationNoClientCert = `items:
-apiVersion: "cluster.k8s.io/v1alpha1"
+apiVersion: "cluster.x-k8s.io/v1alpha3"
 kind: Cluster
 metadata:
   name: example
@@ -156,22 +179,24 @@ spec:
       cidrBlocks: ["10.96.0.0/12"]
     pods:
       cidrBlocks: ["192.168.0.0/16"]
-  providerSpec:
-    value:
-      apiVersion: "baremetalproviderspec/v1alpha1"
-      kind: "BareMetalClusterProviderSpec"
-      user: "vagrant"
-      authenticationWebhook:
-        cacheTTL: 2m0s
-        client:
-          keyData: SGVsbG8sIFdvcmxkIQo=
-        server:
-          url: https://127.0.0.1:5000/authenticate
-          certificateAuthorityData: SGVsbG8sIFdvcmxkIQo=
+---
+apiVersion: "cluster.weave.works/v1alpha3"
+kind: "BareMetalCluster"
+metadata:
+  name: example
+spec:
+  user: "vagrant"
+  authenticationWebhook:
+	cacheTTL: 2m0s
+	client:
+	  keyData: SGVsbG8sIFdvcmxkIQo=
+	server:
+	  url: https://127.0.0.1:5000/authenticate
+	  certificateAuthorityData: SGVsbG8sIFdvcmxkIQo=
 `
 
 const ClusterAuthorizationNoServerCert = `items:
-apiVersion: "cluster.k8s.io/v1alpha1"
+apiVersion: "cluster.x-k8s.io/v1alpha3"
 kind: Cluster
 metadata:
   name: example
@@ -181,23 +206,25 @@ spec:
       cidrBlocks: ["10.96.0.0/12"]
     pods:
       cidrBlocks: ["192.168.0.0/16"]
-  providerSpec:
-    value:
-      apiVersion: "baremetalproviderspec/v1alpha1"
-      kind: "BareMetalClusterProviderSpec"
-      user: "vagrant"
-      authorizationWebhook:
-        cacheAuthorizedTTL: 5m0s
-        cacheUnauthorizedTTL: 30s
-        client:
-          keyData: SGVsbG8sIFdvcmxkIQo=
-          certificateData: SGVsbG8sIFdvcmxkIQo=
-        server:
-          url: https://127.0.0.1:5000/authenticate
+---
+apiVersion: "cluster.weave.works/v1alpha3"
+kind: "BareMetalCluster"
+metadata:
+  name: example
+spec:
+  user: "vagrant"
+  authorizationWebhook:
+	cacheAuthorizedTTL: 5m0s
+	cacheUnauthorizedTTL: 30s
+	client:
+	  keyData: SGVsbG8sIFdvcmxkIQo=
+	  certificateData: SGVsbG8sIFdvcmxkIQo=
+	server:
+	  url: https://127.0.0.1:5000/authenticate
 `
 
 const ClusterAddonBadName = `
-apiVersion: "cluster.k8s.io/v1alpha1"
+apiVersion: "cluster.x-k8s.io/v1alpha3"
 kind: Cluster
 metadata:
   name: example
@@ -207,17 +234,19 @@ spec:
       cidrBlocks: ["10.96.0.0/12"]
     pods:
       cidrBlocks: ["192.168.0.0/16"]
-  providerSpec:
-    value:
-      apiVersion: "baremetalproviderspec/v1alpha1"
-      kind: "BareMetalClusterProviderSpec"
-      user: "vagrant"
-      addons:
-      - name: foo
+---
+apiVersion: "cluster.weave.works/v1alpha3"
+kind: "BareMetalCluster"
+metadata:
+  name: example
+spec:
+  user: "vagrant"
+  addons:
+  - name: foo
 `
 
 const ClusterAddonBadParameters = `
-apiVersion: "cluster.k8s.io/v1alpha1"
+apiVersion: "cluster.x-k8s.io/v1alpha3"
 kind: Cluster
 metadata:
   name: example
@@ -227,22 +256,24 @@ spec:
       cidrBlocks: ["10.96.0.0/12"]
     pods:
       cidrBlocks: ["192.168.0.0/16"]
-  providerSpec:
-    value:
-      apiVersion: "baremetalproviderspec/v1alpha1"
-      kind: "BareMetalClusterProviderSpec"
-      user: "vagrant"
-      addons:
-      - name: kube-kerberos
-        params:
-          keytab: /foo
+---
+apiVersion: "cluster.weave.works/v1alpha3"
+kind: "BareMetalCluster"
+metadata:
+  name: example
+spec:
+  user: "vagrant"
+  addons:
+  - name: kube-kerberos
+	params:
+	  keytab: /foo
 `
 
-func clusterFromString(t *testing.T, s string) *clusterv1.Cluster {
-	r := strings.NewReader(s)
-	cluster, err := parseCluster(r)
+func clusterFromString(t *testing.T, s string) (*clusterv1.Cluster, *baremetalspecv1.BareMetalCluster) {
+	r := ioutil.NopCloser(strings.NewReader(s))
+	cluster, bmc, err := ParseCluster(r)
 	assert.NoError(t, err)
-	return cluster
+	return cluster, bmc
 }
 
 // Gather the list of fields paths that didn't pass validation.
@@ -255,6 +286,8 @@ func fieldsInError(errors field.ErrorList) []string {
 }
 
 func TestValidateCluster(t *testing.T) {
+	assert.NoError(t, clusterv1.AddToScheme(scheme.Scheme))
+	assert.NoError(t, baremetalspecv1.AddToScheme(scheme.Scheme))
 	tests := []struct {
 		input  string
 		errors []string
@@ -279,9 +312,9 @@ func TestValidateCluster(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		cluster := clusterFromString(t, test.input)
+		cluster, bmc := clusterFromString(t, test.input)
 		populateCluster(cluster)
-		errors := validateCluster(cluster, "/tmp/test.yaml")
+		errors := validateCluster(cluster, bmc, "/tmp/test.yaml")
 		assert.Equal(t, len(test.errors), len(errors))
 		assert.Equal(t, test.errors, fieldsInError(errors))
 
@@ -312,7 +345,7 @@ func TestValidCIDR(t *testing.T) {
 }
 
 func TestDefaultClusterValues(t *testing.T) {
-	cluster := clusterFromString(t, clusterMinimumValid)
+	cluster, _ := clusterFromString(t, clusterMinimumValid)
 	populateCluster(cluster)
 	assert.Equal(t, "cluster.local", cluster.Spec.ClusterNetwork.ServiceDomain)
 }
