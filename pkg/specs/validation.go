@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"time"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/weaveworks/launcher/pkg/kubectl"
 	"github.com/weaveworks/wksctl/pkg/addons"
 	baremetalspecv1 "github.com/weaveworks/wksctl/pkg/baremetal/v1alpha3"
@@ -25,48 +24,13 @@ func clusterProviderPath(args ...string) *field.Path {
 	return clusterPath(allArgs...)
 }
 
-func clusterSpec(cluster *clusterv1.Cluster) (*baremetalspecv1.BareMetalClusterProviderSpec, error) {
-	codec, err := baremetalspecv1.NewCodec()
-	if err != nil {
-		return nil, err
-	}
-	clusterSpec, err := codec.ClusterProviderFromProviderSpec(cluster.Spec.ProviderSpec)
-	if err != nil {
-		return nil, fmt.Errorf("cannot unmarshal cluster's providerSpec field: %v", err)
-	}
-
-	return clusterSpec, err
-}
-
 func populateNetwork(cluster *clusterv1.Cluster) {
 	if cluster.Spec.ClusterNetwork.ServiceDomain == "" {
 		cluster.Spec.ClusterNetwork.ServiceDomain = "cluster.local"
 	}
 }
 
-func updateClusterProviderSpec(cluster *clusterv1.Cluster, updateFunc func(spec *baremetalspecv1.BareMetalClusterProviderSpec)) {
-	spec, err := clusterSpec(cluster)
-	if err != nil {
-		return
-	}
-
-	updateFunc(spec)
-
-	// We are changing ClusterProviderSpecs, the per-provider part of the
-	// manifest. `spec` is a decoded copy of that portion of the manifest and
-	// needs to be re-encoded and replace the original version.
-	codec, err := baremetalspecv1.NewCodec()
-	if err != nil {
-		log.Fatal("couldn't create codec: ", err)
-	}
-	encodedSpec, err := codec.EncodeToProviderSpec(spec)
-	if err != nil {
-		log.Fatal("error encoding spec: ", err)
-	}
-	cluster.Spec.ProviderSpec = *encodedSpec
-}
-
-type clusterValidationFunc func(*clusterv1.Cluster, string) field.ErrorList
+type clusterValidationFunc func(*clusterv1.Cluster, *baremetalspecv1.BareMetalClusterSpec, string) field.ErrorList
 
 func isValidCIDR(s string) (*net.IPNet, error) {
 	ip, cidr, err := net.ParseCIDR(s)
@@ -84,7 +48,7 @@ func networksIntersect(n1, n2 *net.IPNet) bool {
 	return n2.Contains(n1.IP) || n1.Contains(n2.IP)
 }
 
-func validateCIDRBlocks(cluster *clusterv1.Cluster, manifestPath string) field.ErrorList {
+func validateCIDRBlocks(cluster *clusterv1.Cluster, _ *baremetalspecv1.BareMetalClusterSpec, manifestPath string) field.ErrorList {
 	var errors field.ErrorList
 	const (
 		services = 0
@@ -142,7 +106,7 @@ func validateCIDRBlocks(cluster *clusterv1.Cluster, manifestPath string) field.E
 	return field.ErrorList{}
 }
 
-func validateServiceDomain(cluster *clusterv1.Cluster, manifestPath string) field.ErrorList {
+func validateServiceDomain(cluster *clusterv1.Cluster, _ *baremetalspecv1.BareMetalClusterSpec, manifestPath string) field.ErrorList {
 	f := cluster.Spec.ClusterNetwork.ServiceDomain
 	if f != "cluster.local" {
 		return field.ErrorList{
@@ -160,12 +124,7 @@ func fileExists(s string) bool {
 	return err == nil
 }
 
-func validateSSHKeyEmpty(cluster *clusterv1.Cluster, manifestPath string) field.ErrorList {
-	spec, err := clusterSpec(cluster)
-	if err != nil {
-		log.Fatalf("Failed to parse the ClusterSpec -  %v", err)
-	}
-
+func validateSSHKeyEmpty(_ *clusterv1.Cluster, spec *baremetalspecv1.BareMetalClusterSpec, manifestPath string) field.ErrorList {
 	if spec.DeprecatedSSHKeyPath != "" {
 		return field.ErrorList{
 			field.Invalid(
@@ -189,9 +148,7 @@ func addonPath(i int, args ...string) *field.Path {
 	return clusterProviderPath(allArgs...)
 }
 
-func validateAddons(cluster *clusterv1.Cluster, manifestPath string) field.ErrorList {
-	spec, _ := clusterSpec(cluster)
-
+func validateAddons(_ *clusterv1.Cluster, spec *baremetalspecv1.BareMetalClusterSpec, manifestPath string) field.ErrorList {
 	// Addons require kubectl for their manifests to be applied.
 	kubectl := kubectl.LocalClient{}
 	if len(spec.Addons) > 0 && !kubectl.IsPresent() {
@@ -233,7 +190,7 @@ func populateCluster(cluster *clusterv1.Cluster) {
 	populateNetwork(cluster)
 }
 
-func validateCluster(cluster *clusterv1.Cluster, manifestPath string) field.ErrorList {
+func validateCluster(cluster *clusterv1.Cluster, bmc *baremetalspecv1.BareMetalCluster, manifestPath string) field.ErrorList {
 	var errors field.ErrorList
 
 	for _, f := range []clusterValidationFunc{
@@ -242,7 +199,7 @@ func validateCluster(cluster *clusterv1.Cluster, manifestPath string) field.Erro
 		validateSSHKeyEmpty,
 		validateAddons,
 	} {
-		errors = append(errors, f(cluster, manifestPath)...)
+		errors = append(errors, f(cluster, &bmc.Spec, manifestPath)...)
 	}
 
 	return errors

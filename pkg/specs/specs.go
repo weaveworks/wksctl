@@ -2,10 +2,9 @@ package specs
 
 import (
 	"io"
-	"io/ioutil"
 	"os"
 
-	yaml "github.com/ghodss/yaml"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	baremetalspecv1 "github.com/weaveworks/wksctl/pkg/baremetal/v1alpha3"
 	"github.com/weaveworks/wksctl/pkg/cluster/machine"
@@ -13,6 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"
 	apierrors "sigs.k8s.io/cluster-api/errors"
+	clusteryaml "sigs.k8s.io/cluster-api/util/yaml"
 )
 
 // Utilities for managing cluster and machine specs.
@@ -20,38 +20,26 @@ import (
 
 type Specs struct {
 	cluster      *clusterv1.Cluster
-	ClusterSpec  *baremetalspecv1.BareMetalClusterProviderSpec
-	MasterSpec   *baremetalspecv1.BareMetalMachineProviderSpec
+	ClusterSpec  *baremetalspecv1.BareMetalClusterSpec
+	MasterSpec   *baremetalspecv1.BareMetalMachineSpec
 	machineCount int
 	masterCount  int
 }
 
 // Get a "Specs" object that can create an SSHClient (and retrieve useful nested fields)
 func NewFromPaths(clusterManifestPath, machinesManifestPath string) *Specs {
-	cluster, machines, err := parseManifests(clusterManifestPath, machinesManifestPath)
+	cluster, bmc, machines, bml, err := parseManifests(clusterManifestPath, machinesManifestPath)
 	if err != nil {
 		log.Fatal("Error parsing manifest: ", err)
 	}
-	return New(cluster, machines)
+	return New(cluster, bmc, machines, bml)
 }
 
 // Get a "Specs" object that can create an SSHClient (and retrieve useful nested fields)
-func New(cluster *clusterv1.Cluster, machines []*clusterv1.Machine) *Specs {
-	master := machine.FirstMaster(machines)
+func New(cluster *clusterv1.Cluster, bmc *baremetalspecv1.BareMetalCluster, machines []*clusterv1.Machine, bl []*baremetalspecv1.BareMetalMachine) *Specs {
+	_, master := machine.FirstMaster(machines, bl)
 	if master == nil {
 		log.Fatal("No master provided in manifest.")
-	}
-	codec, err := baremetalspecv1.NewCodec()
-	if err != nil {
-		log.Fatal("Failed to create codec: ", err)
-	}
-	clusterSpec, err := codec.ClusterProviderFromProviderSpec(cluster.Spec.ProviderSpec)
-	if err != nil {
-		log.Fatal("Failed to parse cluster manifest: ", err)
-	}
-	masterSpec, err := codec.MachineProviderFromProviderSpec(master.Spec.ProviderSpec)
-	if err != nil {
-		log.Fatal("Failed to parse master: ", err)
 	}
 	masterCount := 0
 	for _, m := range machines {
@@ -61,69 +49,78 @@ func New(cluster *clusterv1.Cluster, machines []*clusterv1.Machine) *Specs {
 	}
 	return &Specs{
 		cluster:     cluster,
-		ClusterSpec: clusterSpec,
-		MasterSpec:  masterSpec,
+		ClusterSpec: &bmc.Spec,
+		MasterSpec:  &master.Spec,
 
 		machineCount: len(machines),
 		masterCount:  masterCount,
 	}
 }
 
-func parseManifests(clusterManifestPath, machinesManifestPath string) (*clusterv1.Cluster, []*clusterv1.Machine, error) {
-	cluster, err := parseClusterManifest(clusterManifestPath)
+func parseManifests(clusterManifestPath, machinesManifestPath string) (*clusterv1.Cluster, *baremetalspecv1.BareMetalCluster, []*clusterv1.Machine, []*baremetalspecv1.BareMetalMachine, error) {
+	cluster, bmc, err := ParseClusterManifest(clusterManifestPath)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 	populateCluster(cluster)
 
-	validationErrors := validateCluster(cluster, clusterManifestPath)
+	validationErrors := validateCluster(cluster, bmc, clusterManifestPath)
 	if len(validationErrors) > 0 {
 		utilities.PrintErrors(validationErrors)
-		return nil, nil, apierrors.InvalidMachineConfiguration(
+		return nil, nil, nil, nil, apierrors.InvalidMachineConfiguration(
 			"%s failed validation, use --skip-validation to force the operation", clusterManifestPath)
 	}
 
-	errorsHandler := func(machines []*clusterv1.Machine, errors field.ErrorList) ([]*clusterv1.Machine, error) {
+	errorsHandler := func(machines []*clusterv1.Machine, bl []*baremetalspecv1.BareMetalMachine, errors field.ErrorList) ([]*clusterv1.Machine, []*baremetalspecv1.BareMetalMachine, error) {
 		if len(errors) > 0 {
 			utilities.PrintErrors(errors)
-			return nil, apierrors.InvalidMachineConfiguration(
+			return nil, nil, apierrors.InvalidMachineConfiguration(
 				"%s failed validation, use --skip-validation to force the operation", machinesManifestPath)
 		}
-		return machines, nil
+		return machines, bl, nil
 	}
 
-	machines, err := machine.ParseAndDefaultAndValidate(machinesManifestPath, errorsHandler)
+	machines, bl, err := machine.ParseAndDefaultAndValidate(machinesManifestPath, errorsHandler)
+	if err != nil {
+		return nil, nil, nil, nil, err
+	}
+
+	return cluster, bmc, machines, bl, nil
+}
+
+// ParseCluster converts the manifest file into a Cluster
+func ParseCluster(r io.ReadCloser) (cluster *clusterv1.Cluster, bmc *baremetalspecv1.BareMetalCluster, err error) {
+	decoder := clusteryaml.NewYAMLDecoder(r)
+	defer decoder.Close()
+
+	for {
+		obj, _, err := decoder.Decode(nil, nil)
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			return nil, nil, errors.Wrap(err, "failed to parse cluster manifest")
+		}
+
+		switch v := obj.(type) {
+		case *clusterv1.Cluster:
+			cluster = v
+		case *baremetalspecv1.BareMetalCluster:
+			bmc = v
+		default:
+			return nil, nil, errors.Errorf("unexpected type %T", v)
+		}
+	}
+	return
+}
+
+func ParseClusterManifest(file string) (*clusterv1.Cluster, *baremetalspecv1.BareMetalCluster, error) {
+	f, err := os.Open(file)
 	if err != nil {
 		return nil, nil, err
 	}
-
-	return cluster, machines, nil
-}
-
-func parseCluster(r io.Reader) (*clusterv1.Cluster, error) {
-	bytes, err := ioutil.ReadAll(r)
-	if err != nil {
-		return nil, err
-	}
-
-	cluster := &clusterv1.Cluster{}
-	err = yaml.Unmarshal(bytes, cluster)
-	if err != nil {
-		return nil, err
-	}
-
-	return cluster, nil
-
-}
-
-func parseClusterManifest(file string) (*clusterv1.Cluster, error) {
-	f, err := os.Open(file)
-	if err != nil {
-		return nil, err
-	}
 	defer f.Close()
 
-	return parseCluster(f)
+	return ParseCluster(f)
 }
 
 func TranslateServerArgumentsToStringMap(args []baremetalspecv1.ServerArgument) map[string]string {
