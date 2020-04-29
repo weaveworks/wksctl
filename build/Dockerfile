@@ -32,8 +32,12 @@ RUN curl -O https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cl
     gcloud config set metrics/environment github_docker_image && \
     gcloud --version
 
-# Install Docker
-RUN curl -fsSL get.docker.com | VERSION=19.03.8 /bin/sh
+# Install Docker (client only)
+ENV DOCKERVERSION=19.03.8
+RUN curl -fsSLo docker.tgz https://download.docker.com/linux/static/stable/x86_64/docker-${DOCKERVERSION}.tgz && \
+    echo "7f4115dc6a3c19c917f8b9664d7b51c904def1c984e082c4600097433323cf6f  docker.tgz" | sha256sum -c && \
+    tar xzvf docker.tgz --strip 1 -C /usr/local/bin docker/docker && \
+    rm docker.tgz;
 
 # Install gometalinter
 ENV GOMETALINTER_VERSION 2.0.11
