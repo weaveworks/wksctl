@@ -261,22 +261,3 @@ Available playbooks:
 EOF
     cat -n >&2 <<<"$(for file in "$(dirname "${BASH_SOURCE[0]}")"/../../config_management/*.yml; do basename "$file" | sed 's/.yml//'; done)"
 }
-
-# shellcheck disable=SC2155,SC2064
-function tf_ansi() {
-    [ -z "$1" ] && tf_ansi_usage "No Ansible playbook provided." && return 1
-    local id="$1"
-    shift # Drop the first argument to allow passing other arguments to Ansible using "$@" -- see below.
-    if [[ "$id" =~ ^[0-9]+$ ]]; then
-        local playbooks=(../../config_management/*.yml)
-        local path="${playbooks[(($id - 1))]}" # Select the ith entry in the list of playbooks (0-based).
-    else
-        local path="$(dirname "${BASH_SOURCE[0]}")/../../config_management/$id.yml"
-    fi
-    local inventory="$(mktemp /tmp/ansible_inventory_XXX)"
-    trap 'rm -f $inventory' SIGINT SIGTERM RETURN
-    echo -e "$(terraform output ansible_inventory)" >"$inventory"
-    [ ! -r "$path" ] && tf_ansi_usage "Ansible playbook not found: $path" && return 1
-    ansible-playbook "$@" -u "$(terraform output username)" -i "$inventory" --ssh-extra-args="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null" "$path"
-}
-alias tf_ansi='tf_ansi'
