@@ -15,10 +15,6 @@ RUN curl -fsSLo terraform.zip https://releases.hashicorp.com/terraform/0.11.10/t
     mv terraform /usr/bin && \
     rm -f terraform.zip
 
-# Install Ansible
-RUN pip install -U setuptools cffi && \
-    pip install ansible
-
 # Install Google Cloud SDK - borrowed from https://hub.docker.com/r/google/cloud-sdk/~/dockerfile/
 ENV CLOUD_SDK_VERSION 206.0.0
 ENV PATH /go/google-cloud-sdk/bin:$PATH
