@@ -35,13 +35,12 @@ RUN curl -fsSLo docker.tgz https://download.docker.com/linux/static/stable/x86_6
     tar xzvf docker.tgz --strip 1 -C /usr/local/bin docker/docker && \
     rm docker.tgz;
 
-# Install gometalinter
-ENV GOMETALINTER_VERSION 2.0.11
-ENV ARCH amd64
-RUN curl -fsSLo gometalinter.tar.gz --compressed "https://github.com/alecthomas/gometalinter/releases/download/v$GOMETALINTER_VERSION/gometalinter-$GOMETALINTER_VERSION-linux-$ARCH.tar.gz" && \
-    echo "97d8bd0a4d024740964c7fc2ae41276cf5f839ccf0749528ca900942f656d201 gometalinter.tar.gz" | sha256sum -c && \
-    tar xf gometalinter.tar.gz -C /usr/bin --strip-components=1 --no-same-owner && \
-    rm gometalinter.tar.gz
+# Install golangci-lint
+ENV GOLANGCILINTVERSION=1.17.1
+RUN curl -fsSLo golangci-lint.tgz https://github.com/golangci/golangci-lint/releases/download/v1.17.1/golangci-lint-${GOLANGCILINTVERSION}-linux-amd64.tar.gz && \
+    echo "62693d3351858206af0bfe975f7f79a8ac9124502e8de7906f377c231f37f7d3  golangci-lint.tgz" | sha256sum -c && \
+    tar xzvf golangci-lint.tgz --strip 1 -C /usr/local/bin golangci-lint-${GOLANGCILINTVERSION}-linux-amd64/golangci-lint && \
+    rm golangci-lint.tgz;
 
 ARG revision
 LABEL maintainer="Weaveworks <help@weave.works>" \
