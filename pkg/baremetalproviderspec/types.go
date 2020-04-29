@@ -36,8 +36,14 @@ type AuthorizationWebhook struct {
 }
 
 type APIServer struct {
-	ExternalLoadBalancer string   `json:"externalLoadBalancer"`
-	AdditionalSANs       []string `json:"additionalSANs,omitempty"`
+	ExternalLoadBalancer string              `json:"externalLoadBalancer"`
+	AdditionalSANs       []string            `json:"additionalSANs,omitempty"`
+	ExtraArguments       []APIServerArgument `json:"extraArguments,omitempty"`
+}
+
+type APIServerArgument struct {
+	Name  string `json:"name"`
+	Value string `json:"value"`
 }
 
 type WebhookClient struct {

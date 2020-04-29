@@ -432,6 +432,11 @@ func getAPIServerArgs(providerSpec *baremetalspecv1.BareMetalClusterProviderSpec
 		storeIfNotEmpty(result, "authorization-webhook-cache-unauthorized-ttl", providerSpec.Authorization.CacheUnauthorizedTTL)
 		storeIfNotEmpty(result, "authorization-webhook-cache-authorized-ttl", providerSpec.Authorization.CacheAuthorizedTTL)
 	}
+
+	// Also add any explicit api server arguments from the generic section
+	for _, arg := range providerSpec.APIServer.ExtraArguments {
+		result[arg.Name] = arg.Value
+	}
 	return result
 }
 
