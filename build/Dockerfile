@@ -1,9 +1,9 @@
-FROM weaveworks/build-golang:1.12.1-stretch
+FROM weaveworks/build-golang:1.13.5-stretch
 
 RUN apt-get update && \
     apt-get install -y \
       sudo \
-      python-pip python-dev libffi-dev libssl-dev awscli \
+      libffi-dev awscli \
       && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
