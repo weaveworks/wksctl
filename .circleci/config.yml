@@ -3,7 +3,7 @@ version: 2
 # https://circleci.com/blog/circleci-hacks-reuse-yaml-in-your-circleci-config-with-yaml/
 defaults: &defaults
   docker:
-    - image: docker.io/weaveworks/wksctl-build:switch-away-from-quay-53c3c712-WIP
+    - image: docker.io/weaveworks/wksctl-build:update-build-image-cb52a6ea
       environment:
         GOPATH: /go/
         SRCDIR: /src/github.com/weaveworks/wksctl
