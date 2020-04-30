@@ -153,7 +153,7 @@ ExecStartPre=-/sbin/swapoff -a
 `
 
 // BuildK8SPlan creates a plan for running kubernetes on a node
-func BuildK8SPlan(kubernetesVersion string, kubeletNodeIP string, seLinuxInstalled, setSELinuxPermissive, disableSwap, lockYUMPkgs bool, pkgType resource.PkgType, cloudProvider string) plan.Resource {
+func BuildK8SPlan(kubernetesVersion string, kubeletNodeIP string, seLinuxInstalled, setSELinuxPermissive, disableSwap, lockYUMPkgs bool, pkgType resource.PkgType, cloudProvider string, extraArgs map[string]string) plan.Resource {
 	b := plan.NewBuilder()
 
 	// Kubernetes repos
@@ -220,12 +220,19 @@ func BuildK8SPlan(kubernetesVersion string, kubeletNodeIP string, seLinuxInstall
 		&resource.Dir{Path: object.String("/etc/systemd/system/kubelet.service.d")},
 	)
 	kubeletDeps := []string{"create-dir:kubelet.service.d"}
-	var processCloudProvider = func(cmdline string) string {
+	processCloudProvider := func(cmdline string) string {
 		if cloudProvider != "" {
 			log.WithField("cloudProvider", cloudProvider).Debug("using cloud provider")
 			return fmt.Sprintf("%s --cloud-provider=%s\n", cmdline, cloudProvider)
 		}
 		return cmdline + "\n"
+	}
+	processAdditionalArgs := func(cmdline string) string {
+		result := cmdline
+		for name, value := range extraArgs {
+			result = fmt.Sprintf("%s --%s=%s", result, name, value)
+		}
+		return processCloudProvider(result)
 	}
 
 	if disableSwap {
@@ -240,7 +247,7 @@ func BuildK8SPlan(kubernetesVersion string, kubeletNodeIP string, seLinuxInstall
 		b.AddResource(
 			kubeletSysconfig,
 			&resource.File{
-				Content:     processCloudProvider(fmt.Sprintf("KUBELET_EXTRA_ARGS=--node-ip=%s", kubeletNodeIP)),
+				Content:     processAdditionalArgs(fmt.Sprintf("KUBELET_EXTRA_ARGS=--node-ip=%s", kubeletNodeIP)),
 				Destination: "/etc/sysconfig/kubelet"},
 			plan.DependOn("install:kubelet"))
 	} else {
@@ -249,7 +256,7 @@ func BuildK8SPlan(kubernetesVersion string, kubeletNodeIP string, seLinuxInstall
 		b.AddResource(
 			kubeletSysconfig,
 			&resource.File{
-				Content:     processCloudProvider(fmt.Sprintf("KUBELET_EXTRA_ARGS=--fail-swap-on=false --node-ip=%s", kubeletNodeIP)),
+				Content:     processAdditionalArgs(fmt.Sprintf("KUBELET_EXTRA_ARGS=--fail-swap-on=false --node-ip=%s", kubeletNodeIP)),
 				Destination: "/etc/sysconfig/kubelet"},
 			plan.DependOn("install:kubelet"))
 	}

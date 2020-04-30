@@ -159,8 +159,9 @@ func (a *Applier) initiateCluster(clusterManifestPath, machinesManifestPath stri
 		SSHKeyPath:           a.Params.sshKeyPath,
 		BootstrapToken:       token,
 		KubeletConfig: config.KubeletConfig{
-			NodeIP:        sp.GetMasterPrivateAddress(),
-			CloudProvider: sp.GetCloudProvider(),
+			NodeIP:         sp.GetMasterPrivateAddress(),
+			CloudProvider:  sp.GetCloudProvider(),
+			ExtraArguments: sp.GetKubeletArguments(),
 		},
 		Controller: wksos.ControllerParams{
 			ImageOverride: controllerImage,

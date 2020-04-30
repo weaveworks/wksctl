@@ -21,6 +21,8 @@ type BareMetalClusterProviderSpec struct {
 
 	APIServer APIServer `json:"apiServer,omitempty"`
 
+	KubeletArguments []ServerArgument `json:"kubeletArguments,omitempty"`
+
 	Addons []Addon `json:"addons,omitempty"`
 
 	CloudProvider string `json:"cloudProvider,omitempty"`
@@ -48,12 +50,12 @@ type ContainerRuntime struct {
 }
 
 type APIServer struct {
-	ExternalLoadBalancer string              `json:"externalLoadBalancer"`
-	AdditionalSANs       []string            `json:"additionalSANs,omitempty"`
-	ExtraArguments       []APIServerArgument `json:"extraArguments,omitempty"`
+	ExternalLoadBalancer string           `json:"externalLoadBalancer"`
+	AdditionalSANs       []string         `json:"additionalSANs,omitempty"`
+	ExtraArguments       []ServerArgument `json:"extraArguments,omitempty"`
 }
 
-type APIServerArgument struct {
+type ServerArgument struct {
 	Name  string `json:"name"`
 	Value string `json:"value"`
 }

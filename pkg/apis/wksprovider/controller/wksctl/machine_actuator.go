@@ -30,6 +30,7 @@ import (
 	"github.com/weaveworks/wksctl/pkg/plan"
 	"github.com/weaveworks/wksctl/pkg/plan/resource"
 	"github.com/weaveworks/wksctl/pkg/plan/runners/ssh"
+	"github.com/weaveworks/wksctl/pkg/specs"
 	bootstraputils "github.com/weaveworks/wksctl/pkg/utilities/kubeadm"
 	"github.com/weaveworks/wksctl/pkg/utilities/object"
 	"github.com/weaveworks/wksctl/pkg/utilities/version"
@@ -647,8 +648,9 @@ func (a *MachineActuator) getNodePlan(providerSpec *baremetalspecv1.BareMetalClu
 		DiscoveryTokenCaCertHash: secrets.DiscoveryTokenCaCertHash,
 		CertificateKey:           secrets.CertificateKey,
 		KubeletConfig: config.KubeletConfig{
-			NodeIP:        machineAddress,
-			CloudProvider: providerSpec.CloudProvider,
+			NodeIP:         machineAddress,
+			CloudProvider:  providerSpec.CloudProvider,
+			ExtraArguments: specs.TranslateServerArgumentsToStringMap(providerSpec.KubeletArguments),
 		},
 		KubernetesVersion:    machineutil.GetKubernetesVersion(machine),
 		CRI:                  providerSpec.CRI,

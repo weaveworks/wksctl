@@ -126,6 +126,14 @@ func parseClusterManifest(file string) (*clusterv1.Cluster, error) {
 	return parseCluster(f)
 }
 
+func TranslateServerArgumentsToStringMap(args []baremetalspecv1.ServerArgument) map[string]string {
+	result := map[string]string{}
+	for _, arg := range args {
+		result[arg.Name] = arg.Value
+	}
+	return result
+}
+
 // Getters for nested fields needed externally
 func (s *Specs) GetClusterName() string {
 	return s.cluster.ObjectMeta.Name
@@ -141,6 +149,10 @@ func (s *Specs) GetMasterPrivateAddress() string {
 
 func (s *Specs) GetCloudProvider() string {
 	return s.ClusterSpec.CloudProvider
+}
+
+func (s *Specs) GetKubeletArguments() map[string]string {
+	return TranslateServerArgumentsToStringMap(s.ClusterSpec.KubeletArguments)
 }
 
 func (s *Specs) GetMachineCount() int {
