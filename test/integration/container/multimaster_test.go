@@ -38,7 +38,7 @@ apiVersion: cluster.weave.works/v1alpha3
 kind: "BareMetalCluster"
 metadata:
   name: test-multimaster
-  providerSpec:
+spec:
       user: root
       imageRepository: %s:%d
       os:
