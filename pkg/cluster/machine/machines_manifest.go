@@ -1,7 +1,8 @@
 package machine
 
 import (
-	"io/ioutil"
+	"io"
+	"os"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -12,11 +13,11 @@ import (
 
 // GetMachinesManifest reads a manifest from the filesystem and updates it with generated names (see: UpdateWithGeneratedNames)
 func GetMachinesManifest(path string) (string, error) {
-	machinesManifestBytes, err := ioutil.ReadFile(path)
+	f, err := os.Open(path)
 	if err != nil {
 		return "", err
 	}
-	return UpdateWithGeneratedNames(string(machinesManifestBytes))
+	return UpdateWithGeneratedNames(f)
 }
 
 // UpdateWithGeneratedNames generates names for machines, rather than using
@@ -26,36 +27,44 @@ func GetMachinesManifest(path string) (string, error) {
 // - WKS needs to be as idempotent as possible.
 // Note that if the customer updates the manifest with their own names, we'll
 // honor those.
-func UpdateWithGeneratedNames(manifest string) (string, error) {
-	return "", errors.New("generateName not implemented for v1alpha3")
-
-	var machineList clusterv1.MachineList
-	if err := yaml.Unmarshal([]byte(manifest), &machineList); err != nil {
-		return "", errors.Wrap(err, "failed to deserialize machines' manifest")
+func UpdateWithGeneratedNames(r io.ReadCloser) (string, error) {
+	machines, bml, err := Parse(r)
+	if err != nil {
+		return "", err
 	}
 
 	// Get all the machine names currently used, either set by a previous call
 	// to this function, or set by the end-user.
-	namesTaken := readNames(&machineList)
-	for i := range machineList.Items {
-		if machineList.Items[i].ObjectMeta.GenerateName != "" {
-			name := uniqueNameFrom(machineList.Items[i].ObjectMeta.GenerateName, namesTaken)
-			machineList.Items[i].SetName(name)
+	namesTaken := readNames(machines)
+	for i := range machines {
+		if machines[i].ObjectMeta.GenerateName != "" {
+			// TODO: update BareMetalMachine list here too
+			if len(bml) > i && bml[i].ObjectMeta.GenerateName != "" {
+				return "", errors.New("generateName not implemented for v1alpha3")
+			}
+			name := uniqueNameFrom(machines[i].ObjectMeta.GenerateName, namesTaken)
+			machines[i].SetName(name)
 			// Blank generateName out, now that a name has been generated.
-			machineList.Items[i].SetGenerateName("")
+			machines[i].SetGenerateName("")
 		}
 	}
 
-	manifestBytes, err := yaml.Marshal(machineList)
-	if err != nil {
-		return "", err
+	var buf strings.Builder
+	// Need to do this in a loop because we want a stream not an array
+	for _, machine := range machines {
+		manifestBytes, err := yaml.Marshal(machine)
+		if err != nil {
+			return "", err
+		}
+		buf.WriteString("---\n")
+		buf.Write(manifestBytes)
 	}
-	return string(manifestBytes), nil
+	return buf.String(), nil
 }
 
-func readNames(machineList *clusterv1.MachineList) map[string]struct{} {
+func readNames(machines []*clusterv1.Machine) map[string]struct{} {
 	namesTaken := map[string]struct{}{}
-	for _, machine := range machineList.Items {
+	for _, machine := range machines {
 		if machine.ObjectMeta.Name != "" {
 			namesTaken[machine.ObjectMeta.Name] = struct{}{}
 		}
