@@ -1,0 +1,152 @@
+
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.3.0
+  creationTimestamp: null
+  name: baremetalclusters.cluster.weave.works
+spec:
+  group: cluster.weave.works
+  names:
+    kind: BareMetalCluster
+    listKind: BareMetalClusterList
+    plural: baremetalclusters
+    singular: baremetalcluster
+  scope: Namespaced
+  validation:
+    openAPIV3Schema:
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          properties:
+            addons:
+              items:
+                description: Addon describes an addon to install on the cluster.
+                properties:
+                  deps:
+                    items:
+                      type: string
+                    type: array
+                  name:
+                    type: string
+                  params:
+                    additionalProperties:
+                      type: string
+                    type: object
+                required:
+                - name
+                type: object
+              type: array
+            apiServer:
+              properties:
+                additionalSANs:
+                  items:
+                    type: string
+                  type: array
+                externalLoadBalancer:
+                  type: string
+              required:
+              - externalLoadBalancer
+              type: object
+            authenticationWebhook:
+              properties:
+                cacheTTL:
+                  type: string
+                secretFile:
+                  type: string
+                url:
+                  type: string
+              required:
+              - secretFile
+              - url
+              type: object
+            authorizationWebhook:
+              properties:
+                cacheAuthorizedTTL:
+                  type: string
+                cacheUnauthorizedTTL:
+                  type: string
+                secretFile:
+                  type: string
+                url:
+                  type: string
+              required:
+              - secretFile
+              - url
+              type: object
+            cloudProvider:
+              type: string
+            cri:
+              properties:
+                kind:
+                  type: string
+                package:
+                  type: string
+                version:
+                  type: string
+              required:
+              - kind
+              - package
+              - version
+              type: object
+            httpProxy:
+              type: string
+            imageRepository:
+              type: string
+            os:
+              properties:
+                files:
+                  items:
+                    properties:
+                      destination:
+                        type: string
+                      source:
+                        properties:
+                          configmap:
+                            type: string
+                          key:
+                            type: string
+                        required:
+                        - configmap
+                        - key
+                        type: object
+                    required:
+                    - destination
+                    - source
+                    type: object
+                  type: array
+              type: object
+            sshKeyPath:
+              type: string
+            user:
+              type: string
+          required:
+          - cri
+          - sshKeyPath
+          - user
+          type: object
+      type: object
+  version: v1alpha3
+  versions:
+  - name: v1alpha3
+    served: true
+    storage: true
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
