@@ -272,11 +272,18 @@ func buildKubeadmInitPlan(path string, ignorePreflightErrors string, useIPTables
 			},
 			plan.DependOn("configure:iptables"),
 		)
+	} else {
+		b.AddResource(
+			"kubeadm:config:upgrade",
+			&Run{Script: object.String("echo no upgrade required")},
+			plan.DependOn("configure:iptables"),
+		)
 	}
 
 	b.AddResource(
 		"kubeadm:reset",
 		&Run{Script: object.String("kubeadm reset --force")},
+		plan.DependOn("kubeadm:config:upgrade"),
 	).AddResource(
 		"kubeadm:config:images",
 		&Run{Script: plan.ParamString("kubeadm config images pull --config=%s", &path)},
@@ -286,8 +293,7 @@ func buildKubeadmInitPlan(path string, ignorePreflightErrors string, useIPTables
 		// N.B.: --experimental-upload-certs encrypts & uploads
 		// certificates of the primary control plane in the kubeadm-certs
 		// Secret, and prints the value for --certificate-key to STDOUT.
-		&Run{Script: plan.ParamString(
-			withoutProxy("kubeadm init --config=%s --ignore-preflight-errors=%s %s"), &path, &ignorePreflightErrors, &uploadCertsFlag),
+		&Run{Script: object.String(fmt.Sprintf("kubeadm init --config=%s --ignore-preflight-errors=%s %s", &path, &ignorePreflightErrors, &uploadCertsFlag)),
 			UndoResource: buildKubeadmRunInitUndoPlan(),
 			Output:       output,
 		},
