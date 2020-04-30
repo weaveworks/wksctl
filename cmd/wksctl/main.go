@@ -6,6 +6,9 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/weaveworks/go-checkpoint"
+	"k8s.io/client-go/kubernetes/scheme"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"
+
 	"github.com/weaveworks/wksctl/cmd/wksctl/addon"
 	"github.com/weaveworks/wksctl/cmd/wksctl/apply"
 	"github.com/weaveworks/wksctl/cmd/wksctl/applyaddons"
@@ -17,6 +20,7 @@ import (
 	"github.com/weaveworks/wksctl/cmd/wksctl/registrysynccommands"
 	"github.com/weaveworks/wksctl/cmd/wksctl/version"
 	"github.com/weaveworks/wksctl/cmd/wksctl/zshcompletions"
+	baremetalv1 "github.com/weaveworks/wksctl/pkg/baremetal/v1alpha3"
 	v "github.com/weaveworks/wksctl/pkg/version"
 )
 
@@ -41,6 +45,9 @@ func configureLogger(cmd *cobra.Command, args []string) {
 }
 
 func main() {
+	clusterv1.AddToScheme(scheme.Scheme)
+	baremetalv1.AddToScheme(scheme.Scheme)
+
 	rootCmd.PersistentFlags().BoolVarP(&options.verbose, "verbose", "v", false, "Enable verbose output")
 
 	rootCmd.AddCommand(addon.Cmd)
