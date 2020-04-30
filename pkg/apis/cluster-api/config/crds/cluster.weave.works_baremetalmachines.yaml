@@ -1,0 +1,79 @@
+
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.3.0
+  creationTimestamp: null
+  name: baremetalmachines.cluster.weave.works
+spec:
+  group: cluster.weave.works
+  names:
+    kind: BareMetalMachine
+    listKind: BareMetalMachineList
+    plural: baremetalmachines
+    singular: baremetalmachine
+  scope: Namespaced
+  validation:
+    openAPIV3Schema:
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          properties:
+            address:
+              type: string
+            port:
+              type: integer
+            private:
+              description: EndPoint groups the details required to establish a connection.
+              properties:
+                address:
+                  type: string
+                port:
+                  type: integer
+              required:
+              - address
+              - port
+              type: object
+            privateAddress:
+              type: string
+            privateInterface:
+              type: string
+            public:
+              description: EndPoint groups the details required to establish a connection.
+              properties:
+                address:
+                  type: string
+                port:
+                  type: integer
+              required:
+              - address
+              - port
+              type: object
+          required:
+          - address
+          type: object
+      type: object
+  version: v1alpha3
+  versions:
+  - name: v1alpha3
+    served: true
+    storage: true
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
