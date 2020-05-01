@@ -29,9 +29,9 @@ func init() {
 func addKnownTypes(scheme *runtime.Scheme) error {
 	scheme.AddKnownTypes(SchemeGroupVersion,
 		&BareMetalMachine{},
-	)
-	scheme.AddKnownTypes(SchemeGroupVersion,
+		&BareMetalMachineList{},
 		&BareMetalCluster{},
+		&BareMetalClusterList{},
 	)
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
 	return nil
