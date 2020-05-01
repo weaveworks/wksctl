@@ -251,16 +251,47 @@ func buildKubeadmInitPlan(path string, ignorePreflightErrors string, useIPTables
 		uploadCertsFlag = "--experimental-upload-certs"
 	}
 
+	// If we're at 1.17.0 or greater, we need to upgrade the kubeadm config before running "kubeadm init"
+	upgradeKubeadmConfig := false
+	if lt, err := version.LessThan(k8sVersion, "1.17.0"); err == nil && lt == false {
+		upgradeKubeadmConfig = true
+	}
+
+	//
+	// We add resources to the plan graph for both "if" and "else" paths to make all resources deterministically connected.
+	// The graph resources will be easier to reason about when we execute them in parallel in the future.
+	//
 	b := plan.NewBuilder()
 	if useIPTables {
 		b.AddResource(
 			"configure:iptables",
 			&Run{Script: object.String("sysctl net.bridge.bridge-nf-call-iptables=1")}) // TODO: undo?
+	} else {
+		b.AddResource(
+			"configure:iptables",
+			&Run{Script: object.String("echo no operation")})
+	}
+
+	if upgradeKubeadmConfig {
+		b.AddResource(
+			"kubeadm:config:upgrade",
+			&Run{Script: plan.ParamString(
+				withoutProxy("kubeadm config migrate --old-config %s --new-config %s_upgraded && mv %s_upgraded %s"), &path, &path, &path, &path),
+			},
+			plan.DependOn("configure:iptables"),
+		)
+	} else {
+		b.AddResource(
+			"kubeadm:config:upgrade",
+			&Run{Script: object.String("echo no upgrade is required")},
+			plan.DependOn("configure:iptables"),
+		)
 	}
 
 	b.AddResource(
 		"kubeadm:reset",
 		&Run{Script: object.String("kubeadm reset --force")},
+		plan.DependOn("kubeadm:config:upgrade"),
 	).AddResource(
 		"kubeadm:config:images",
 		&Run{Script: plan.ParamString("kubeadm config images pull --config=%s", &path)},
@@ -270,8 +301,7 @@ func buildKubeadmInitPlan(path string, ignorePreflightErrors string, useIPTables
 		// N.B.: --experimental-upload-certs encrypts & uploads
 		// certificates of the primary control plane in the kubeadm-certs
 		// Secret, and prints the value for --certificate-key to STDOUT.
-		&Run{Script: plan.ParamString(
-			withoutProxy("kubeadm init --config=%s --ignore-preflight-errors=%s %s"), &path, &ignorePreflightErrors, &uploadCertsFlag),
+		&Run{Script: plan.ParamString("kubeadm init --config=%s --ignore-preflight-errors=%s %s", &path, &ignorePreflightErrors, &uploadCertsFlag),
 			UndoResource: buildKubeadmRunInitUndoPlan(),
 			Output:       output,
 		},

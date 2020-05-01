@@ -4,7 +4,7 @@ cluster:
 machines:
 - count: 4
   spec:
-    image: quay.io/footloose/centos7:0.3.0
+    image: quay.io/footloose/centos7:0.6.0
     name: node%d
     portMappings:
     - containerPort: 22
