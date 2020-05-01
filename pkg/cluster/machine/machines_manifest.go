@@ -59,6 +59,14 @@ func UpdateWithGeneratedNames(r io.ReadCloser) (string, error) {
 		buf.WriteString("---\n")
 		buf.Write(manifestBytes)
 	}
+	for _, machine := range bml {
+		manifestBytes, err := yaml.Marshal(machine)
+		if err != nil {
+			return "", err
+		}
+		buf.WriteString("---\n")
+		buf.Write(manifestBytes)
+	}
 	return buf.String(), nil
 }
 
