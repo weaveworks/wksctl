@@ -257,11 +257,19 @@ func buildKubeadmInitPlan(path string, ignorePreflightErrors string, useIPTables
 		upgradeKubeadmConfig = true
 	}
 
+	//
+	// We add resources to the plan graph for both "if" and "else" paths to make all resources deterministically connected.
+	// The graph resources will be easier to reason about when we execute them in parallel in the future.
+	//
 	b := plan.NewBuilder()
 	if useIPTables {
 		b.AddResource(
 			"configure:iptables",
 			&Run{Script: object.String("sysctl net.bridge.bridge-nf-call-iptables=1")}) // TODO: undo?
+	} else {
+		b.AddResource(
+			"configure:iptables",
+			&Run{Script: object.String("echo no operation")})
 	}
 
 	if upgradeKubeadmConfig {
@@ -275,7 +283,7 @@ func buildKubeadmInitPlan(path string, ignorePreflightErrors string, useIPTables
 	} else {
 		b.AddResource(
 			"kubeadm:config:upgrade",
-			&Run{Script: object.String("echo no upgrade required")},
+			&Run{Script: object.String("echo no upgrade is required")},
 			plan.DependOn("configure:iptables"),
 		)
 	}
