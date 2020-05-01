@@ -87,10 +87,6 @@ func run(cmd *cobra.Command, args []string) {
 	if err != nil {
 		log.Fatalf("failed to create the cluster manager: %v", err)
 	}
-	ctlrNamespace, err := initializeControllerNamespace(mgr.GetClient())
-	if err != nil {
-		log.Fatalf("failed to get controller namespace: %s", err)
-	}
 
 	log.Info("registering scheme for all resources")
 	if err := baremetalv1.AddToScheme(mgr.GetScheme()); err != nil {
@@ -107,6 +103,19 @@ func run(cmd *cobra.Command, args []string) {
 	}
 	if err = clusterReconciler.SetupWithManager(mgr, controller.Options{MaxConcurrentReconciles: 1}); err != nil {
 		log.Fatal(err)
+	}
+
+	var ctlrNamespace string
+	{
+		// Create another client as we can't use the manager's one until it is started
+		client, err := client.New(mgr.GetConfig(), client.Options{Scheme: mgr.GetScheme()})
+		if err != nil {
+			log.Fatalf("failed to create client: %s", err)
+		}
+		ctlrNamespace, err = initializeControllerNamespace(client)
+		if err != nil {
+			log.Fatalf("failed to get controller namespace x: %s", err)
+		}
 	}
 
 	machineController, err := wks.NewMachineController(wks.MachineControllerParams{
