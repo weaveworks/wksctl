@@ -293,7 +293,7 @@ func buildKubeadmInitPlan(path string, ignorePreflightErrors string, useIPTables
 		// N.B.: --experimental-upload-certs encrypts & uploads
 		// certificates of the primary control plane in the kubeadm-certs
 		// Secret, and prints the value for --certificate-key to STDOUT.
-		&Run{Script: object.String(fmt.Sprintf("kubeadm init --config=%s --ignore-preflight-errors=%s %s", &path, &ignorePreflightErrors, &uploadCertsFlag)),
+		&Run{Script: plan.ParamString("kubeadm init --config=%s --ignore-preflight-errors=%s %s", &path, &ignorePreflightErrors, &uploadCertsFlag),
 			UndoResource: buildKubeadmRunInitUndoPlan(),
 			Output:       output,
 		},
