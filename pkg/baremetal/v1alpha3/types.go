@@ -36,6 +36,12 @@ type BareMetalClusterSpec struct {
 	CloudProvider string `json:"cloudProvider,omitempty"`
 }
 
+type BareMetalClusterList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty"`
+	Items           []BareMetalCluster `json:"items"`
+}
+
 type OSConfig struct {
 	Files []FileSpec `json:"files,omitempty"`
 }
