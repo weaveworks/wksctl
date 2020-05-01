@@ -5,13 +5,24 @@ metadata:
   name: wks-controller-role
 rules:
 - apiGroups:
-  - cluster.k8s.io
+  - cluster.x-k8s.io
   resources:
   - clusters
   - machines
   - machines/status
   - machinedeployments
   - machinesets
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - cluster.weave.works
+  resources:
+  - baremetalclusters
+  - baremetalclusters/status
+  - baremetalmachines
+  - baremetalmachines/status
   verbs:
   - get
   - list
