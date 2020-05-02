@@ -15,6 +15,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/weaveworks/wksctl/pkg/cluster/nodes"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -367,7 +368,11 @@ func doRun(t *testing.T, ignoreError bool, name string, arg ...string) string {
 	cmd := exec.Command(name, arg...)
 	out, err := cmd.Output()
 	if err != nil && !ignoreError {
-		assert.NoError(t, err, "Command %s failed. STDOUT: \"%s\". STDERR: \"%s\"", cmd.Path, string(out), err)
+		stderr := err.Error()
+		if ee, ok := err.(*exec.ExitError); ok {
+			stderr = string(ee.Stderr)
+		}
+		require.NoError(t, err, "Command %s failed. STDOUT: %s\nSTDERR: %s", cmd.Path, string(out), stderr)
 	}
 	return string(out)
 }
