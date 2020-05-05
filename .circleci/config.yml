@@ -198,6 +198,7 @@ jobs:
           CREATE_IMAGE: 1
           USE_IMAGE: 1
           IMAGE_NAME: centos-cloud/centos-7
+          WKP_DEBUG: true
     working_directory: /src/github.com/weaveworks/wksctl
     steps:
       - checkout
@@ -269,6 +270,7 @@ jobs:
           CREATE_IMAGE: 1
           USE_IMAGE: 1
           IMAGE_NAME: rhel-cloud/rhel-7
+          WKP_DEBUG: false
     working_directory: /src/github.com/weaveworks/wksctl
     steps:
       - checkout
