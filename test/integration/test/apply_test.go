@@ -271,14 +271,18 @@ func testKubectl(t *testing.T, kubeconfig string) {
 	assert.True(t, run.Contains("Ready"))
 }
 
-func testDebugLogging(t *testing.T, kubeconfig string) {
+func testDebugLogging(t *testing.T, kubeconfig string, verbose bool) {
 	exe := run.NewExecutor()
 
 	run, err := exe.RunV(kubectl,
 		fmt.Sprintf("--kubeconfig=%s", kubeconfig), "logs", "-l", "name=wks-controller")
 	assert.NoError(t, err)
 	assert.Equal(t, 0, run.ExitCode())
-	assert.True(t, run.Contains("level=debug"))
+	if verbose {
+		assert.True(t, run.Contains("level=debug"))
+	} else {
+		assert.False(t, run.Contains("level=debug"))
+	}
 }
 
 func nodeIsMaster(n *v1.Node) bool {
@@ -430,9 +434,10 @@ func TestApply(t *testing.T) {
 	}()
 
 	// Install the Cluster.
+	var verbose = "${DEBUG_LOGGING:-false}"
 	run, err := apply(exe, "--cluster="+clusterManifestPath, "--machines="+machinesManifestPath, "--namespace=default",
 		"--config-directory="+configDir, "--sealed-secret-key="+configPath("ss.key"), "--sealed-secret-cert="+configPath("ss.cert"),
-		"--verbose=true", "--ssh-key="+sshKeyPath)
+		fmt.Sprintf("--verbose=%s", verbose), "--ssh-key="+sshKeyPath)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, run.ExitCode())
 
@@ -463,6 +468,6 @@ func TestApply(t *testing.T) {
 
 	// Test the we are getting debug logging messages.
 	t.Run("loglevel", func(t *testing.T) {
-		testDebugLogging(t, kubeconfig)
+		testDebugLogging(t, kubeconfig, verbose)
 	})
 }
