@@ -7,6 +7,8 @@ metadata:
     controller-gen.kubebuilder.io/version: v0.3.0
   creationTimestamp: null
   name: baremetalclusters.cluster.weave.works
+  labels:
+    cluster.x-k8s.io/v1alpha3: v1alpha3
 spec:
   group: cluster.weave.works
   names:
