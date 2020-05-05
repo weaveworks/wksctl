@@ -21,6 +21,7 @@ require (
 	github.com/hashicorp/go-cleanhttp v0.5.1 // indirect
 	github.com/hashicorp/golang-lru v0.5.3 // indirect
 	github.com/imdario/mergo v0.3.7 // indirect
+	github.com/mitchellh/go-homedir v1.1.0
 	github.com/oleiade/reflections v1.0.0 // indirect
 	github.com/pelletier/go-toml v1.2.0
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect

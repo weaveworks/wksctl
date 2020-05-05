@@ -1,27 +1,26 @@
 package path
 
 import (
-	"errors"
 	"fmt"
 	"os"
-	"os/user"
 	"path/filepath"
+	"runtime"
 	"strings"
+
+	homedir "github.com/mitchellh/go-homedir"
 )
 
 // UserHomeDirectory returns the user directory.
 func UserHomeDirectory() (string, error) {
-	currentUser, err := user.Current()
-	if err == nil {
-		return currentUser.HomeDir, nil
-	}
+	return homedir.Dir()
+}
 
-	home := os.Getenv("HOME")
-	if home != "" {
-		return home, nil
-	}
+func DisableHomeCache() {
+	homedir.DisableCache = true
+}
 
-	return "", errors.New("failed to find user home directly")
+func ResetHomeCache() {
+	homedir.Reset()
 }
 
 // Expand expands the provided path, evaluating all symlinks (including "~").
@@ -31,9 +30,8 @@ func Expand(path string) (string, error) {
 }
 
 func ExpandHome(s string) string {
-	home, _ := os.UserHomeDir()
-	if strings.HasPrefix(s, "~/") {
-		return filepath.Join(home, s[2:])
+	if exp, err := homedir.Expand(s); err == nil {
+		return exp
 	}
 	return s
 }
@@ -57,6 +55,19 @@ func WKSResourcePath(artifactDirectory string, paths ...string) string {
 	args := []string{WKSHome(artifactDirectory)}
 	args = append(args, paths...)
 	return filepath.Join(args...)
+}
+
+// Prettify returns a path with any present home directory substituted with a tilde.
+// This is useful for help and CLI output on UNIX systems.
+// This behavior can enabled on Windows, but ~ only works in PowerShell.
+func Prettify(path string, enableOnWindows bool) string {
+	if !enableOnWindows && runtime.GOOS == "windows" {
+		return path // ~ only works in PowerShell
+	}
+	if home, err := UserHomeDirectory(); err == nil && strings.HasPrefix(path, home) {
+		return filepath.Join("~", strings.TrimPrefix(path, home))
+	}
+	return path
 }
 
 // CreateDirectory creates directories corresponding to the provided path.
