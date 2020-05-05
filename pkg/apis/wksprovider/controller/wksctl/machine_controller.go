@@ -148,6 +148,10 @@ func (r *MachineController) Reconcile(req ctrl.Request) (_ ctrl.Result, reterr e
 	contextLog = contextLog.WithField("cluster", cluster.Name)
 
 	// Now go from the Cluster to the BareMetalCluster
+	if cluster.Spec.InfrastructureRef == nil || cluster.Spec.InfrastructureRef.Name == "" {
+		contextLog.Info("Cluster is missing infrastructureRef")
+		return ctrl.Result{}, nil
+	}
 	bmc := &baremetalspecv1.BareMetalCluster{}
 	if err := r.client.Get(ctx, client.ObjectKey{
 		Namespace: bmm.Namespace,
