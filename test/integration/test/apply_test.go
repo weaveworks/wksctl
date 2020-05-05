@@ -8,7 +8,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"strconv"
 	"testing"
 	"time"
 
@@ -272,10 +271,21 @@ func testKubectl(t *testing.T, kubeconfig string) {
 	assert.True(t, run.Contains("Ready"))
 }
 
-func testDebugLogging(t *testing.T, kubeconfig string, verbose bool) {
+func testDebugLogging(t *testing.T, kubeconfig string) {
 	exe := run.NewExecutor()
 
 	run, err := exe.RunV(kubectl,
+		fmt.Sprintf("--kugeconfig=%s", kubeconfig), "describe", "-l", "name=wks-controller")
+	assert.NoError(t, err)
+	assert.Equal(t, 0, run.ExitCode())
+
+	verbose := false
+	if run.Contains("verbose=true") || run.Contains("verbose true") ||
+		(run.Contains("--verbose") && !run.Contains("verbase=false") && !run.Contains("verbose false")) {
+		verbose = true
+	}
+
+	run, err = exe.RunV(kubectl,
 		fmt.Sprintf("--kubeconfig=%s", kubeconfig), "logs", "-l", "name=wks-controller")
 	assert.NoError(t, err)
 	assert.Equal(t, 0, run.ExitCode())
@@ -435,18 +445,9 @@ func TestApply(t *testing.T) {
 	}()
 
 	// Install the Cluster.
-	var verbose bool
-	val := os.Getenv("WKP_DEBUG")
-	if val != "" {
-		verbose, err = strconv.ParseBool(val)
-		assert.NoErrorf(t, err, "unexpected error parsing boolean: %s\n", err.Error())
-	} else {
-		verbose = false
-	}
-
 	run, err := apply(exe, "--cluster="+clusterManifestPath, "--machines="+machinesManifestPath, "--namespace=default",
 		"--config-directory="+configDir, "--sealed-secret-key="+configPath("ss.key"), "--sealed-secret-cert="+configPath("ss.cert"),
-		fmt.Sprintf("--verbose=%v", verbose), "--ssh-key="+sshKeyPath)
+		"--verbose=true", "--ssh-key="+sshKeyPath)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, run.ExitCode())
 
@@ -477,6 +478,6 @@ func TestApply(t *testing.T) {
 
 	// Test the we are getting debug logging messages.
 	t.Run("loglevel", func(t *testing.T) {
-		testDebugLogging(t, kubeconfig, verbose)
+		testDebugLogging(t, kubeconfig)
 	})
 }
