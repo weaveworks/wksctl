@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 	"time"
 
@@ -434,10 +435,18 @@ func TestApply(t *testing.T) {
 	}()
 
 	// Install the Cluster.
-	var verbose = "${DEBUG_LOGGING:-false}"
+	var verbose bool
+	val := os.Getenv("WKP_DEBUG")
+	if val != "" {
+		verbose, err = strconv.ParseBool(val)
+		assert.NoErrorf(t, err, "unexpected error parsing boolean: %s\n", err.Error())
+	} else {
+		verbose = false
+	}
+
 	run, err := apply(exe, "--cluster="+clusterManifestPath, "--machines="+machinesManifestPath, "--namespace=default",
 		"--config-directory="+configDir, "--sealed-secret-key="+configPath("ss.key"), "--sealed-secret-cert="+configPath("ss.cert"),
-		fmt.Sprintf("--verbose=%s", verbose), "--ssh-key="+sshKeyPath)
+		fmt.Sprintf("--verbose=%v", verbose), "--ssh-key="+sshKeyPath)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, run.ExitCode())
 
