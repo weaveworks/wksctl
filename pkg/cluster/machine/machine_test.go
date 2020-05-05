@@ -80,7 +80,7 @@ const machinesValid = `
     infrastructureRef:
         kind: BareMetalMachine
         name: master-0
-    version: "1.14.12"
+    version: "1.16.2"
 ---
   apiVersion: "cluster.weave.works/v1alpha3"
   kind: "BareMetalMachine"
@@ -99,7 +99,7 @@ const machinesValid = `
     infrastructureRef:
         kind: BareMetalMachine
         name: node-0
-    version: "1.14.12"
+    version: "1.16.2"
 ---
   apiVersion: "cluster.weave.works/v1alpha3"
   kind: "BareMetalMachine"
@@ -125,7 +125,7 @@ const machinesInconsistentKubeVersion = `
     infrastructureRef:
         kind: BareMetalMachine
         name: master-0
-    version: "1.14.4"
+    version: "1.16.4"
 ---
   apiVersion: "cluster.weave.works/v1alpha3"
   kind: "BareMetalMachine"
@@ -144,7 +144,7 @@ const machinesInconsistentKubeVersion = `
     infrastructureRef:
         kind: BareMetalMachine
         name: node-0
-    version: "1.14.3"
+    version: "1.16.3"
 ---
   apiVersion: "cluster.weave.works/v1alpha3"
   kind: "BareMetalMachine"
@@ -205,7 +205,7 @@ const machinesNoGodNoMaster = `
     infrastructureRef:
         kind: BareMetalMachine
         name: node-0
-    version: "1.14.12"
+    version: "1.16.2"
 ---
   apiVersion: "cluster.weave.works/v1alpha3"
   kind: "BareMetalMachine"
@@ -329,7 +329,7 @@ func TestGetKubernetesVersionFromMasterInDefaultsVersionWhenMachinesDoNotSpecify
 func TestGetKubernetesVersionFromMasterInGetsControlPlaneVersion(t *testing.T) {
 	version, _, err := machine.GetKubernetesVersionFromMasterIn(machinesFromString(t, machinesValid))
 	assert.NoError(t, err)
-	assert.Equal(t, "1.14.12", version)
+	assert.Equal(t, "1.16.2", version)
 }
 
 func TestGetKubernetesVersionDefaultsVersionWhenMachinesDoNotSpecifyAny(t *testing.T) {
