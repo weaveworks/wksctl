@@ -279,6 +279,7 @@ func testDebugLogging(t *testing.T, kubeconfig string) {
 	assert.NoError(t, err)
 	assert.Equal(t, 0, run.ExitCode())
 
+	fmt.Printf("kubectl get -l name=wks-controller -o json, output: \n%v\n", run.Lines())
 	verbose := false
 	if run.Contains("\"verbose\":true") {
 		verbose = true
