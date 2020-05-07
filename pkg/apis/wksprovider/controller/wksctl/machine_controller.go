@@ -47,6 +47,7 @@ import (
 	bootstrapapi "k8s.io/cluster-bootstrap/token/api"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"
 	"sigs.k8s.io/cluster-api/util"
+	"sigs.k8s.io/cluster-api/util/patch"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -160,6 +161,21 @@ func (r *MachineController) Reconcile(req ctrl.Request) (_ ctrl.Result, reterr e
 		contextLog.Info("BareMetalCluster is not available yet")
 		return ctrl.Result{}, nil
 	}
+
+	// Initialize the patch helper
+	patchHelper, err := patch.NewHelper(bmm, r.client)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	// Attempt to Patch the BareMetalMachine object and status after each reconciliation.
+	defer func() {
+		if err := patchHelper.Patch(ctx, bmm); err != nil {
+			contextLog.Error(err, "failed to patch BareMetalMachine")
+			if reterr == nil {
+				reterr = err
+			}
+		}
+	}()
 
 	// Object still there but with deletion timestamp => run our finalizer
 	if !bmm.ObjectMeta.DeletionTimestamp.IsZero() {
