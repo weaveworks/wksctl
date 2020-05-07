@@ -271,6 +271,29 @@ func testKubectl(t *testing.T, kubeconfig string) {
 	assert.True(t, run.Contains("Ready"))
 }
 
+func testDebugLogging(t *testing.T, kubeconfig string) {
+	exe := run.NewExecutor()
+
+	run, err := exe.RunV(kubectl,
+		fmt.Sprintf("--kubeconfig=%s", kubeconfig), "get", "pods", "-l", "name=wks-controller", "--namespace=default", "-o", "jsonpath={.items[].spec.containers[].command}")
+	assert.NoError(t, err)
+	assert.Equal(t, 0, run.ExitCode())
+	verbose := false
+	if run.Contains("--verbose") {
+		verbose = true
+	}
+
+	run, err = exe.RunV(kubectl,
+		fmt.Sprintf("--kubeconfig=%s", kubeconfig), "logs", "-l", "name=wks-controller", "--namespace=default")
+	assert.NoError(t, err)
+	assert.Equal(t, 0, run.ExitCode())
+	if verbose {
+		assert.True(t, run.Contains("level=debug"))
+	} else {
+		assert.False(t, run.Contains("level=debug"))
+	}
+}
+
 func nodeIsMaster(n *v1.Node) bool {
 	const masterLabel = "node-role.kubernetes.io/master"
 	if _, ok := n.Labels[masterLabel]; ok {
@@ -449,5 +472,10 @@ func TestApply(t *testing.T) {
 	// Test we can run kubectl against the cluster.
 	t.Run("kubectl", func(t *testing.T) {
 		testKubectl(t, kubeconfig)
+	})
+
+	// Test the we are getting debug logging messages.
+	t.Run("loglevel", func(t *testing.T) {
+		testDebugLogging(t, kubeconfig)
 	})
 }
