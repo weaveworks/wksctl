@@ -59,6 +59,17 @@ spec:
         kind: docker
         package: docker-ce
         version: 18.09.7
+      kubeletArguments:
+      - name: alsologtostderr
+        value: "true"
+      - name: container-runtime
+        value: docker
+      apiServer:
+        extraArguments:
+        - name: alsologtostderr
+          value: "true"
+        - name: audit-log-maxsize
+          value: "10000"
 `
 
 const machinesYAML = `apiVersion: v1
@@ -322,6 +333,28 @@ func TestMultimasterSetup(t *testing.T) {
 	assert.Len(t, nodeList.Items, 4)
 	assert.Len(t, nodes.Masters(nodeList).Items, 3)
 	assert.Len(t, nodes.Workers(nodeList).Items, 1)
+
+	expectedKubeletArgs := []string{"alsologtostderr=true", "container-runtime=docker"}
+	expectedApiServerArgs := []string{"alsologtostderr=true", "audit-log-maxsize=10000"}
+
+	for i := 0; i < 4; i++ {
+		for _, kubeletArg := range expectedKubeletArgs {
+			log.Infof("Checking kubelet arg (%s) on node%d", kubeletArg, i)
+			run(t, "footloose",
+				"-c", "../../../examples/footloose/centos7/docker/multimaster.yaml",
+				"ssh", fmt.Sprintf("root@node%d", i), fmt.Sprintf("ps -ef | grep -v 'ps -ef' | grep /usr/bin/kubelet | grep %s", kubeletArg))
+		}
+
+		// node0 - node2 are masters
+		if i < 3 {
+			for _, apiServerArg := range expectedApiServerArgs {
+				log.Infof("Checking api server arg (%s) on node%d", apiServerArg, i)
+				run(t, "footloose",
+					"-c", "../../../examples/footloose/centos7/docker/multimaster.yaml",
+					"ssh", fmt.Sprintf("root@node%d", i), fmt.Sprintf("ps -ef | grep -v 'ps -ef' | grep kube-apiserver | grep %s", apiServerArg))
+			}
+		}
+	}
 
 	if !t.Failed() { // Otherwise leave the footloose "VMs" & config files around for debugging purposes.
 		// Clean up:
