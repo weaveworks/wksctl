@@ -144,8 +144,16 @@ func (e *Executor) RunCmd(cmd *exec.Cmd) (*Entry, error) {
 		return nil, err
 	}
 
-	go e.handStream(entry, stdout, stdoutPipe)
-	go e.handStream(entry, stderr, stderrPipe)
+	syncChan := make(chan bool)
+	go func() {
+		e.handStream(entry, stdout, stdoutPipe)
+		syncChan <- true
+	}()
+
+	go func() {
+		e.handStream(entry, stderr, stderrPipe)
+		syncChan <- true
+	}()
 
 	if e.showBreadcrumbs {
 		fmt.Printf("=== EXE   %s\n", strings.Join(cmd.Args, " "))
@@ -154,6 +162,10 @@ func (e *Executor) RunCmd(cmd *exec.Cmd) (*Entry, error) {
 	if err := cmd.Start(); err != nil {
 		return nil, err
 	}
+
+	// Make sure copying is finished
+	<-syncChan
+	<-syncChan
 
 	err = cmd.Wait()
 	exitCode, err := exitCode(err)
