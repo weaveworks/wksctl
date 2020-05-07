@@ -111,6 +111,7 @@ type BareMetalMachineSpec struct {
 	PrivateInterface string   `json:"privateInterface,omitempty"`
 	Private          EndPoint `json:"private,omitempty"`
 	Public           EndPoint `json:"public,omitempty"`
+	ProviderID       string   `json:"providerID,omitempty"`
 }
 
 // BareMetalMachineList contains a list of Machine

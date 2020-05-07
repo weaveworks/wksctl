@@ -222,6 +222,9 @@ func (a *MachineController) create(ctx context.Context, c *baremetalspecv1.BareM
 	if err != nil {
 		return err
 	}
+	if err = a.setNodeProviderIDIfNecessary(node); err != nil {
+		return err
+	}
 	if err = a.setNodeAnnotation(node, planKey, nodePlan.ToJSON()); err != nil {
 		return err
 	}
@@ -452,6 +455,10 @@ func (a *MachineController) update(ctx context.Context, c *baremetalspecv1.BareM
 		return gerrors.Wrapf(err, "failed to find node by id: %s/%s", ids.MachineID, ids.SystemUUID)
 	}
 	contextLog = contextLog.WithFields(log.Fields{"node": node.Name})
+
+	if err = a.setNodeProviderIDIfNecessary(node); err != nil {
+		return err
+	}
 	nodePlan, err := a.getNodePlan(c, machine, a.getMachineAddress(bmm), installer)
 	if err != nil {
 		return gerrors.Wrapf(err, "Failed to get node plan for machine %s", machine.Name)
@@ -534,6 +541,9 @@ func (a *MachineController) update(ctx context.Context, c *baremetalspecv1.BareM
 	if err = a.setNodeAnnotation(node, planKey, planJSON); err != nil {
 		return err
 	}
+	// CAPI machine controller requires providerID
+	bmm.Spec.ProviderID = node.Spec.ProviderID
+
 	a.recordEvent(machine, corev1.EventTypeNormal, "Update", "updated machine %s", machine.Name)
 	return nil
 }
@@ -861,6 +871,16 @@ func (a *MachineController) setNodeAnnotation(node *corev1.Node, key, value stri
 	})
 	if err != nil {
 		return gerrors.Wrapf(err, "Failed to set node annotation: %s for node: %s", key, node.Name)
+	}
+	return nil
+}
+
+func (a *MachineController) setNodeProviderIDIfNecessary(node *corev1.Node) error {
+	err := a.modifyNode(node, func(node *corev1.Node) {
+		node.Spec.ProviderID = "wks://" + node.Name
+	})
+	if err != nil {
+		return gerrors.Wrapf(err, "Failed to set providerID on node: %s", node.Name)
 	}
 	return nil
 }
