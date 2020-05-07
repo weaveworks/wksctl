@@ -277,7 +277,7 @@ func testDebugLogging(t *testing.T, kubeconfig string) {
 	//	exe := run.NewExecutor()
 
 	out, err := exec.Command("./kubectl",
-		fmt.Sprintf("--kubeconfig=%s", kubeconfig), "get", "pods", "--all-namespaces", "-o", "json").CombinedOutput()
+		fmt.Sprintf("--kubeconfig=%s", kubeconfig), "get", "pods", "--namespace", "weavek8sops", "-o", "json").CombinedOutput()
 
 	log.Printf("ALL PODS: %s\n", out)
 
