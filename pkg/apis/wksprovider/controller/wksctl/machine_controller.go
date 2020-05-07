@@ -559,6 +559,7 @@ func (a *MachineController) update(ctx context.Context, c *baremetalspecv1.BareM
 	}
 	// CAPI machine controller requires providerID
 	bmm.Spec.ProviderID = node.Spec.ProviderID
+	bmm.Status.Ready = true
 
 	a.recordEvent(machine, corev1.EventTypeNormal, "Update", "updated machine %s", machine.Name)
 	return nil
