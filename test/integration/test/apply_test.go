@@ -7,9 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"strings"
 	"testing"
 	"time"
 
@@ -274,30 +272,25 @@ func testKubectl(t *testing.T, kubeconfig string) {
 }
 
 func testDebugLogging(t *testing.T, kubeconfig string) {
-	//	exe := run.NewExecutor()
+	exe := run.NewExecutor()
 
-	out, err := exec.Command("./kubectl",
-		fmt.Sprintf("--kubeconfig=%s", kubeconfig), "get", "pods", "--namespace", "weavek8sops", "-o", "json").CombinedOutput()
+	run, err := exe.RunV(kubectl,
+		fmt.Sprintf("--kubeconfig=%s", kubeconfig), "get", "pods", "-l", "name=wks-controller", "--namespace=default", "-o", "jsonpath={.items[].spec.containers[].command}")
 	assert.NoError(t, err)
-
-	log.Printf("ALL PODS: %s\n", out)
-
-	out, err = exec.Command("./kubectl",
-		fmt.Sprintf("--kubeconfig=%s", kubeconfig), "get", "pods", "-l", "name=wks-controller", "--namespace", "weavek8sops", "-o", "jsonpath={.items[].spec.containers[].command}").CombinedOutput()
-	log.Printf("OUT: %s\n", out)
-	assert.NoError(t, err)
+	assert.Equal(t, 0, run.ExitCode())
 	verbose := false
-	if strings.Contains(string(out), "--verbose") {
+	if run.Contains("--verbose") {
 		verbose = true
 	}
 
-	out, err = exec.Command("./kubectl",
-		fmt.Sprintf("--kubeconfig=%s", kubeconfig), "logs", "-l", "name=wks-controller").CombinedOutput()
+	run, err = exe.RunV(kubectl,
+		fmt.Sprintf("--kubeconfig=%s", kubeconfig), "logs", "-l", "name=wks-controller", "--namespace=default")
 	assert.NoError(t, err)
+	assert.Equal(t, 0, run.ExitCode())
 	if verbose {
-		assert.True(t, strings.Contains(string(out), "level=debug"))
+		assert.True(t, run.Contains("level=debug"))
 	} else {
-		assert.False(t, strings.Contains(string(out), "level=debug"))
+		assert.False(t, run.Contains("level=debug"))
 	}
 }
 
