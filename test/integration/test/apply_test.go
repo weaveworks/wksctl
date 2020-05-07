@@ -278,6 +278,7 @@ func testDebugLogging(t *testing.T, kubeconfig string) {
 
 	out, err := exec.Command("./kubectl",
 		fmt.Sprintf("--kubeconfig=%s", kubeconfig), "get", "pods", "--namespace", "weavek8sops", "-o", "json").CombinedOutput()
+	assert.NoError(t, err)
 
 	log.Printf("ALL PODS: %s\n", out)
 
