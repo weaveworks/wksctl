@@ -275,13 +275,12 @@ func testDebugLogging(t *testing.T, kubeconfig string) {
 	exe := run.NewExecutor()
 
 	run, err := exe.RunV(kubectl,
-		fmt.Sprintf("--kugeconfig=%s", kubeconfig), "get", "-l", "name=wks-controller", "-o", "json")
+		fmt.Sprintf("--kubeconfig=%s", kubeconfig), "get", "pods", "-l", "name=wks-controller", "-A", "-o", "json")
 	assert.NoError(t, err)
 	assert.Equal(t, 0, run.ExitCode())
 
-	fmt.Printf("kubectl get -l name=wks-controller -o json, output: \n%v\n", run.Lines())
 	verbose := false
-	if run.Contains("\"verbose\":true") {
+	if run.Contains("\"--verbose\"") {
 		verbose = true
 	}
 
