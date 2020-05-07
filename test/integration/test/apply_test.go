@@ -7,7 +7,9 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -279,7 +281,7 @@ func testDebugLogging(t *testing.T, kubeconfig string) {
 	log.Printf("OUT: %s\n", out)
 	assert.NoError(t, err)
 	verbose := false
-	if strings.Contains(out, "--verbose") {
+	if strings.Contains(string(out), "--verbose") {
 		verbose = true
 	}
 
@@ -287,9 +289,9 @@ func testDebugLogging(t *testing.T, kubeconfig string) {
 		fmt.Sprintf("--kubeconfig=%s", kubeconfig), "logs", "-l", "name=wks-controller").CombinedOutput()
 	assert.NoError(t, err)
 	if verbose {
-		assert.True(t, strings.Contains(out, "level=debug"))
+		assert.True(t, strings.Contains(string(out), "level=debug"))
 	} else {
-		assert.False(t, strings.Contains(out, "level=debug"))
+		assert.False(t, strings.Contains(string(out), "level=debug"))
 	}
 }
 
