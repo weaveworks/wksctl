@@ -101,7 +101,8 @@ type BareMetalMachine struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec BareMetalMachineSpec `json:"spec,omitempty"`
+	Spec   BareMetalMachineSpec   `json:"spec,omitempty"`
+	Status BareMetalMachineStatus `json:"status,omitempty"`
 }
 
 type BareMetalMachineSpec struct {
@@ -112,6 +113,10 @@ type BareMetalMachineSpec struct {
 	Private          EndPoint `json:"private,omitempty"`
 	Public           EndPoint `json:"public,omitempty"`
 	ProviderID       string   `json:"providerID,omitempty"`
+}
+
+type BareMetalMachineStatus struct {
+	Ready bool `json:"ready"`
 }
 
 // BareMetalMachineList contains a list of Machine
