@@ -275,7 +275,7 @@ func testDebugLogging(t *testing.T, kubeconfig string) {
 	exe := run.NewExecutor()
 
 	run, err := exe.RunV(kubectl,
-		fmt.Sprintf("--kubeconfig=%s", kubeconfig), "get", "pods", "-l", "name=wks-controller", "-A", "-o", "json")
+		fmt.Sprintf("--kubeconfig=%s", kubeconfig), "get", "pods", "-l", "name=wks-controller", "--all-namespaces", "-o", "json")
 	fmt.Printf("run: %+v", run)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, run.ExitCode())
