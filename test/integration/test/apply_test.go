@@ -287,9 +287,9 @@ func testDebugLogging(t *testing.T, kubeconfig string) {
 		fmt.Sprintf("--kubeconfig=%s", kubeconfig), "logs", "-l", "name=wks-controller").CombinedOutput()
 	assert.NoError(t, err)
 	if verbose {
-		assert.True(t, run.Contains("level=debug"))
+		assert.True(t, strings.Contains(out, "level=debug"))
 	} else {
-		assert.False(t, run.Contains("level=debug"))
+		assert.False(t, strings.Contains(out, "level=debug"))
 	}
 }
 
