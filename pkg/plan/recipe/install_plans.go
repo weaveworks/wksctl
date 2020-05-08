@@ -232,7 +232,7 @@ func BuildK8SPlan(kubernetesVersion string, kubeletNodeIP string, seLinuxInstall
 		result := cmdline
 		strs := []string{}
 		for name, value := range extraArgs {
-			strs = append(strs, fmt.Sprintf("--%s=%s", name, value))
+			strs = append(strs, fmt.Sprintf("--%s='%s'", name, value))
 		}
 		sort.Strings(strs)
 		for _, str := range strs {
