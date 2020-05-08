@@ -186,11 +186,10 @@ func (r *MachineController) Reconcile(req ctrl.Request) (_ ctrl.Result, reterr e
 		return ctrl.Result{}, err
 	}
 
-	// FIXME!  assuming everything else is create
 	{
-		err := r.create(ctx, bmc, machine, bmm)
+		err := r.update(ctx, bmc, machine, bmm)
 		if err != nil {
-			contextLog.Errorf("failed to create machine: %v", err)
+			contextLog.Errorf("failed to update machine: %v", err)
 		}
 		return ctrl.Result{}, err
 	}
@@ -198,19 +197,10 @@ func (r *MachineController) Reconcile(req ctrl.Request) (_ ctrl.Result, reterr e
 	return ctrl.Result{}, nil
 }
 
-func (a *MachineController) create(ctx context.Context, c *baremetalspecv1.BareMetalCluster, machine *clusterv1.Machine, bmm *baremetalspecv1.BareMetalMachine) error {
+func (a *MachineController) create(ctx context.Context, installer *os.OS, c *baremetalspecv1.BareMetalCluster, machine *clusterv1.Machine, bmm *baremetalspecv1.BareMetalMachine) error {
 	contextLog := log.WithFields(log.Fields{"context": ctx, "cluster": *c, "machine": *machine})
 	contextLog.Info("creating machine...")
 
-	installer, closer, err := a.connectTo(c, bmm)
-	if err != nil {
-		return gerrors.Wrapf(err, "failed to establish connection to machine %s", machine.Name)
-	}
-	defer closer.Close()
-	// Bootstrap - set plan on seed node if not present before any updates can occur
-	if err = a.initializeMasterPlanIfNecessary(installer); err != nil {
-		return err
-	}
 	// Also, update footloose IP from env
 	log.Infof("FETCHING FOOTLOOSE ADDRESS...")
 	fip := goos.Getenv("FOOTLOOSE_SERVER_ADDR")
@@ -244,6 +234,9 @@ func (a *MachineController) create(ctx context.Context, c *baremetalspecv1.BareM
 	if err = a.setNodeAnnotation(node, planKey, nodePlan.ToJSON()); err != nil {
 		return err
 	}
+	// CAPI machine controller requires providerID
+	bmm.Spec.ProviderID = node.Spec.ProviderID
+	bmm.Status.Ready = true
 	a.recordEvent(machine, corev1.EventTypeNormal, "Create", "created machine %s", machine.Name)
 	return nil
 }
@@ -468,6 +461,9 @@ func (a *MachineController) update(ctx context.Context, c *baremetalspecv1.BareM
 	}
 	node, err := a.findNodeByID(ids.MachineID, ids.SystemUUID)
 	if err != nil {
+		if apierrs.IsNotFound(err) { // isn't there; try to create it
+			return a.create(ctx, installer, c, machine, bmm)
+		}
 		return gerrors.Wrapf(err, "failed to find node by id: %s/%s", ids.MachineID, ids.SystemUUID)
 	}
 	contextLog = contextLog.WithFields(log.Fields{"node": node.Name})
