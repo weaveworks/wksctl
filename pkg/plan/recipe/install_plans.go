@@ -3,6 +3,7 @@ package recipe
 import (
 	"fmt"
 	"io/ioutil"
+	"sort"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/controller/manifests"
@@ -229,8 +230,13 @@ func BuildK8SPlan(kubernetesVersion string, kubeletNodeIP string, seLinuxInstall
 	}
 	processAdditionalArgs := func(cmdline string) string {
 		result := cmdline
+		strs := []string{}
 		for name, value := range extraArgs {
-			result = fmt.Sprintf("%s --%s=%s", result, name, value)
+			strs = append(strs, fmt.Sprintf("--%s='%s'", name, value))
+		}
+		sort.Strings(strs)
+		for _, str := range strs {
+			result = fmt.Sprintf("%s %s", result, str)
 		}
 		return processCloudProvider(result)
 	}
