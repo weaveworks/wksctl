@@ -7,6 +7,8 @@ defaults: &defaults
       environment:
         GOPATH: /go/
         SRCDIR: /src/github.com/weaveworks/wksctl
+        KUBECTL_URL: https://dl.k8s.io/v1.10.5/kubernetes-client-linux-amd64.tar.gz
+        KUBECTL_CHECKSUM: da9d557989a0b9671a610f21642052febb8f70c3cf144c98a8a4f7ecab6bafe2
   working_directory: /src/github.com/weaveworks/wksctl
 
 workflows:
@@ -69,14 +71,7 @@ jobs:
               make push
             fi
   unit-tests:
-    docker:
-      - image: docker.io/weaveworks/wksctl-build:switch-away-from-quay-53c3c712-WIP
-        environment:
-          GOPATH: /go
-          SRCDIR: /src/github.com/weaveworks/wksctl
-          KUBECTL_URL: https://dl.k8s.io/v1.10.5/kubernetes-client-linux-amd64.tar.gz
-          KUBECTL_CHECKSUM: da9d557989a0b9671a610f21642052febb8f70c3cf144c98a8a4f7ecab6bafe2
-    working_directory: /src/github.com/weaveworks/wksctl
+    <<: *defaults
     steps:
       - checkout
       - run:
@@ -188,18 +183,8 @@ jobs:
   # https://console.cloud.google.com/compute/instances?project=wks-tests
   #
   integration-tests-gcp-centos:
-    docker:
-      - image: docker.io/weaveworks/wksctl-build:switch-away-from-quay-53c3c712-WIP
-        environment:
-          GOPATH: /go/
-          SRCDIR: /src/github.com/weaveworks/wksctl
-          KUBECTL_URL: https://dl.k8s.io/v1.10.5/kubernetes-client-linux-amd64.tar.gz
-          KUBECTL_CHECKSUM: da9d557989a0b9671a610f21642052febb8f70c3cf144c98a8a4f7ecab6bafe2
-          CREATE_IMAGE: 1
-          USE_IMAGE: 1
-          IMAGE_NAME: centos-cloud/centos-7
-          WKP_DEBUG: true
-    working_directory: /src/github.com/weaveworks/wksctl
+
+    <<: *defaults
     steps:
       - checkout
       - setup_remote_docker
@@ -218,23 +203,15 @@ jobs:
           name: Centos integration tests
           command: |
             if [ -n "$SECRET_KEY" ]; then
+              export IMAGE_NAME=centos-cloud/centos-7
+              export WKP_DEBUG=true
               $SRCDIR/test/integration/bin/up.sh
               $SRCDIR/test/integration/bin/test.sh
               $SRCDIR/test/integration/bin/down.sh
             fi
       - run: "true"
   integration-tests-gcp-ubuntu:
-    docker:
-      - image: docker.io/weaveworks/wksctl-build:switch-away-from-quay-53c3c712-WIP
-        environment:
-          GOPATH: /go/
-          SRCDIR: /src/github.com/weaveworks/wksctl
-          KUBECTL_URL: https://dl.k8s.io/v1.10.5/kubernetes-client-linux-amd64.tar.gz
-          KUBECTL_CHECKSUM: da9d557989a0b9671a610f21642052febb8f70c3cf144c98a8a4f7ecab6bafe2
-          CREATE_IMAGE: 0
-          USE_IMAGE: 0
-          IMAGE_NAME: ubuntu-os-cloud/ubuntu-1804-bionic-v20190530
-    working_directory: /src/github.com/weaveworks/wksctl
+    <<: *defaults
     steps:
       - checkout
       - setup_remote_docker
@@ -254,24 +231,16 @@ jobs:
           name: Ubuntu integration tests
           command: |
             if [ -n "$SECRET_KEY" ]; then
+              export CREATE_IMAGE=0
+              export USE_IMAGE=0
+              export IMAGE_NAME=ubuntu-os-cloud/ubuntu-1804-bionic-v20190530
               $SRCDIR/test/integration/bin/up.sh
               $SRCDIR/test/integration/bin/test.sh
               $SRCDIR/test/integration/bin/down.sh
             fi
       - run: "true"
   integration-tests-gcp-rhel:
-    docker:
-      - image: docker.io/weaveworks/wksctl-build:switch-away-from-quay-53c3c712-WIP
-        environment:
-          GOPATH: /go/
-          SRCDIR: /src/github.com/weaveworks/wksctl
-          KUBECTL_URL: https://dl.k8s.io/v1.10.5/kubernetes-client-linux-amd64.tar.gz
-          KUBECTL_CHECKSUM: da9d557989a0b9671a610f21642052febb8f70c3cf144c98a8a4f7ecab6bafe2
-          CREATE_IMAGE: 1
-          USE_IMAGE: 1
-          IMAGE_NAME: rhel-cloud/rhel-7
-          WKP_DEBUG: false
-    working_directory: /src/github.com/weaveworks/wksctl
+    <<: *defaults
     steps:
       - checkout
       - setup_remote_docker
@@ -291,6 +260,8 @@ jobs:
           name: rhel integration tests
           command: |
             if [ -n "$SECRET_KEY" ]; then
+              export IMAGE_NAME=rhel-cloud/rhel-7
+              export WKP_DEBUG=false
               $SRCDIR/test/integration/bin/up.sh
               $SRCDIR/test/integration/bin/test.sh
               $SRCDIR/test/integration/bin/down.sh
