@@ -52,7 +52,7 @@ func UpdateWithGeneratedNames(r io.ReadCloser) (string, error) {
 
 	var buf strings.Builder
 	err = WriteMachines(&buf, machines, bml)
-	return buf.String(), nil
+	return buf.String(), err
 }
 
 func WriteMachines(w io.Writer, machines []*clusterv1.Machine, bml []*baremetalspecv1.BareMetalMachine) error {
