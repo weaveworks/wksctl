@@ -68,7 +68,7 @@ func setLabel(role role) string {
 	}
 }
 
-func appendMachine(t *testing.T, ordinal int, ml *[]*clusterv1.Machine, bl *[]*baremetalspecv1.BareMetalMachine, role role, publicIP, privateIP string) {
+func appendMachine(t *testing.T, ordinal int, ml *[]*clusterv1.Machine, bl *[]*baremetalspecv1.BareMetalMachine, clusterName, role role, publicIP, privateIP string) {
 	name := generateName(role, ordinal)
 	spec := baremetalspecv1.BareMetalMachine{
 		TypeMeta: metav1.TypeMeta{
@@ -103,6 +103,7 @@ func appendMachine(t *testing.T, ordinal int, ml *[]*clusterv1.Machine, bl *[]*b
 			},
 		},
 		Spec: clusterv1.MachineSpec{
+			ClusterName: clusterName,
 			InfrastructureRef: v1.ObjectReference{
 				APIVersion: "cluster.weave.works/v1alpha3",
 				Kind:       spec.TypeMeta.Kind,
@@ -122,7 +123,7 @@ func appendMachine(t *testing.T, ordinal int, ml *[]*clusterv1.Machine, bl *[]*b
 // numMachines is the number of machines to use. It can be less than the number
 // of provisionned terraform machines. -1 means use all machines setup by
 // terraform. The minimum number of machines to use is 2.
-func makeMachinesFromTerraform(t *testing.T, terraform *terraformOutput, numMachines int) (ml []*clusterv1.Machine, bl []*baremetalspecv1.BareMetalMachine) {
+func makeMachinesFromTerraform(t *testing.T, clusterName string, terraform *terraformOutput, numMachines int) (ml []*clusterv1.Machine, bl []*baremetalspecv1.BareMetalMachine) {
 	publicIPs := terraform.stringArrayVar(keyPublicIPs)
 	privateIPs := terraform.stringArrayVar(keyPrivateIPs)
 	assert.True(t, len(publicIPs) >= 2) // One master and at least one node
@@ -138,12 +139,12 @@ func makeMachinesFromTerraform(t *testing.T, terraform *terraformOutput, numMach
 	const numMasters = 1
 
 	for i := 0; i < numMasters; i++ {
-		appendMachine(t, i, &ml, &bl, master, publicIPs[i], privateIPs[i])
+		appendMachine(t, i, &ml, &bl, clusterName, master, publicIPs[i], privateIPs[i])
 	}
 
 	// Subsequent machines will be nodes.
 	for i := numMasters; i < numMachines; i++ {
-		appendMachine(t, i, &ml, &bl, node, publicIPs[i], privateIPs[i])
+		appendMachine(t, i, &ml, &bl, clusterName, node, publicIPs[i], privateIPs[i])
 	}
 
 	return ml, bl
@@ -397,7 +398,7 @@ func TestApply(t *testing.T) {
 	terraform, err := newTerraformOutputFromFile(options.terraform.outputPath)
 	require.NoError(t, err)
 
-	machines, bmMachines := makeMachinesFromTerraform(t, terraform, terraform.numMachines()-1)
+	machines, bmMachines := makeMachinesFromTerraform(t, c.Name, terraform, terraform.numMachines()-1)
 	setKubernetesVersion(machines, kubernetes.DefaultVersion)
 	writeYamlManifests(t, configPath("machines.yaml"), machines, bmMachines)
 
