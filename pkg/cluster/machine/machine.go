@@ -50,17 +50,6 @@ func FirstMaster(machines []*clusterv1.Machine, bl []*baremetalspecv1.BareMetalM
 	return nil, nil
 }
 
-// FirstMasterInArray scans the provided array of machines and return the first
-// one which is a "Master" or nil if none.
-func FirstMasterInArray(machines []clusterv1.Machine) *clusterv1.Machine {
-	for _, machine := range machines {
-		if IsMaster(&machine) {
-			return &machine
-		}
-	}
-	return nil
-}
-
 // ParseManifest parses the provided machines manifest file.
 func ParseManifest(file string) (ml []*clusterv1.Machine, bl []*baremetalspecv1.BareMetalMachine, err error) {
 	f, err := os.Open(file)

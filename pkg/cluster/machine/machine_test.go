@@ -58,17 +58,6 @@ func TestFirstMasterInPointersArray(t *testing.T) {
 	assert.Nil(t, v3)
 }
 
-func TestFirstMasterInArray(t *testing.T) {
-	assert.Equal(t, &master, machine.FirstMasterInArray([]clusterv1.Machine{
-		worker,
-		master,
-	}))
-	assert.Nil(t, machine.FirstMasterInArray([]clusterv1.Machine{
-		worker,
-	}))
-	assert.Nil(t, machine.FirstMasterInArray([]clusterv1.Machine{}))
-}
-
 const machinesValid = `
   apiVersion: "cluster.x-k8s.io/v1alpha3"
   kind: Machine
