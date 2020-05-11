@@ -3,7 +3,6 @@ package test
 import (
 	"bytes"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -16,8 +15,8 @@ import (
 	"github.com/weaveworks/wksctl/pkg/cluster/machine"
 	"github.com/weaveworks/wksctl/pkg/kubernetes"
 	"github.com/weaveworks/wksctl/pkg/plan/runners/ssh"
+	"github.com/weaveworks/wksctl/pkg/specs"
 
-	yaml "github.com/ghodss/yaml"
 	baremetalspecv1 "github.com/weaveworks/wksctl/pkg/baremetal/v1alpha3"
 	spawn "github.com/weaveworks/wksctl/test/integration/spawn"
 
@@ -26,6 +25,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/client-go/kubernetes/scheme"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"
 )
 
@@ -66,14 +66,15 @@ func setLabel(role role) string {
 	}
 }
 
-func appendMachine(t *testing.T, ordinal int, ml *clusterv1.MachineList, bl *baremetalspecv1.BareMetalMachineList, role role, publicIP, privateIP string) {
+func appendMachine(t *testing.T, ordinal int, ml *[]*clusterv1.Machine, bl *[]*baremetalspecv1.BareMetalMachine, role role, publicIP, privateIP string) {
+	name := generateName(role, ordinal)
 	spec := baremetalspecv1.BareMetalMachine{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "cluster.weave.works/v1alpha3",
 			Kind:       "BareMetalMachine",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			GenerateName: generateName(role, ordinal),
+			Name: name,
 		},
 		Spec: baremetalspecv1.BareMetalMachineSpec{
 			Public: baremetalspecv1.EndPoint{
@@ -85,29 +86,30 @@ func appendMachine(t *testing.T, ordinal int, ml *clusterv1.MachineList, bl *bar
 				Port:    22,
 			}},
 	}
-	bl.Items = append(bl.Items, spec)
+	*bl = append(*bl, &spec)
 
 	// Create a machine.
 	machine := clusterv1.Machine{
 		TypeMeta: metav1.TypeMeta{
-			APIVersion: "cluster.k8s.io/v1alpha3",
+			APIVersion: "cluster.x-k8s.io/v1alpha3",
 			Kind:       "Machine",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			GenerateName: generateName(role, ordinal),
+			Name: name,
 			Labels: map[string]string{
 				"set": setLabel(role),
 			},
 		},
 		Spec: clusterv1.MachineSpec{
 			InfrastructureRef: v1.ObjectReference{
-				Kind: spec.TypeMeta.Kind,
-				Name: spec.ObjectMeta.Name,
+				APIVersion: "cluster.weave.works/v1alpha3",
+				Kind:       spec.TypeMeta.Kind,
+				Name:       spec.ObjectMeta.Name,
 			},
 		},
 	}
 
-	ml.Items = append(ml.Items, machine)
+	*ml = append(*ml, &machine)
 }
 
 // makeMachinesFromTerraform creates cluster-api Machine objects from a
@@ -118,19 +120,7 @@ func appendMachine(t *testing.T, ordinal int, ml *clusterv1.MachineList, bl *bar
 // numMachines is the number of machines to use. It can be less than the number
 // of provisionned terraform machines. -1 means use all machines setup by
 // terraform. The minimum number of machines to use is 2.
-func makeMachinesFromTerraform(t *testing.T, terraform *terraformOutput, numMachines int) (*clusterv1.MachineList, *baremetalspecv1.BareMetalMachineList) {
-	ml := &clusterv1.MachineList{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: "cluster.k8s.io/v1alpha3",
-			Kind:       "MachineList",
-		},
-	}
-	bl := &baremetalspecv1.BareMetalMachineList{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: "baremetal.weave.works/v1alpha3",
-			Kind:       "BareMetalMachineList",
-		},
-	}
+func makeMachinesFromTerraform(t *testing.T, terraform *terraformOutput, numMachines int) (ml []*clusterv1.Machine, bl []*baremetalspecv1.BareMetalMachine) {
 	publicIPs := terraform.stringArrayVar(keyPublicIPs)
 	privateIPs := terraform.stringArrayVar(keyPrivateIPs)
 	assert.True(t, len(publicIPs) >= 2) // One master and at least one node
@@ -146,42 +136,28 @@ func makeMachinesFromTerraform(t *testing.T, terraform *terraformOutput, numMach
 	const numMasters = 1
 
 	for i := 0; i < numMasters; i++ {
-		appendMachine(t, i, ml, bl, master, publicIPs[i], privateIPs[i])
+		appendMachine(t, i, &ml, &bl, master, publicIPs[i], privateIPs[i])
 	}
 
 	// Subsequent machines will be nodes.
 	for i := numMasters; i < numMachines; i++ {
-		appendMachine(t, i, ml, bl, node, publicIPs[i], privateIPs[i])
+		appendMachine(t, i, &ml, &bl, node, publicIPs[i], privateIPs[i])
 	}
 
 	return ml, bl
 }
 
-func writeYamlManifests(t *testing.T, path string, objects ...interface{}) {
-	var data []byte
-	for _, o := range objects {
-		y, err := yaml.Marshal(o)
-		assert.NoError(t, err)
-		data = append(data, y...)
-	}
-	err := ioutil.WriteFile(path, data, 0644)
+func writeYamlManifests(t *testing.T, path string, machines []*clusterv1.Machine, bml []*baremetalspecv1.BareMetalMachine) {
+	var buf bytes.Buffer
+	err := machine.WriteMachines(&buf, machines, bml)
+	assert.NoError(t, err)
+	err = ioutil.WriteFile(path, buf.Bytes(), 0644)
 	assert.NoError(t, err)
 }
 
-func firstMaster(l *clusterv1.MachineList, bl *baremetalspecv1.BareMetalMachineList) (*clusterv1.Machine, *baremetalspecv1.BareMetalMachine) {
-	for i := range l.Items {
-		m := &l.Items[i]
-		if machine.IsMaster(m) {
-			return m, &bl.Items[i]
-		}
-	}
-	return nil, nil
-}
-
-func numMasters(l *clusterv1.MachineList) int {
+func numMasters(l []*clusterv1.Machine) int {
 	n := 0
-	for i := range l.Items {
-		m := &l.Items[i]
+	for _, m := range l {
 		if machine.IsMaster(m) {
 			n++
 		}
@@ -189,10 +165,9 @@ func numMasters(l *clusterv1.MachineList) int {
 	return n
 }
 
-func numWorkers(l *clusterv1.MachineList) int {
+func numWorkers(l []*clusterv1.Machine) int {
 	n := 0
-	for i := range l.Items {
-		m := &l.Items[i]
+	for _, m := range l {
 		if machine.IsNode(m) {
 			n++
 		}
@@ -200,37 +175,23 @@ func numWorkers(l *clusterv1.MachineList) int {
 	return n
 }
 
-func setKubernetesVersion(l *clusterv1.MachineList, version string) {
-	for i := range l.Items {
-		l.Items[i].Spec.Version = &version
+func setKubernetesVersion(l []*clusterv1.Machine, version string) {
+	for i := range l {
+		l[i].Spec.Version = &version
 	}
-}
-
-func parseCluster(t *testing.T, r io.Reader) (*clusterv1.Cluster, *baremetalspecv1.BareMetalCluster) {
-	bytes, err := ioutil.ReadAll(r)
-	assert.NoError(t, err)
-	list := v1.List{}
-	err = yaml.Unmarshal(bytes, list)
-	assert.NoError(t, err)
-	assert.Equal(t, 2, len(list.Items))
-	cluster := list.Items[0].Object.(*clusterv1.Cluster)
-	bmCluster := list.Items[1].Object.(*baremetalspecv1.BareMetalCluster)
-	return cluster, bmCluster
-
 }
 
 func parseClusterManifest(t *testing.T, file string) (*clusterv1.Cluster, *baremetalspecv1.BareMetalCluster) {
 	f, err := os.Open(file)
 	assert.NoError(t, err)
-	defer f.Close()
-	return parseCluster(t, f)
+	cluster, bmCluster, err := specs.ParseCluster(f)
+	assert.NoError(t, err)
+	return cluster, bmCluster
 }
 
 // The installer names the kubeconfig file from the cluster namespace and name
 // ~/.wks
-func wksKubeconfig(t *testing.T, l *clusterv1.MachineList) string {
-	master := machine.FirstMasterInArray(l.Items)
-	assert.NotNil(t, master)
+func wksKubeconfig(t *testing.T) string {
 	kubeconfig := clientcmd.RecommendedHomeFile
 	_, err := os.Stat(kubeconfig)
 	assert.NoError(t, err)
@@ -389,6 +350,9 @@ func writeTmpFile(runner *ssh.Client, inputFilename, outputFilename string) erro
 }
 
 func TestApply(t *testing.T) {
+	assert.NoError(t, clusterv1.AddToScheme(scheme.Scheme))
+	assert.NoError(t, baremetalspecv1.AddToScheme(scheme.Scheme))
+
 	exe := run.NewExecutor()
 
 	// Prepare the machines manifest from terraform output.
@@ -418,7 +382,8 @@ func TestApply(t *testing.T) {
 	clusterManifestPath := configPath("cluster.yaml")
 	machinesManifestPath := configPath("machines.yaml")
 	_, c := parseClusterManifest(t, clusterManifestPath)
-	_, m := firstMaster(machines, bmMachines)
+	_, m := machine.FirstMaster(machines, bmMachines)
+	assert.NotNil(t, m)
 	ip := m.Spec.Public.Address
 	port := m.Spec.Public.Port
 	sshClient, err := ssh.NewClient(ssh.ClientParams{
@@ -463,7 +428,7 @@ func TestApply(t *testing.T) {
 	assert.Equal(t, 0, run.ExitCode())
 
 	// Tell kube-state-harness about the location of the kubeconfig file.
-	kubeconfig := wksKubeconfig(t, machines)
+	kubeconfig := wksKubeconfig(t)
 	err = kube.SetKubeconfig(kubeconfig)
 	assert.NoError(t, err)
 
