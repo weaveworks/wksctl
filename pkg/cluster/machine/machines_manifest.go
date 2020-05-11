@@ -7,6 +7,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/thanhpk/randstr"
+	baremetalspecv1 "github.com/weaveworks/wksctl/pkg/baremetal/v1alpha3"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"
 	"sigs.k8s.io/yaml"
 )
@@ -50,24 +51,35 @@ func UpdateWithGeneratedNames(r io.ReadCloser) (string, error) {
 	}
 
 	var buf strings.Builder
+	err = WriteMachines(&buf, machines, bml)
+	return buf.String(), nil
+}
+
+func WriteMachines(w io.Writer, machines []*clusterv1.Machine, bml []*baremetalspecv1.BareMetalMachine) error {
 	// Need to do this in a loop because we want a stream not an array
 	for _, machine := range machines {
 		manifestBytes, err := yaml.Marshal(machine)
 		if err != nil {
-			return "", err
+			return err
 		}
-		buf.WriteString("---\n")
-		buf.Write(manifestBytes)
+		w.Write([]byte("---\n"))
+		_, err = w.Write(manifestBytes)
+		if err != nil {
+			return err
+		}
 	}
 	for _, machine := range bml {
 		manifestBytes, err := yaml.Marshal(machine)
 		if err != nil {
-			return "", err
+			return err
 		}
-		buf.WriteString("---\n")
-		buf.Write(manifestBytes)
+		w.Write([]byte("---\n"))
+		_, err = w.Write(manifestBytes)
+		if err != nil {
+			return err
+		}
 	}
-	return buf.String(), nil
+	return nil
 }
 
 func readNames(machines []*clusterv1.Machine) map[string]struct{} {
