@@ -170,7 +170,7 @@ func (r *MachineController) Reconcile(req ctrl.Request) (_ ctrl.Result, reterr e
 	// Attempt to Patch the BareMetalMachine object and status after each reconciliation.
 	defer func() {
 		if err := patchHelper.Patch(ctx, bmm); err != nil {
-			contextLog.Error(err, "failed to patch BareMetalMachine")
+			contextLog.Errorf("failed to patch BareMetalMachine: %v", err)
 			if reterr == nil {
 				reterr = err
 			}
@@ -198,7 +198,7 @@ func (r *MachineController) Reconcile(req ctrl.Request) (_ ctrl.Result, reterr e
 }
 
 func (a *MachineController) create(ctx context.Context, installer *os.OS, c *baremetalspecv1.BareMetalCluster, machine *clusterv1.Machine, bmm *baremetalspecv1.BareMetalMachine) error {
-	contextLog := log.WithFields(log.Fields{"context": ctx, "cluster": *c, "machine": *machine})
+	contextLog := log.WithFields(log.Fields{"machine": machine.Name, "cluster": c.Name})
 	contextLog.Info("creating machine...")
 
 	// Also, update footloose IP from env
