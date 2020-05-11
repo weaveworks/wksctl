@@ -103,8 +103,8 @@ jobs:
     machine:
       docker_layer_caching: true
     environment:
-      GOURL: https://dl.google.com/go/go1.12.7.linux-amd64.tar.gz
-      GOCHECKSUM: 66d83bfb5a9ede000e33c6579a91a29e6b101829ad41fffb5c5bb6c900e109d9
+      GOURL: https://dl.google.com/go/go1.13.5.linux-amd64.tar.gz
+      GOCHECKSUM: 512103d7ad296467814a6e3f635631bd35574cab3369a97a323c9a585ccaa569
       GOROOT: /home/circleci/goroot
       GOPATH: /home/circleci/go
       SRCDIR: /home/circleci/src/github.com/weaveworks/wksctl
@@ -127,8 +127,8 @@ jobs:
     machine:
       docker_layer_caching: true
     environment:
-      GOURL: https://dl.google.com/go/go1.12.7.linux-amd64.tar.gz
-      GOCHECKSUM: 66d83bfb5a9ede000e33c6579a91a29e6b101829ad41fffb5c5bb6c900e109d9
+      GOURL: https://dl.google.com/go/go1.13.5.linux-amd64.tar.gz
+      GOCHECKSUM: 512103d7ad296467814a6e3f635631bd35574cab3369a97a323c9a585ccaa569
       GOROOT: /home/circleci/goroot
       GOPATH: /home/circleci/go
       SRCDIR: /home/circleci/src/github.com/weaveworks/wksctl
