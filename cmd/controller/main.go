@@ -75,6 +75,8 @@ func preRun(cmd *cobra.Command, args []string) {
 }
 
 func run(cmd *cobra.Command, args []string) {
+	log.Infof("Starting wks controller version %s", version)
+
 	cfg, err := config.GetConfig()
 	if err != nil {
 		log.Fatalf("failed to get the coordinates of the API server: %v", err)
