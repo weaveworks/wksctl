@@ -31,6 +31,7 @@ spec:
       cidrBlocks: [192.168.0.0/16]
     serviceDomain: cluster.local
   infrastructureRef:
+    apiVersion: "cluster.weave.works/v1alpha3"
     kind: BareMetalCluster
     name: test-multimaster
 ---
@@ -86,6 +87,7 @@ const machinesYAML = `
   spec:
     clusterName: test-multimaster
     infrastructureRef:
+      apiVersion: "cluster.weave.works/v1alpha3"
       kind: BareMetalMachine
       name: master-1
 ---
@@ -110,6 +112,7 @@ const machinesYAML = `
   spec:
     clusterName: test-multimaster
     infrastructureRef:
+      apiVersion: "cluster.weave.works/v1alpha3"
       kind: BareMetalMachine
       name: master-2
 ---
@@ -134,6 +137,7 @@ const machinesYAML = `
   spec:
     clusterName: test-multimaster
     infrastructureRef:
+      apiVersion: "cluster.weave.works/v1alpha3"
       kind: BareMetalMachine
       name: master-3
 ---
@@ -158,6 +162,7 @@ const machinesYAML = `
   spec:
     clusterName: test-multimaster
     infrastructureRef:
+      apiVersion: "cluster.weave.works/v1alpha3"
       kind: BareMetalMachine
       name: worker-1
 ---
