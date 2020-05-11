@@ -103,7 +103,7 @@ jobs:
     machine:
       docker_layer_caching: true
     environment:
-      GOURL: https://dl.google.com/go/go1.12.7.linux-amd64.tar.gz
+      GOURL: https://dl.google.com/go/go1.13.5.linux-amd64.tar.gz
       GOCHECKSUM: 66d83bfb5a9ede000e33c6579a91a29e6b101829ad41fffb5c5bb6c900e109d9
       GOROOT: /home/circleci/goroot
       GOPATH: /home/circleci/go
@@ -127,7 +127,7 @@ jobs:
     machine:
       docker_layer_caching: true
     environment:
-      GOURL: https://dl.google.com/go/go1.12.7.linux-amd64.tar.gz
+      GOURL: https://dl.google.com/go/go1.13.5.linux-amd64.tar.gz
       GOCHECKSUM: 66d83bfb5a9ede000e33c6579a91a29e6b101829ad41fffb5c5bb6c900e109d9
       GOROOT: /home/circleci/goroot
       GOPATH: /home/circleci/go
