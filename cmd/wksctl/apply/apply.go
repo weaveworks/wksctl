@@ -180,7 +180,7 @@ func (a *Applier) initiateCluster(clusterManifestPath, machinesManifestPath stri
 		SealedSecretCertPath: a.Params.sealedSecretCertPath,
 		ConfigDirectory:      configDir,
 		ImageRepository:      sp.ClusterSpec.ImageRepository,
-		ExternalLoadBalancer: sp.ClusterSpec.APIServer.ExternalLoadBalancer,
+		ControlPlaneEndpoint: sp.ClusterSpec.ControlPlaneEndpoint,
 		AdditionalSANs:       sp.ClusterSpec.APIServer.AdditionalSANs,
 		Namespace:            ns,
 		AddonNamespaces:      addonNamespaces,

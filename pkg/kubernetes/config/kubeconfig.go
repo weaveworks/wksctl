@@ -97,8 +97,8 @@ func GetRemoteKubeconfig(sp *specs.Specs, sshKeyPath string, verbose, skipTLSVer
 	}
 
 	endpoint := sp.GetMasterPublicAddress()
-	if sp.ClusterSpec.APIServer.ExternalLoadBalancer != "" {
-		endpoint = sp.ClusterSpec.APIServer.ExternalLoadBalancer
+	if sp.ClusterSpec.ControlPlaneEndpoint != "" {
+		endpoint = sp.ClusterSpec.ControlPlaneEndpoint
 	}
 
 	return Sanitize(configStr, Params{

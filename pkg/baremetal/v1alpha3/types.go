@@ -27,7 +27,8 @@ type BareMetalClusterSpec struct {
 	CRI             ContainerRuntime `json:"cri"`
 	ImageRepository string           `json:"imageRepository,omitempty"`
 
-	APIServer APIServer `json:"apiServer,omitempty"`
+	ControlPlaneEndpoint string    `json:"controlPlaneEndpoint,omitempty"`
+	APIServer            APIServer `json:"apiServer,omitempty"`
 
 	KubeletArguments []ServerArgument `json:"kubeletArguments,omitempty"`
 
@@ -65,9 +66,8 @@ type ContainerRuntime struct {
 }
 
 type APIServer struct {
-	ExternalLoadBalancer string           `json:"externalLoadBalancer"`
-	AdditionalSANs       []string         `json:"additionalSANs,omitempty"`
-	ExtraArguments       []ServerArgument `json:"extraArguments,omitempty"`
+	AdditionalSANs []string         `json:"additionalSANs,omitempty"`
+	ExtraArguments []ServerArgument `json:"extraArguments,omitempty"`
 }
 
 type ServerArgument struct {
