@@ -130,7 +130,7 @@ push:
 # We select which directory we want to descend into to not execute integration
 # tests here.
 unit-tests: generated
-	go test -v ./cmd/... ./pkg/...
+	go test -p 1 -v ./cmd/... ./pkg/...
 
 # Tests running in containers
 mkfile_path := $(abspath $(lastword $(MAKEFILE_LIST)))
