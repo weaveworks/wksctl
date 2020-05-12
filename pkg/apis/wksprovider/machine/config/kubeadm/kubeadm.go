@@ -19,9 +19,6 @@ type ClusterConfigurationParams struct {
 	// Used to configure kubeadm and kubelet with a cloud provider
 	CloudProvider   string
 	ImageRepository string
-	// ExternalLoadBalancer is the name or IP of the external load balancer setup
-	// in from the the API master nodes.
-	ExternalLoadBalancer string
 	// AdditionalSANs can hold additional SANs to add to the API server certificate.
 	AdditionalSANs []string
 	// Additional arguments for auth, etc.
@@ -33,7 +30,6 @@ type ClusterConfigurationParams struct {
 func NewClusterConfiguration(params ClusterConfigurationParams) *kubeadmapi.ClusterConfiguration {
 	SANs := []string{}
 	SANs = append(SANs, params.NodeIPs...)
-	SANs = append(SANs, params.ExternalLoadBalancer)
 	SANs = append(SANs, params.AdditionalSANs...)
 
 	cc := &kubeadmapi.ClusterConfiguration{

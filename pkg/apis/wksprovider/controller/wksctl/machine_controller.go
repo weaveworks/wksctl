@@ -713,7 +713,7 @@ func (a *MachineController) getNodePlan(provider *baremetalspecv1.BareMetalClust
 		ProviderConfigMaps:   configMaps,
 		AuthConfigMap:        authConfigMap,
 		Namespace:            namespace,
-		ExternalLoadBalancer: provider.Spec.APIServer.ExternalLoadBalancer,
+		ControlPlaneEndpoint: provider.Spec.ControlPlaneEndpoint,
 	})
 	if err != nil {
 		return nil, gerrors.Wrapf(err, "failed to create machine plan for %s", machine.Name)

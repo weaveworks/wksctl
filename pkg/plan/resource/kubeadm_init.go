@@ -63,9 +63,6 @@ type KubeadmInit struct {
 	// ImageRepository sets the container registry to pull images from. If empty,
 	// `k8s.gcr.io` will be used by default.
 	ImageRepository string `structs:"imageRepository"`
-	// ExternalLoadBalancer is the name or IP of the external load balancer setup
-	// in from the the API master nodes.
-	ExternalLoadBalancer string
 	// AdditionalSANs can hold additional SANs to add to the API server certificate.
 	AdditionalSANs []string
 	// The namespace in which to init kubeadm
@@ -101,7 +98,6 @@ func (ki *KubeadmInit) Apply(runner plan.Runner, diff plan.Diff) (bool, error) {
 		ControlPlaneEndpoint: ki.ControlPlaneEndpoint,
 		CloudProvider:        ki.CloudProvider,
 		ImageRepository:      ki.ImageRepository,
-		ExternalLoadBalancer: ki.ExternalLoadBalancer,
 		AdditionalSANs:       ki.AdditionalSANs,
 		ExtraArgs:            ki.ExtraAPIServerArgs,
 	}))

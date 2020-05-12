@@ -58,10 +58,6 @@ spec:
                   items:
                     type: string
                   type: array
-                externalLoadBalancer:
-                  type: string
-              required:
-              - externalLoadBalancer
               type: object
             authenticationWebhook:
               properties:
@@ -90,6 +86,8 @@ spec:
               - url
               type: object
             cloudProvider:
+              type: string
+            controlPlaneEndpoint:
               type: string
             cri:
               properties:

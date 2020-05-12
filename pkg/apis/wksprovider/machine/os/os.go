@@ -175,7 +175,7 @@ type SeedNodeParams struct {
 	ConfigDirectory      string
 	Namespace            string
 	ImageRepository      string
-	ExternalLoadBalancer string
+	ControlPlaneEndpoint string
 	AdditionalSANs       []string
 	AddonNamespaces      map[string]string
 }
@@ -258,26 +258,27 @@ func (o OS) CreateSeedNodeSetupPlan(params SeedNodeParams) (*plan.Plan, error) {
 
 	apiServerArgs := getAPIServerArgs(&cluster.Spec, pemSecretResources)
 
-	controlPlaneEndpointIP := params.ExternalLoadBalancer
-	if controlPlaneEndpointIP == "" {
-		controlPlaneEndpointIP = params.PrivateIP
+	// Backwards-compatibility: fall back if not specified
+	controlPlaneEndpoint := params.ControlPlaneEndpoint
+	if controlPlaneEndpoint == "" {
+		// TODO: dynamically inject the API server's port.
+		controlPlaneEndpoint = params.PrivateIP + ":6443"
 	}
+
 	kubeadmInitResource :=
 		&resource.KubeadmInit{
-			PublicIP:       params.PublicIP,
-			PrivateIP:      params.PrivateIP,
-			KubeletConfig:  &params.KubeletConfig,
-			ConntrackMax:   cfg.ConntrackMax,
-			UseIPTables:    cfg.UseIPTables,
-			SSHKeyPath:     params.SSHKeyPath,
-			BootstrapToken: params.BootstrapToken,
-			// TODO: dynamically inject the API server's port.
-			ControlPlaneEndpoint:  fmt.Sprintf("%s:6443", controlPlaneEndpointIP),
+			PublicIP:              params.PublicIP,
+			PrivateIP:             params.PrivateIP,
+			KubeletConfig:         &params.KubeletConfig,
+			ConntrackMax:          cfg.ConntrackMax,
+			UseIPTables:           cfg.UseIPTables,
+			SSHKeyPath:            params.SSHKeyPath,
+			BootstrapToken:        params.BootstrapToken,
+			ControlPlaneEndpoint:  controlPlaneEndpoint,
 			IgnorePreflightErrors: cfg.IgnorePreflightErrors,
 			KubernetesVersion:     kubernetesVersion,
 			CloudProvider:         params.KubeletConfig.CloudProvider,
 			ImageRepository:       params.ImageRepository,
-			ExternalLoadBalancer:  params.ExternalLoadBalancer,
 			AdditionalSANs:        params.AdditionalSANs,
 			Namespace:             object.String(params.Namespace),
 			NodeName:              cfg.HostnameOverride,
@@ -479,7 +480,7 @@ func (o OS) createSeedNodePlanConfigMapManifest(params SeedNodeParams, providerS
 		AuthConfigMap:        authConfigMap,
 		Namespace:            params.Namespace,
 		AddonNamespaces:      params.AddonNamespaces,
-		ExternalLoadBalancer: providerSpec.APIServer.ExternalLoadBalancer,
+		ControlPlaneEndpoint: providerSpec.ControlPlaneEndpoint,
 	}
 	var paramBuffer bytes.Buffer
 	err := gob.NewEncoder(&paramBuffer).Encode(nodeParams)
@@ -1018,7 +1019,7 @@ type NodeParams struct {
 	ProviderConfigMaps       map[string]*v1.ConfigMap
 	AuthConfigMap            *v1.ConfigMap
 	Namespace                string
-	ExternalLoadBalancer     string // used instead of MasterIP if existed
+	ControlPlaneEndpoint     string // used instead of MasterIP if existed
 	AddonNamespaces          map[string]string
 }
 
@@ -1094,7 +1095,6 @@ func (o OS) CreateNodeSetupPlan(params NodeParams) (*plan.Plan, error) {
 		DiscoveryTokenCaCertHash: params.DiscoveryTokenCaCertHash,
 		CertificateKey:           params.CertificateKey,
 		IgnorePreflightErrors:    cfg.IgnorePreflightErrors,
-		ExternalLoadBalancer:     params.ExternalLoadBalancer,
 		KubernetesVersion:        params.KubernetesVersion,
 	}
 	b.AddResource("kubeadm:join", kadmJoinRsrc, plan.DependOn("kubeadm:prejoin"))
