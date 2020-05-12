@@ -15,7 +15,6 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"github.com/weaveworks/wksctl/pkg/cluster/nodes"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -354,7 +353,11 @@ func TestMultimasterSetup(t *testing.T) {
 
 	var nodeList corev1.NodeList
 	for {
-		jsonOut := run(t, "kubectl", "get", "nodes", "-o", "json", fmt.Sprintf("--kubeconfig=%s", kubeconfig(out)))
+		jsonOut, stderr := doRun("kubectl", "get", "nodes", "-o", "json", fmt.Sprintf("--kubeconfig=%s", kubeconfig(out)))
+		if stderr != "" {
+			log.Warnf("error from kubectl; ignoring: %s", stderr)
+			continue
+		}
 		if err := json.Unmarshal([]byte(jsonOut), &nodeList); err != nil {
 			log.Warnf("Error deserialising output of kubectl get nodes: %s", err)
 		}
@@ -393,7 +396,7 @@ func TestMultimasterSetup(t *testing.T) {
 
 	if !t.Failed() { // Otherwise leave the footloose "VMs" & config files around for debugging purposes.
 		// Clean up:
-		defer run(t, "footloose", "delete", "-c", "../../../examples/footloose/centos7/docker/multimaster.yaml")
+		defer runIgnoreError(t, "footloose", "delete", "-c", "../../../examples/footloose/centos7/docker/multimaster.yaml")
 		defer os.Remove(dirName)
 		defer os.Remove(clusterYAML)
 		defer os.Remove(machinesYAML)
@@ -424,25 +427,30 @@ func port(t *testing.T, name string, defaultValue int) int {
 }
 
 func run(t *testing.T, name string, arg ...string) string {
-	return doRun(t, false, name, arg...)
+	t.Helper()
+	stdout, stderr := doRun(name, arg...)
+	if stderr != "" {
+		log.Infof("Command %s failed. STDOUT: %s\nSTDERR: %s", name, stdout, stderr)
+		t.FailNow()
+	}
+	return stdout
 }
 
 func runIgnoreError(t *testing.T, name string, arg ...string) string {
-	return doRun(t, true, name, arg...)
+	out, _ := doRun(name, arg...)
+	return out
 }
 
-func doRun(t *testing.T, ignoreError bool, name string, arg ...string) string {
-	log.Infof("running %s %s", name, arg)
-	cmd := exec.Command(name, arg...)
-	out, err := cmd.Output()
-	if err != nil && !ignoreError {
-		stderr := err.Error()
+func doRun(name string, arg ...string) (string, string) {
+	log.Infof("running %s %s", name, strings.Join(arg, " "))
+	out, err := exec.Command(name, arg...).Output()
+	if err != nil {
 		if ee, ok := err.(*exec.ExitError); ok {
-			stderr = string(ee.Stderr)
+			return string(out), string(ee.Stderr)
 		}
-		require.NoError(t, err, "Command %s failed. STDOUT: %s\nSTDERR: %s", cmd.Path, string(out), stderr)
+		return string(out), err.Error()
 	}
-	return string(out)
+	return string(out), ""
 }
 
 func sanitizeIP(ip string) string {
