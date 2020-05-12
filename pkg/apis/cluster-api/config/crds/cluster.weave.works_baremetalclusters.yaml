@@ -58,6 +58,18 @@ spec:
                   items:
                     type: string
                   type: array
+                extraArguments:
+                  items:
+                    properties:
+                      name:
+                        type: string
+                      value:
+                        type: string
+                    required:
+                    - name
+                    - value
+                    type: object
+                  type: array
               type: object
             authenticationWebhook:
               properties:
@@ -106,6 +118,18 @@ spec:
               type: string
             imageRepository:
               type: string
+            kubeletArguments:
+              items:
+                properties:
+                  name:
+                    type: string
+                  value:
+                    type: string
+                required:
+                - name
+                - value
+                type: object
+              type: array
             os:
               properties:
                 files:
