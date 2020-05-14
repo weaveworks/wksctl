@@ -162,6 +162,13 @@ spec:
           - sshKeyPath
           - user
           type: object
+        status:
+          properties:
+            ready:
+              type: boolean
+          required:
+          - ready
+          type: object
       type: object
   version: v1alpha3
   versions:
