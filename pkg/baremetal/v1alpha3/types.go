@@ -12,7 +12,8 @@ type BareMetalCluster struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec BareMetalClusterSpec `json:"spec,omitempty"`
+	Spec   BareMetalClusterSpec   `json:"spec,omitempty"`
+	Status BareMetalClusterStatus `json:"status,omitempty"`
 }
 
 type BareMetalClusterSpec struct {
@@ -35,6 +36,10 @@ type BareMetalClusterSpec struct {
 	Addons []Addon `json:"addons,omitempty"`
 
 	CloudProvider string `json:"cloudProvider,omitempty"`
+}
+
+type BareMetalClusterStatus struct {
+	Ready bool `json:"ready"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

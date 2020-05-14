@@ -11,6 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/cluster-api/util"
+	"sigs.k8s.io/cluster-api/util/patch"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -54,13 +55,29 @@ func (a *ClusterReconciler) Reconcile(req ctrl.Request) (_ ctrl.Result, reterr e
 		return ctrl.Result{}, nil
 	}
 
+	// Initialize the patch helper
+	patchHelper, err := patch.NewHelper(bmc, a.client)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	// Attempt to Patch the BareMetalMachine object and status after each reconciliation.
+	defer func() {
+		if err := patchHelper.Patch(ctx, bmc); err != nil {
+			contextLog.Errorf("failed to patch BareMetalCluster: %v", err)
+			if reterr == nil {
+				reterr = err
+			}
+		}
+	}()
+
 	// Object still there but with deletion timestamp => run our finalizer
 	if !bmc.ObjectMeta.DeletionTimestamp.IsZero() {
 		a.recordEvent(cluster, corev1.EventTypeNormal, "Delete", "Deleted cluster %v", cluster.Name)
 		return ctrl.Result{}, errors.New("ClusterReconciler#Delete not implemented")
 	}
 
-	// FIXME!  do we need any more?
+	bmc.Status.Ready = true // TODO: know whether it is really ready
 
 	return ctrl.Result{}, nil
 }
