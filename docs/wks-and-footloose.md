@@ -20,13 +20,35 @@
 
 1. Install [footloose](https://github.com/weaveworks/footloose):
 
-   ```console
-   GO111MODULE=on go install github.com/weaveworks/footloose
-   ```
+   - Using Linux:
+
+     ```console
+     VERSION=$(curl -sSf https://api.github.com/repos/weaveworks/footloose/releases | jq -r '.[0].name')
+     curl -Lo footloose "https://github.com/weaveworks/footloose/releases/download/$VERSION/footloose-$VERSION-linux-x86_64"
+     chmod +x footloose
+     sudo mv footloose /usr/local/bin/
+     ```
+
+   - Using macOS:
+
+     On macOS we provide a direct download and a homebrew tap:
+
+     ```console
+     VERSION=$(curl -sSf https://api.github.com/repos/weaveworks/footloose/releases | jq -r '.[0].name')
+     curl --silent --location "https://github.com/weaveworks/footloose/releases/download/$VERSION/footloose-$VERSION-darwin-x86_64.tar.gz" | tar xz
+     sudo mv footloose /usr/local/bin
+     ```
+
+     or
+
+     ```console
+     brew tap weaveworks/tap
+     brew install weaveworks/tap/footloose
+     ```
 
 1. Start two machines using `footloose`:
 
-These commands assume you are in the `examples/footloose` directory.
+   These commands assume you are in the `examples/footloose` directory.
 
    ```console
    $ footloose create -c ${DISTRO}/${BACKEND}/singlemaster.yaml
