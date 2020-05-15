@@ -127,8 +127,6 @@ jobs:
       GOROOT: /home/circleci/goroot
       GOPATH: /home/circleci/go
       SRCDIR: /home/circleci/src/github.com/weaveworks/wksctl
-      HUGO_URL: https://github.com/gohugoio/hugo/releases/download/v0.55.6/hugo_0.55.6_Linux-64bit.tar.gz
-      HUGO_CHECKSUM: 39d3119cdb9ba5d6f1f1b43693e707937ce851791a2ea8d28003f49927c428f4
       FOOTLOOSE_URL: https://github.com/weaveworks/footloose/releases/download/0.5.0/footloose-0.5.0-linux-x86_64
       FOOTLOOSE_CHECKSUM: 0e4e49e81940c5876eafa26607154acd788d9979e9f4a4215f17532a3ea5429a
       KUBECTL_URL: https://dl.k8s.io/v1.10.5/kubernetes-client-linux-amd64.tar.gz
@@ -141,14 +139,6 @@ jobs:
           command: |
             (cd ~ && curl -L $GOURL -o go.tar.gz && echo "$GOCHECKSUM go.tar.gz" | sha256sum -c)
             mkdir -p $GOROOT && tar xf ~/go.tar.gz -C $GOROOT --strip-components 1
-      - run:
-          name: Install hugo
-          command: |
-            curl -L $HUGO_URL -o hugo.tar.gz
-            echo "$HUGO_CHECKSUM hugo.tar.gz" | sha256sum -c
-            tar xzf hugo.tar.gz hugo
-            chmod +x hugo
-            sudo mv hugo /usr/local/bin
       - run:
           name: Install footloose
           command: |
