@@ -3,6 +3,7 @@ package resource
 import (
 	"fmt"
 
+	"github.com/pkg/errors"
 	"github.com/weaveworks/wksctl/pkg/plan"
 )
 
@@ -31,7 +32,7 @@ func (r *Run) Apply(runner plan.Runner, diff plan.Diff) (bool, error) {
 		*r.Output = str
 	}
 	if err != nil {
-		return false, err
+		return false, errors.Wrap(err, str)
 	}
 	return true, nil
 }
