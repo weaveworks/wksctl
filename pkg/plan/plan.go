@@ -1048,7 +1048,7 @@ func (p *Plan) processResource(
 			output.ObservedError = err.Error()
 			logger.Info("Failing (Bad Query)")
 			sendResults(output, conn)
-			return fmt.Errorf(err.Error())
+			return err
 		}
 		currentState = queriedState
 	} else {
@@ -1067,7 +1067,7 @@ func (p *Plan) processResource(
 			}
 			logger.Error("Failed")
 			fmt.Fprintf(os.Stderr, "%s\n", err.Error())
-			return fmt.Errorf(err.Error())
+			return err
 		} else {
 			output.Updated = propagate
 		}
