@@ -241,30 +241,59 @@ func BuildK8SPlan(kubernetesVersion string, kubeletNodeIP string, seLinuxInstall
 		return processCloudProvider(result)
 	}
 
-	if disableSwap {
-		swapDisable := "configure:kubernetes-swap-disable"
-		kubeletDeps = append(kubeletDeps, swapDisable)
-		b.AddResource(
-			swapDisable,
-			&resource.File{Content: swapContents, Destination: "/etc/systemd/system/kubelet.service.d/11-wks-kubelet.conf"},
-			plan.DependOn("create-dir:kubelet.service.d"))
-		kubeletSysconfig := "configure:kubelet-sysconfig"
-		kubeletDeps = append(kubeletDeps, kubeletSysconfig)
-		b.AddResource(
-			kubeletSysconfig,
-			&resource.File{
-				Content:     processAdditionalArgs(fmt.Sprintf("KUBELET_EXTRA_ARGS=--node-ip=%s", kubeletNodeIP)),
-				Destination: "/etc/sysconfig/kubelet"},
-			plan.DependOn("install:kubelet"))
-	} else {
-		kubeletSysconfig := "configure:kubelet-sysconfig"
-		kubeletDeps = append(kubeletDeps, kubeletSysconfig)
-		b.AddResource(
-			kubeletSysconfig,
-			&resource.File{
-				Content:     processAdditionalArgs(fmt.Sprintf("KUBELET_EXTRA_ARGS=--fail-swap-on=false --node-ip=%s", kubeletNodeIP)),
-				Destination: "/etc/sysconfig/kubelet"},
-			plan.DependOn("install:kubelet"))
+	switch pkgType {
+	case resource.PkgTypeRPM, resource.PkgTypeRHEL:
+		if disableSwap {
+			swapDisable := "configure:kubernetes-swap-disable"
+			kubeletDeps = append(kubeletDeps, swapDisable)
+			b.AddResource(
+				swapDisable,
+				&resource.Run{Script: object.String("/sbin/swapoff -a")},
+				plan.DependOn("create-dir:kubelet.service.d"))
+			kubeletSysconfig := "configure:kubelet-sysconfig"
+			b.AddResource(
+				kubeletSysconfig,
+				&resource.File{
+					Content:     processAdditionalArgs(fmt.Sprintf("KUBELET_EXTRA_ARGS=--node-ip=%s", kubeletNodeIP)),
+					Destination: "/etc/sysconfig/kubelet"},
+				plan.DependOn("install:kubelet"))
+			kubeletDeps = append(kubeletDeps, kubeletSysconfig)
+		} else {
+			kubeletSysconfig := "configure:kubelet-sysconfig"
+			kubeletDeps = append(kubeletDeps, kubeletSysconfig)
+			b.AddResource(
+				kubeletSysconfig,
+				&resource.File{
+					Content:     processAdditionalArgs(fmt.Sprintf("KUBELET_EXTRA_ARGS=--fail-swap-on=false --node-ip=%s", kubeletNodeIP)),
+					Destination: "/etc/sysconfig/kubelet"},
+				plan.DependOn("install:kubelet"))
+		}
+	case resource.PkgTypeDeb:
+		if disableSwap {
+			swapDisable := "configure:kubernetes-swap-disable"
+			kubeletDeps = append(kubeletDeps, swapDisable)
+			b.AddResource(
+				swapDisable,
+				&resource.Run{Script: object.String("/sbin/swapoff -a")},
+				plan.DependOn("create-dir:kubelet.service.d"))
+			kubeletDefault := "configure:kubelet-default"
+			kubeletDeps = append(kubeletDeps, kubeletDefault)
+			b.AddResource(
+				kubeletDefault,
+				&resource.File{
+					Content:     processAdditionalArgs(fmt.Sprintf("KUBELET_EXTRA_ARGS=--node-ip=%s", kubeletNodeIP)),
+					Destination: "/etc/default/kubelet"},
+				plan.DependOn("install:kubelet"))
+		} else {
+			kubeletDefault := "configure:kubelet-default"
+			kubeletDeps = append(kubeletDeps, kubeletDefault)
+			b.AddResource(
+				kubeletDefault,
+				&resource.File{
+					Content:     processAdditionalArgs(fmt.Sprintf("KUBELET_EXTRA_ARGS=--fail-swap-on=false --node-ip=%s", kubeletNodeIP)),
+					Destination: "/etc/default/kubelet"},
+				plan.DependOn("install:kubelet"))
+		}
 	}
 	b.AddResource(
 		"service-init:kubelet",
