@@ -1012,7 +1012,6 @@ func (p *Plan) processResource(
 	conns map[string]*connectors,
 	diff *Diff,
 	runner Runner) error {
-	failed := false
 	logger := log.WithField("resource", res)
 	conn := conns[res]
 	output, updatedDependencies, applyIfValid := p.acceptDependencyInputs(res, conn)
@@ -1068,15 +1067,12 @@ func (p *Plan) processResource(
 			}
 			logger.Error("Failed")
 			fmt.Fprintf(os.Stderr, "%s\n", err.Error())
-			failed = true
 			return fmt.Errorf(err.Error())
 		} else {
 			output.Updated = propagate
 		}
 	}
-	if !failed {
-		logger.Debug("Finished")
-	}
+	logger.Debug("Finished")
 	sendResults(output, conn)
 	return nil
 }
