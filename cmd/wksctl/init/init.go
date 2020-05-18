@@ -129,7 +129,12 @@ func updateControllerManifests(contents []byte, options initOptionType) ([]byte,
 	if !ok {
 		controllerVersion = options.version
 	}
-	withVersion := controllerImageSegment.ReplaceAll(contents, []byte(`$1:`+controllerVersion))
+	var withVersion []byte
+	if strings.Contains(controllerVersion, "/") {
+		withVersion = controllerImageSegment.ReplaceAll(contents, []byte(`image: `+controllerVersion))
+	} else {
+		withVersion = controllerImageSegment.ReplaceAll(contents, []byte(`$1:`+controllerVersion))
+	}
 	if controllerFootlooseEnvEntry.Find(withVersion) == nil {
 		return controllerFootlooseAddrLocation.ReplaceAll(withVersion,
 			// We want to add to the matched entry so we start with $0 (the entire match) and use $1 to get the indentation correct.
