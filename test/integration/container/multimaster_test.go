@@ -285,8 +285,8 @@ func TestMultimasterSetup(t *testing.T) {
 	if shouldRetagPush(t, registryPort) {
 		run(t, "../../../environments/local-docker-registry/retag_push.sh", "-p", strconv.Itoa(registryPort))
 	}
-	run(t, "docker", "tag", fmt.Sprintf("quay.io/wksctl/controller:%s", tag), fmt.Sprintf("localhost:%d/wksctl/controller:%s", registryPort, tag))
-	run(t, "docker", "push", fmt.Sprintf("localhost:%d/wksctl/controller:%s", registryPort, tag))
+	run(t, "docker", "tag", fmt.Sprintf("docker.io/weaveworks/wksctl-controller:%s", tag), fmt.Sprintf("localhost:%d/wksctl/controller:%s", registryPort, tag))
+	run(t, "docker", "push", fmt.Sprintf("localhost:%d/weaveworks/wksctl-controller:%s", registryPort, tag))
 	registryIP := sanitizeIP(run(t, "docker", "inspect", "registry", "--format='{{.NetworkSettings.IPAddress}}'"))
 
 	// Ensure the local YUM repo is running:
@@ -312,7 +312,7 @@ func TestMultimasterSetup(t *testing.T) {
 		fmt.Sprintf("--cluster=%s", clusterYAML), fmt.Sprintf("--machines=%s", machinesYAML),
 		fmt.Sprintf("--config-directory=%s", dirName),
 		"--verbose",
-		fmt.Sprintf("--controller-image=quay.io/wksctl/controller:%s", tag))
+		fmt.Sprintf("--controller-image=docker.io/weaveworks/wksctl-controller:%s", tag))
 
 	out := run(t, "../../../cmd/wksctl/wksctl", "kubeconfig",
 		fmt.Sprintf("--cluster=%s", clusterYAML), fmt.Sprintf("--machines=%s", machinesYAML))
