@@ -1,9 +1,13 @@
 # Cluster Definition
 
-Here's an example of the cluster definition.
+Here's an example of the cluster definition. It is spread across two
+objects: a `Cluster` which is defined by Kubernetes ClusterAPI and a
+`BareMetalCluster` defined by Weaveworks.  Here, both objects have the
+same name `example`, and the field `infrastructureRef` points from one
+to the other.
 
 ```
-apiVersion: cluster.k8s.io/v1alpha1
+apiVersion: cluster.x-k8s.io/v1alpha3
 kind: Cluster
 metadata:
   name: example
@@ -14,41 +18,47 @@ spec:
     pods:
       cidrBlocks: [192.168.0.0/16]
     serviceDomain: cluster.local
-  providerSpec:
-    value:
-      apiVersion: baremetalproviderspec/v1alpha1
-      kind: BareMetalClusterProviderSpec
-      sshKeyPath: cluster-key
-      user: root
-      os:
-        files:
-        - source:
-            configmap: repo
-            key: kubernetes.repo
-          destination: /etc/yum.repos.d/kubernetes.repo
-        - source:
-            configmap: repo
-            key: docker-ce.repo
-          destination: /etc/yum.repos.d/docker-ce.repo
-        - source:
-            configmap: docker
-            key: daemon.json
-          destination: /etc/docker/daemon.json
-      cri:
-        kind: docker
-        package: docker-ce
-        version: 19.03.8
-      apiServer:
-        extraArguments:
-        - name: alsologtostderr
-          value: "true"
-        - name: audit-log-maxsize
-          value: "10000"
-      kubeletArguments:
-      - name: alsologtostderr
-        value: "true"
-      - name: container-runtime
-        value: docker
+  infrastructureRef:
+      apiVersion: cluster.weave.works/v1alpha3
+      kind: BareMetalCluster
+      name: example
+---
+apiVersion: cluster.weave.works/v1alpha3
+kind: BareMetalCluster
+metadata:
+  name: example
+spec:
+  sshKeyPath: cluster-key
+  user: root
+  os:
+    files:
+    - source:
+        configmap: repo
+        key: kubernetes.repo
+      destination: /etc/yum.repos.d/kubernetes.repo
+    - source:
+        configmap: repo
+        key: docker-ce.repo
+      destination: /etc/yum.repos.d/docker-ce.repo
+    - source:
+        configmap: docker
+        key: daemon.json
+      destination: /etc/docker/daemon.json
+  cri:
+    kind: docker
+    package: docker-ce
+    version: 19.03.8
+  apiServer:
+    extraArguments:
+    - name: alsologtostderr
+      value: "true"
+    - name: audit-log-maxsize
+      value: "10000"
+  kubeletArguments:
+  - name: alsologtostderr
+    value: "true"
+  - name: container-runtime
+    value: docker
 ```
 
 ## Passing extra arguments to the API Server
