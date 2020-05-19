@@ -91,6 +91,7 @@ func BuildCRIPlan(criSpec *baremetalspecv1.ContainerRuntime, cfg *envcfg.EnvSpec
 	// Docker runtime
 	switch pkgType {
 	case resource.PkgTypeRPM, resource.PkgTypeRHEL:
+		b.AddResource("install:docker-cli", &resource.RPM{Name: "docker-ce-cli", Version: criSpec.Version})
 		b.AddResource("install:docker", &resource.RPM{Name: criSpec.Package, Version: criSpec.Version})
 		// SELinux will be here along with docker and containerd-selinux packages
 		IsDockerOnCentOS = true
