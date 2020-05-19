@@ -62,10 +62,10 @@ jobs:
           - cmd/mock-https-authz-server/server
       - run:
           # Allow builds from forks
-          name: Push image if quay login is available
+          name: Push image if docker login is available
           command: |
-            if [ -n "DOCKER_IO_PASSWORD" ]; then
-              docker login -u "DOCKER_IO_USER" -p "DOCKER_IO_PASSWORD" docker.io
+            if [ -n "$DOCKER_IO_PASSWORD" ]; then
+              docker login -u "$DOCKER_IO_USER" -p "$DOCKER_IO_PASSWORD" docker.io
               make push
             fi
   unit-tests:
