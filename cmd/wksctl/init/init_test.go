@@ -218,7 +218,7 @@ spec:
         operator: Exists
       containers:
       - name: controller
-        image: docker.io/weaveworks/wksctl-controller:latest
+        image: docker.io/weaveworks/wksctl-controller:version1.2.3
         command:
         - /bin/controller
         - --verbose
