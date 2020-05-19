@@ -58,7 +58,7 @@ spec:
       cri:
         kind: docker
         package: docker-ce
-        version: 19.03.1
+        version: 19.03.8
       kubeletArguments:
       - name: alsologtostderr
         value: "true"
