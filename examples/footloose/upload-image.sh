@@ -25,7 +25,7 @@ fi
 ensure_docker_centos() {
     node=$1
     $footlooseCmd ssh root@$node -- sudo yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
-    $footlooseCmd ssh root@$node -- sudo yum install -y docker-ce-19.03.1
+    $footlooseCmd ssh root@$node -- sudo yum install -y docker-ce-19.03.8
     $footlooseCmd ssh root@$node -- sudo systemctl start docker
 }
 

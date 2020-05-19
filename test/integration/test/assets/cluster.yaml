@@ -31,7 +31,7 @@ spec:
       cri:
         kind: docker
         package: docker-ce
-        version: 19.03.1
+        version: 19.03.8
       authorizationWebhook:
         secretFile: authz.yaml
         cacheAuthorizedTTL: 5m0s
