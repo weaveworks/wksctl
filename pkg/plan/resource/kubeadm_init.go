@@ -85,7 +85,7 @@ func (ki *KubeadmInit) State() plan.State {
 // TODO: find a way to make this idempotent.
 // TODO: should such a resource be split into smaller resources?
 func (ki *KubeadmInit) Apply(runner plan.Runner, diff plan.Diff) (bool, error) {
-	log.Info("initializing Kubernetes cluster")
+	log.Debug("Initializing Kubernetes cluster")
 
 	sshKey, err := ssh.ReadPrivateKey(ki.SSHKeyPath)
 	if err != nil {

@@ -3,8 +3,10 @@ package plan
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"os"
 	"path/filepath"
 	"reflect"
 	"sort"
@@ -775,12 +777,12 @@ func (p *Plan) Undo(runner Runner, current State) error {
 	sorted, _ := p.graph.Invert().Toposort() // undo in reverse order
 	for _, rid := range sorted {
 		logger := log.WithField("resource", rid)
-		logger.Info("Undoing")
+		logger.Debug("Undoing")
 		if err := p.resources[rid].Undo(runner, current); err != nil {
 			errors[rid] = err
-			logger.Info("Undo failed")
+			logger.Error("Undo failed")
 		} else {
-			logger.Info("Undone")
+			logger.Debug("Undone")
 		}
 	}
 	if len(errors) != 0 {
@@ -867,9 +869,11 @@ func (p *Plan) applyResources(g *graph, endpoints []string, diff *Diff, runner R
 	top := &connectors{0, make(chan ValidityTree, len(sorted)), nil}
 	// Connect all nodes in the graph with their dependents via channels
 	connectors := p.createChannels(sorted, dependencies, dependents, endpoints, top)
-	// ascend the graph propagating validity
-	p.propagate(sorted, connectors, diff, runner)
 	result := make(map[string]ValidityTree)
+	// ascend the graph propagating validity
+	if err := p.propagate(sorted, connectors, diff, runner); err != nil {
+		return result
+	}
 	// Wait for all results to reach the top
 	for i := 0; i < top.inCount; i++ {
 		vt := <-top.in
@@ -976,10 +980,13 @@ func (p *Plan) propagate(
 	sortedResources []string,
 	connectors map[string]*connectors,
 	diff *Diff,
-	runner Runner) {
+	runner Runner) error {
 	for _, res := range sortedResources {
-		p.processResource(res, connectors, diff, runner)
+		if err := p.processResource(res, connectors, diff, runner); err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
 // Logic here:
@@ -1004,12 +1011,11 @@ func (p *Plan) processResource(
 	res string,
 	conns map[string]*connectors,
 	diff *Diff,
-	runner Runner) {
-	failed := false
+	runner Runner) error {
 	logger := log.WithField("resource", res)
 	conn := conns[res]
 	output, updatedDependencies, applyIfValid := p.acceptDependencyInputs(res, conn)
-	logger.Info("Starting")
+	logger.Info("Applying")
 	// function to pass data up the line to each dependent
 	sendResults := func(output ValidityTree, conn *connectors) {
 		for _, outchan := range conn.outs {
@@ -1019,9 +1025,9 @@ func (p *Plan) processResource(
 	// If any upstream resource was not valid, conclude this resource is not valid
 	// and pass along the justification
 	if output.ValidityStatus != Valid {
-		logger.Info("Failing (Bad Upstream Resource)")
+		logger.Error("Failing (Bad Upstream Resource)")
 		sendResults(output, conn)
-		return
+		return errors.New("Failing (Bad Upstream Resource)")
 	}
 	// if all upstream resources are valid, see if the state of the current
 	// resource matches its desired state and, if not, re-apply the resource
@@ -1042,7 +1048,7 @@ func (p *Plan) processResource(
 			output.ObservedError = err.Error()
 			logger.Info("Failing (Bad Query)")
 			sendResults(output, conn)
-			return
+			return err
 		}
 		currentState = queriedState
 	} else {
@@ -1059,14 +1065,14 @@ func (p *Plan) processResource(
 			if vt, ok := err.(ValidityTree); ok {
 				output.Children = vt.Children
 			}
-			logger.Info("Failed")
-			failed = true
+			logger.Error("Failed")
+			fmt.Fprintf(os.Stderr, "%s\n", err.Error())
+			return err
 		} else {
 			output.Updated = propagate
 		}
 	}
-	if !failed {
-		logger.Info("Finishing")
-	}
+	logger.Debug("Finished")
 	sendResults(output, conn)
+	return nil
 }
