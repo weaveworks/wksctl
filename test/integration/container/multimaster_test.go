@@ -626,7 +626,7 @@ func TestMultimasterSetupUbuntu(t *testing.T) {
 		for _, kubeletArg := range expectedKubeletArgs {
 			log.Infof("Checking kubelet arg (%s) on node%d", kubeletArg, i)
 			run(t, "footloose",
-				"-c", "../../../examples/footloose/centos7/docker/multimaster.yaml",
+				"-c", "../../../examples/footloose/ubuntu1804/docker/multimaster.yaml",
 				"ssh", fmt.Sprintf("root@node%d", i), fmt.Sprintf("ps -ef | grep -v 'ps -ef' | grep /usr/bin/kubelet | grep %s", kubeletArg))
 		}
 
@@ -635,7 +635,7 @@ func TestMultimasterSetupUbuntu(t *testing.T) {
 			for _, apiServerArg := range expectedApiServerArgs {
 				log.Infof("Checking api server arg (%s) on node%d", apiServerArg, i)
 				run(t, "footloose",
-					"-c", "../../../examples/footloose/centos7/docker/multimaster.yaml",
+					"-c", "../../../examples/footloose/ubuntu1804/docker/multimaster.yaml",
 					"ssh", fmt.Sprintf("root@node%d", i), fmt.Sprintf("ps -ef | grep -v 'ps -ef' | grep kube-apiserver | grep %s", apiServerArg))
 			}
 		}
@@ -643,7 +643,7 @@ func TestMultimasterSetupUbuntu(t *testing.T) {
 
 	if !t.Failed() { // Otherwise leave the footloose "VMs" & config files around for debugging purposes.
 		// Clean up:
-		defer run(t, "footloose", "delete", "-c", "../../../examples/footloose/centos7/docker/multimaster.yaml")
+		defer run(t, "footloose", "delete", "-c", "../../../examples/footloose/ubuntu1804/docker/multimaster.yaml")
 		defer os.Remove(dirName)
 		defer os.Remove(clusterYAML)
 		defer os.Remove(machinesYAML)
