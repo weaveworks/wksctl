@@ -78,7 +78,8 @@ func NewClient(params ClientParams) (*Client, error) {
 	hostPort := fmt.Sprintf("%s:%d", params.Host, params.Port)
 	client, err := ssh.Dial(tcp, hostPort, config)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to connect to %s", hostPort)
+		return nil, errors.Wrapf(err,
+			"failed to connect to %s using private key %s as user %s, please verify connection manually", hostPort, params.PrivateKeyPath, config.User)
 	}
 	return &Client{
 		client:       client,
