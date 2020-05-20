@@ -58,7 +58,7 @@ func (kj *KubeadmJoin) Apply(runner plan.Runner, diff plan.Diff) (bool, error) {
 	}
 	kubeadmJoinCmd := kj.kubeadmJoinCmd(apiServerEndpoint)
 	if stdouterr, err := runner.RunCommand(withoutProxy(kubeadmJoinCmd), nil); err != nil {
-		log.WithField("stdouterr", stdouterr).Debug("failed to join cluster")
+		log.WithField("stdouterr", stdouterr).Error("failed to join cluster")
 		return false, errors.Wrap(err, "failed to join cluster")
 	}
 	return true, nil
@@ -73,7 +73,6 @@ func (kj *KubeadmJoin) kubeadmJoinCmd(apiServerEndpoint string) string {
 	}
 
 	if kj.IsMaster {
-
 		if lt, err := version.LessThan(kj.KubernetesVersion, "1.16.0"); err == nil && lt {
 			kubeJoinCmd.WriteString(" --experimental-control-plane --certificate-key ")
 		} else {

@@ -44,24 +44,6 @@ resource "google_compute_instance" "tf_test_vm" {
     ssh-keys = "${var.gcp_username}:${file("${var.gcp_public_key_path}")}"
   }
 
-  # self destruct after 48h hours to cut down costs
-  # this is a fallback in case preemptible is disabled or doesn't occur
-  # reference: https://cloud.google.com/community/tutorials/create-a-self-deleting-virtual-machine
-  metadata_startup_script = <<-EOT
-  #!/bin/sh
-  sleep 48h
-  export NAME=$(curl -X GET http://metadata.google.internal/computeMetadata/v1/instance/name -H 'Metadata-Flavor: Google')
-  export ZONE=$(curl -X GET http://metadata.google.internal/computeMetadata/v1/instance/zone -H 'Metadata-Flavor: Google')
-  gcloud --quiet compute instances delete $NAME --zone=$ZONE
-  EOT
-
-  # make the VM preemptible to cut down costs
-  # and prevent VM from being restarted after preemption
-  scheduling {
-    preemptible = true
-    automatic_restart = false
-  }
-
   # Wait for machine to be SSH-able:
   provisioner "remote-exec" {
     inline = ["exit"]
