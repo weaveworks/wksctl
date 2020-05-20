@@ -218,7 +218,7 @@ spec:
         operator: Exists
       containers:
       - name: controller
-        image: quay.io/wksctl/controller:latest
+        image: docker.io/weaveworks/wksctl-controller:version1.2.3
         command:
         - /bin/controller
         - --verbose
@@ -279,7 +279,7 @@ spec:
           value: 192.168.51.1:28496
         - name: FOOTLOOSE_BACKEND
           value: docker
-        image: quay.io/wksctl/controller:version1.2.3
+        image: docker.io/weaveworks/wksctl-controller:version1.2.3
         command:
         - /bin/controller
         - --verbose

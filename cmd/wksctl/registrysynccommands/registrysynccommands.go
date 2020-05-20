@@ -9,7 +9,6 @@ import (
 	"github.com/weaveworks/wksctl/pkg/addons"
 	"github.com/weaveworks/wksctl/pkg/cluster/machine"
 	"github.com/weaveworks/wksctl/pkg/kubernetes"
-	"github.com/weaveworks/wksctl/pkg/quay"
 	"github.com/weaveworks/wksctl/pkg/registry"
 	"github.com/weaveworks/wksctl/pkg/utilities"
 	v "github.com/weaveworks/wksctl/pkg/utilities/version"
@@ -41,15 +40,6 @@ func init() {
 
 func registrySyncRun(cmd *cobra.Command, args []string) {
 	imagesSet := make(map[registry.Image]struct{}) // to deduplicate images.
-
-	// Get WKS' container images:
-	wksImages, err := quay.ListImages("wks", kubernetesVersionsRange())
-	if err != nil {
-		log.Fatal(err)
-	}
-	for _, image := range wksImages {
-		imagesSet[image] = struct{}{}
-	}
 
 	// Get addons' images:
 	for _, addon := range addons.List() {

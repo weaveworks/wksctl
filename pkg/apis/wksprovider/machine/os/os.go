@@ -933,7 +933,7 @@ func wksControllerManifest(controller ControllerParams, namespace, configDir str
 	// The controller image is, in priority order:
 	// 1. controllerImageOverride provided on the apply command line.
 	// 2. the image from the manifest if we have found a manifest in the git repository checkout.
-	// 3. quay.io/wksctl/controller:version.ImageTag
+	// 3. docker.io/weaveworks/wksctl-controller:version.ImageTag
 	filepath, err := findControllerManifest(configDir)
 	if err != nil {
 		file, openErr := manifests.Manifests.Open("04_controller.yaml")
