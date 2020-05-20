@@ -498,7 +498,7 @@ func TestMultimasterSetup(t *testing.T) {
 	_ = saveToFile(t, dirName, "repo-config.yaml", fmt.Sprintf(repoConfigMap, yumRepoIP))
 	_ = saveToFile(t, dirName, "docker-config.yaml", fmt.Sprintf(dockerConfigMap, registryIP, registryPort))
 
-	run(t, "../../../cmd/wksctl/wksctl", "apply",
+	runWithStdout(t, "../../../cmd/wksctl/wksctl", "apply",
 		fmt.Sprintf("--cluster=%s", clusterYAML), fmt.Sprintf("--machines=%s", machinesYAML),
 		fmt.Sprintf("--config-directory=%s", dirName),
 		"--verbose",
@@ -593,7 +593,7 @@ func TestMultimasterSetupUbuntu(t *testing.T) {
 	_ = saveToFile(t, dirName, "repo-config.yaml", fmt.Sprintf(repoConfigMapUbuntu, yumRepoIP))
 	_ = saveToFile(t, dirName, "docker-config.yaml", fmt.Sprintf(dockerConfigMap, registryIP, registryPort))
 
-	run(t, "../../../cmd/wksctl/wksctl", "apply",
+	runWithStdout(t, "../../../cmd/wksctl/wksctl", "apply",
 		fmt.Sprintf("--cluster=%s", clusterYAML), fmt.Sprintf("--machines=%s", machinesYAML),
 		fmt.Sprintf("--config-directory=%s", dirName),
 		"--verbose",
@@ -650,6 +650,13 @@ func TestMultimasterSetupUbuntu(t *testing.T) {
 		defer os.Remove(repoConfigMap)
 		defer os.Remove(repoConfigMap)
 	}
+}
+
+func runWithStdout(t *testing.T, name string, arg ...string) error {
+	cmd := exec.Command(name, arg...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
 }
 
 func imageTag(t *testing.T) string {
