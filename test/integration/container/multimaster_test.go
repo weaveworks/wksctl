@@ -462,7 +462,7 @@ data:
     gpgcheck=0
 `
 
-func TestMultimasterSetup(t *testing.T) {
+/*func TestMultimasterSetup(t *testing.T) {
 	tag := imageTag(t)
 	registryPort := port(t, "REGISTRY_PORT", 5000)
 	repositoryPort := port(t, "REPOSITORY_PORT", 8080)
@@ -555,7 +555,7 @@ func TestMultimasterSetup(t *testing.T) {
 		defer os.Remove(repoConfigMap)
 		defer os.Remove(repoConfigMap)
 	}
-}
+}*/
 
 func TestMultimasterSetupUbuntu(t *testing.T) {
 	tag := imageTag(t)
@@ -604,7 +604,7 @@ func TestMultimasterSetupUbuntu(t *testing.T) {
 
 	var nodeList corev1.NodeList
 	for {
-		jsonOut := run(t, "kubectl", "get", "nodes", "-o", "json", fmt.Sprintf("--kubeconfig=%s", kubeconfig(out)))
+		jsonOut := runIgnoreError(t, "kubectl", "get", "nodes", "-o", "json", fmt.Sprintf("--kubeconfig=%s", kubeconfig(out)))
 		if err := json.Unmarshal([]byte(jsonOut), &nodeList); err != nil {
 			log.Warnf("Error deserialising output of kubectl get nodes: %s", err)
 		}
