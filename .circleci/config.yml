@@ -3,7 +3,7 @@ version: 2
 # https://circleci.com/blog/circleci-hacks-reuse-yaml-in-your-circleci-config-with-yaml/
 defaults: &defaults
   docker:
-    - image: quay.io/wks/build:master-134af34f
+    - image: docker.io/weaveworks/wksctl-build:switch-away-from-quay-53c3c712-WIP
       environment:
         GOPATH: /go/
         SRCDIR: /src/github.com/weaveworks/wksctl
@@ -62,15 +62,15 @@ jobs:
           - cmd/mock-https-authz-server/server
       - run:
           # Allow builds from forks
-          name: Push image if quay login is available
+          name: Push image if docker login is available
           command: |
-            if [ -n "$QUAY_IO_USER" -a -n "$QUAY_IO_PASSWORD" ]; then
-              docker login -u "$QUAY_IO_USER" -p "$QUAY_IO_PASSWORD" quay.io
+            if [ -n "$DOCKER_IO_PASSWORD" ]; then
+              docker login -u "$DOCKER_IO_USER" -p "$DOCKER_IO_PASSWORD" docker.io
               make push
             fi
   unit-tests:
     docker:
-      - image: quay.io/wks/build:master-134af34f
+      - image: docker.io/weaveworks/wksctl-build:switch-away-from-quay-53c3c712-WIP
         environment:
           GOPATH: /go
           SRCDIR: /src/github.com/weaveworks/wksctl
@@ -189,7 +189,7 @@ jobs:
   #
   integration-tests-gcp-centos:
     docker:
-      - image: quay.io/wks/build:master-134af34f
+      - image: docker.io/weaveworks/wksctl-build:switch-away-from-quay-53c3c712-WIP
         environment:
           GOPATH: /go/
           SRCDIR: /src/github.com/weaveworks/wksctl
@@ -225,7 +225,7 @@ jobs:
       - run: "true"
   integration-tests-gcp-ubuntu:
     docker:
-      - image: quay.io/wks/build:master-134af34f
+      - image: docker.io/weaveworks/wksctl-build:switch-away-from-quay-53c3c712-WIP
         environment:
           GOPATH: /go/
           SRCDIR: /src/github.com/weaveworks/wksctl
@@ -261,7 +261,7 @@ jobs:
       - run: "true"
   integration-tests-gcp-rhel:
     docker:
-      - image: quay.io/wks/build:master-134af34f
+      - image: docker.io/weaveworks/wksctl-build:switch-away-from-quay-53c3c712-WIP
         environment:
           GOPATH: /go/
           SRCDIR: /src/github.com/weaveworks/wksctl

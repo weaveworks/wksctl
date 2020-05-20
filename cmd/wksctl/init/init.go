@@ -53,7 +53,7 @@ var (
 	namespaceNamePattern            = multiLineRegexp(namespacePrefixPattern + `\S+`)
 	controllerFootlooseAddrLocation = multiLineRegexp(`(\s*)- name: controller`)
 	controllerFootlooseEnvEntry     = multiLineRegexp(`env:\n\s*- name: FOOTLOOSE_SERVER_ADDR`)
-	controllerImageSegment          = multiLineRegexp(`(image:\s*\S*[/]controller)(:\s*\S+)?`)
+	controllerImageSegment          = multiLineRegexp(`(image:\s*\S*[-]controller)(:\s*\S+)?`)
 	namespacePattern                = multiLineRegexp(`namespace:\s*\S+`)
 	gitURLPattern                   = multiLineRegexp(`(--git-url)=\S+`)
 	gitBranchPattern                = multiLineRegexp(`(--git-branch)=\S+`)
