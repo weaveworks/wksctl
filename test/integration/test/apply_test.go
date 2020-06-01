@@ -410,6 +410,7 @@ func TestApply(t *testing.T) {
 	writeYamlManifest(t, machines, configPath("machines.yaml"))
 
 	spec := machineSpec(t, &machines.Items[0])
+	// Generate bad version to check failure return codes
 	savedAddress := spec.Private.Address
 	spec.Private.Address = "192.168.111.111"
 	codec, err := baremetalspecv1.NewCodec()
@@ -418,6 +419,7 @@ func TestApply(t *testing.T) {
 	assert.NoError(t, err)
 	machines.Items[0].Spec.ProviderSpec = *encodedSpec
 	writeYamlManifest(t, machines, configPath("badmachines.yaml"))
+	// Restore valid config
 	spec.Private.Address = savedAddress
 	encodedSpec, err = codec.EncodeToProviderSpec(spec)
 	assert.NoError(t, err)
