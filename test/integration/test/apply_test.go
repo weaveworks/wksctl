@@ -459,7 +459,7 @@ func TestApply(t *testing.T) {
 	// First test that bad apply returns non-zero exit code
 	badMachinesManifestPath := configPath("badmachines.yaml")
 	// Fail to install the cluster.
-	run, err := apply(exe, "--cluster="+clusterManifestPath, "--machines="+badMachinesManifestPath, "--namespace=default",
+	run, _ := apply(exe, "--cluster="+clusterManifestPath, "--machines="+badMachinesManifestPath, "--namespace=default",
 		"--config-directory="+configDir, "--sealed-secret-key="+configPath("ss.key"), "--sealed-secret-cert="+configPath("ss.cert"),
 		"--verbose=true", "--ssh-key="+sshKeyPath)
 	assert.Equal(t, 1, run.ExitCode())
