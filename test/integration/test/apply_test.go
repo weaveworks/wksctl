@@ -400,7 +400,6 @@ func writeTmpFile(runner *ssh.Client, inputFilename, outputFilename string) erro
 
 func TestApply(t *testing.T) {
 	exe := run.NewExecutor()
-	exe.showOutput = true
 
 	// Prepare the machines manifest from terraform output.
 	terraform, err := newTerraformOutputFromFile(options.terraform.outputPath)

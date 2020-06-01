@@ -1,6 +1,7 @@
 package apply
 
 import (
+	"fmt"
 	"path/filepath"
 	"strings"
 
@@ -149,9 +150,9 @@ func (a *Applier) initiateCluster(clusterManifestPath, machinesManifestPath stri
 	// TODO(damien): Transform the controller image into an addon.
 	controllerImage, err := addons.UpdateImage(a.Params.controllerImage, sp.ClusterSpec.ImageRepository)
 	if err != nil {
-		errors.Wrap(err, "failed to apply the cluster's image repository to the WKS controller's image")
+		return errors.Wrap(err, "failed to apply the cluster's image repository to the WKS controller's image")
 	}
-	if err := installer.SetupSeedNode(wksos.SeedNodeParams{
+	res := installer.SetupSeedNode(wksos.SeedNodeParams{
 		PublicIP:             sp.GetMasterPublicAddress(),
 		PrivateIP:            sp.GetMasterPrivateAddress(),
 		ClusterManifestPath:  clusterManifestPath,
@@ -181,7 +182,11 @@ func (a *Applier) initiateCluster(clusterManifestPath, machinesManifestPath stri
 		AdditionalSANs:       sp.ClusterSpec.APIServer.AdditionalSANs,
 		Namespace:            ns,
 		AddonNamespaces:      addonNamespaces,
-	}); err != nil {
+	})
+
+	fmt.Printf("RES: %#v\n", res)
+
+	if err := res; err != nil {
 		return errors.Wrapf(err, "failed to set up seed node (%s)", sp.GetMasterPublicAddress())
 	}
 
