@@ -299,9 +299,9 @@ func (o OS) CreateSeedNodeSetupPlan(params SeedNodeParams) (*plan.Plan, error) {
 		return nil, errors.Wrap(err, "failed to generate manifests for CNI plugin")
 	}
 
-	manifests, err = setCIDRBlocks(manifests, params.ServicesCIDRBlocks, params.PodsCIDRBlocks)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to inject ipalloc_range")
+		manifests, err = setCIDRBlocks(manifests, params.ServicesCIDRBlocks, params.PodsCIDRBlocks)
 	}
 
 	cniRsc := recipe.BuildCNIPlan(cni, manifests)
@@ -376,8 +376,6 @@ func (o OS) CreateSeedNodeSetupPlan(params SeedNodeParams) (*plan.Plan, error) {
 }
 
 func setCIDRBlocks(manifests [][]byte, servicesCIDRBlocks []string, podsCIDRBlocks []string) ([][]byte, error) {
-	// decode := scheme.Codecs.UniversalDeserializer().Decode
-	// obj, _, _ := decode(manifests[0], nil, nil)
 	manifestList := &v1.List{}
 	err := yaml.Unmarshal(manifests[0], manifestList)
 	if err != nil {
@@ -403,17 +401,22 @@ func setCIDRBlocks(manifests [][]byte, servicesCIDRBlocks []string, podsCIDRBloc
 	}
 
 	envVars = append(envVars, *ipallocRange)
-	fmt.Print(envVars)
 
 	weaveNetDaemonSet.Spec.Template.Spec.Containers[0].Env = envVars
 
+	weaveNetYaml, err := yaml.Marshal(weaveNetDaemonSet)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to marshal daemonset")
 	}
+	// Find the way here to write back properly
+	rawExt := runtime.RawExtension{Raw: weaveNetYaml, Object: nil}
+	manifestList.Items[5] = rawExt
 
-	weaveNetYaml, err := yaml.Marshal(weaveNetDaemonSet)
-	manifests[0] = weaveNetYaml
-	fmt.Printf("marshaled manifest: %v", weaveNetYaml)
+	manifestWeave, err := yaml.Marshal(manifestList)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to marshal manifest list")
+	}
+	manifests[0] = manifestWeave
 	return manifests, nil
 }
 
