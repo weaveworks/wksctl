@@ -490,6 +490,11 @@ func (o OS) createSeedNodePlanConfigMapManifest(params SeedNodeParams, providerS
 }
 
 func (o OS) applySeedNodePlan(p *plan.Plan) error {
+	defer func() {
+		if val := recover(); val != nil {
+			fmt.Printf("RECOVERED: %#v\n", val)
+		}
+	}()
 	err := p.Undo(o.runner, plan.EmptyState)
 	if err != nil {
 		log.Infof("Pre-plan cleanup failed:\n%s\n", err)
