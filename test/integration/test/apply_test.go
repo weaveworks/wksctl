@@ -409,6 +409,11 @@ func TestApply(t *testing.T) {
 	setKubernetesVersion(machines, kubernetes.DefaultVersion)
 	writeYamlManifest(t, machines, configPath("machines.yaml"))
 
+	savedAddress := machines[0].Spec.Private.Address
+	machines[0].Spec.Private.Address = "192.168.111.111"
+	writeYamlManifest(t, machines, configPath("badmachines.yaml"))
+	machines[0].Spec.Private.Address = savedAddress
+
 	clusterManifestPath := configPath("cluster.yaml")
 	machinesManifestPath := configPath("machines.yaml")
 	clusterBytes, err := ioutil.ReadFile(clusterManifestPath)
@@ -441,6 +446,15 @@ func TestApply(t *testing.T) {
 			fmt.Printf("AUTHZ ERROR: %v", err)
 		}
 	}()
+
+	// First test that bad apply returns non-zero exit code
+	badMachinesManifestPath := configPath("badmachines.yaml")
+	// Fail to install the cluster.
+	run, err := apply(exe, "--cluster="+clusterManifestPath, "--machines="+badMachinesManifestPath, "--namespace=default",
+		"--config-directory="+configDir, "--sealed-secret-key="+configPath("ss.key"), "--sealed-secret-cert="+configPath("ss.cert"),
+		"--verbose=true", "--ssh-key="+sshKeyPath)
+	assert.Error(t, err)
+	assert.Equal(t, 1, run.ExitCode())
 
 	// Install the Cluster.
 	run, err := apply(exe, "--cluster="+clusterManifestPath, "--machines="+machinesManifestPath, "--namespace=default",
