@@ -103,7 +103,6 @@ func (e *Executor) handStream(entry *Entry, kind stream, reader io.Reader) error
 }
 
 func exitCode(err error) (int, error) {
-	fmt.Printf("ERR: %#v\n", err)
 	if err == nil {
 		return 0, nil
 	}

@@ -462,7 +462,6 @@ func TestApply(t *testing.T) {
 	run, err := apply(exe, "--cluster="+clusterManifestPath, "--machines="+badMachinesManifestPath, "--namespace=default",
 		"--config-directory="+configDir, "--sealed-secret-key="+configPath("ss.key"), "--sealed-secret-cert="+configPath("ss.cert"),
 		"--verbose=true", "--ssh-key="+sshKeyPath)
-	assert.Error(t, err)
 	assert.Equal(t, 1, run.ExitCode())
 
 	// Install the Cluster.

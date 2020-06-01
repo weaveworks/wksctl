@@ -1,7 +1,6 @@
 package apply
 
 import (
-	"fmt"
 	"path/filepath"
 	"strings"
 
@@ -152,7 +151,8 @@ func (a *Applier) initiateCluster(clusterManifestPath, machinesManifestPath stri
 	if err != nil {
 		return errors.Wrap(err, "failed to apply the cluster's image repository to the WKS controller's image")
 	}
-	res := installer.SetupSeedNode(wksos.SeedNodeParams{
+
+	if err := installer.SetupSeedNode(wksos.SeedNodeParams{
 		PublicIP:             sp.GetMasterPublicAddress(),
 		PrivateIP:            sp.GetMasterPrivateAddress(),
 		ClusterManifestPath:  clusterManifestPath,
@@ -182,11 +182,7 @@ func (a *Applier) initiateCluster(clusterManifestPath, machinesManifestPath stri
 		AdditionalSANs:       sp.ClusterSpec.APIServer.AdditionalSANs,
 		Namespace:            ns,
 		AddonNamespaces:      addonNamespaces,
-	})
-
-	fmt.Printf("RES: %#v\n", res)
-
-	if err := res; err != nil {
+	}); err != nil {
 		return errors.Wrapf(err, "failed to set up seed node (%s)", sp.GetMasterPublicAddress())
 	}
 
