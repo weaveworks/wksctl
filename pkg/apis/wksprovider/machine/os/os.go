@@ -17,6 +17,7 @@ import (
 	"time"
 
 	ssv1alpha1 "github.com/bitnami-labs/sealed-secrets/pkg/apis/sealed-secrets/v1alpha1"
+	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/weaveworks/wksctl/pkg/addons"
@@ -44,7 +45,6 @@ import (
 	certUtil "k8s.io/client-go/util/cert"
 	kubeadmapi "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm/v1beta1"
 	clusterv1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
-	"sigs.k8s.io/yaml"
 )
 
 const (
@@ -299,9 +299,11 @@ func (o OS) CreateSeedNodeSetupPlan(params SeedNodeParams) (*plan.Plan, error) {
 		return nil, errors.Wrap(err, "failed to generate manifests for CNI plugin")
 	}
 
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to inject ipalloc_range")
-		manifests, err = setCIDRBlocks(manifests, params.ServicesCIDRBlocks, params.PodsCIDRBlocks)
+	if len(params.ServicesCIDRBlocks) > 0 && params.ServicesCIDRBlocks[0] != "" {
+		manifests, err = setCIDRBlocks(manifests, params.ServicesCIDRBlocks)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to inject ipalloc_range")
+		}
 	}
 
 	cniRsc := recipe.BuildCNIPlan(cni, manifests)
@@ -375,19 +377,25 @@ func (o OS) CreateSeedNodeSetupPlan(params SeedNodeParams) (*plan.Plan, error) {
 	return createPlan(b)
 }
 
-func setCIDRBlocks(manifests [][]byte, servicesCIDRBlocks []string, podsCIDRBlocks []string) ([][]byte, error) {
+// Sets the IPALLOC_ADDR env var in weave-net based on the servicesCIDRBlocks read from the cluster.yaml
+func setCIDRBlocks(manifests [][]byte, servicesCIDRBlocks []string) ([][]byte, error) {
 	manifestList := &v1.List{}
+	// Parse the manifest from weave-net.yaml into a List
 	err := yaml.Unmarshal(manifests[0], manifestList)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse weave-net daemonset manifest")
 	}
 
+	// Parse the DaemonSet included in the list into an object
 	weaveNetDaemonSet := &appsv1.DaemonSet{}
 	err = yaml.Unmarshal(manifestList.Items[5].Raw, weaveNetDaemonSet)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse weave-net daemonset manifest")
 	}
 
+	// Check if the daemon set already defines the IPALLOC_RANGE, in which case raise an error
+	// A manifest should be used that doesn't contain the variable to avoid confusion
+	// in the case where the CIDR block is also set in the cluster.yaml
 	envVars := weaveNetDaemonSet.Spec.Template.Spec.Containers[0].Env
 	for _, envVar := range envVars {
 		if envVar.Name == "IPALLOC_RANGE" {
@@ -395,6 +403,7 @@ func setCIDRBlocks(manifests [][]byte, servicesCIDRBlocks []string, podsCIDRBloc
 		}
 	}
 
+	// Create and append the new env var
 	ipallocRange := &v1.EnvVar{
 		Name:  "IPALLOC_RANGE",
 		Value: servicesCIDRBlocks[0],
@@ -403,20 +412,20 @@ func setCIDRBlocks(manifests [][]byte, servicesCIDRBlocks []string, podsCIDRBloc
 	envVars = append(envVars, *ipallocRange)
 
 	weaveNetDaemonSet.Spec.Template.Spec.Containers[0].Env = envVars
-
 	weaveNetYaml, err := yaml.Marshal(weaveNetDaemonSet)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to marshal daemonset")
 	}
-	// Find the way here to write back properly
-	rawExt := runtime.RawExtension{Raw: weaveNetYaml, Object: nil}
-	manifestList.Items[5] = rawExt
 
-	manifestWeave, err := yaml.Marshal(manifestList)
+	// First remove the default daemonset from the manifest list
+	manifestList.Items = manifestList.Items[:len(manifestList.Items)-1]
+	manifests[0], err = yaml.Marshal(manifestList)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to marshal manifest list")
+		return nil, errors.Wrapf(err, "failed to marshal manifest list")
 	}
-	manifests[0] = manifestWeave
+
+	// and then marshal it and append it as a new manifest in the array
+	manifests = append(manifests, weaveNetYaml)
 	return manifests, nil
 }
 

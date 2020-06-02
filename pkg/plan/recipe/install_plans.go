@@ -326,14 +326,16 @@ func BuildK8SPlan(kubernetesVersion string, kubeletNodeIP string, seLinuxInstall
 func BuildCNIPlan(cni string, manifests [][]byte) plan.Resource {
 	b := plan.NewBuilder()
 
-	if len(manifests) != 1 {
-		log.Fatalf("install-cni: expected 1 manifest for the CNI plugin, got %d", len(manifests))
-	}
-
 	b.AddResource(
 		"install-cni:apply-manifests",
 		&resource.KubectlApply{Manifest: manifests[0], Filename: object.String(cni + ".yaml")},
 	)
+	if len(manifests) == 2 {
+		b.AddResource(
+			"install-cni:apply-manifests-ds",
+			&resource.KubectlApply{Manifest: manifests[1], Filename: object.String(cni + "-daemon-set" + ".yaml")},
+		)
+	}
 
 	p, err := b.Plan()
 	if err != nil {
