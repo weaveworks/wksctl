@@ -401,21 +401,11 @@ func TestApply(t *testing.T) {
 	setKubernetesVersion(machines, kubernetes.DefaultVersion)
 	writeYamlManifests(t, configPath("machines.yaml"), machines, bmMachines)
 
-	spec := machineSpec(t, &machines.Items[0])
 	// Generate bad version to check failure return codes
-	savedAddress := spec.Private.Address
-	spec.Private.Address = "192.168.111.111"
-	codec, err := baremetalspecv1.NewCodec()
-	assert.NoError(t, err)
-	encodedSpec, err := codec.EncodeToProviderSpec(spec)
-	assert.NoError(t, err)
-	machines.Items[0].Spec.ProviderSpec = *encodedSpec
-	writeYamlManifest(t, machines, configPath("badmachines.yaml"))
-	// Restore valid config
-	spec.Private.Address = savedAddress
-	encodedSpec, err = codec.EncodeToProviderSpec(spec)
-	assert.NoError(t, err)
-	machines.Items[0].Spec.ProviderSpec = *encodedSpec
+	savedAddress := bmMachines[0].Spec.PrivateAddress
+	bmMachines[0].Spec.PrivateAddress = "192.168.111.111"
+	writeYamlManifests(t, configPath("badmachines.yaml"), machines, bmMachines)
+	bmMachines[0].Spec.PrivateAddress = savedAddress
 
 	clusterManifestPath := configPath("cluster.yaml")
 	machinesManifestPath := configPath("machines.yaml")
