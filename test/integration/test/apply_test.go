@@ -409,6 +409,22 @@ func TestApply(t *testing.T) {
 	setKubernetesVersion(machines, kubernetes.DefaultVersion)
 	writeYamlManifest(t, machines, configPath("machines.yaml"))
 
+	spec := machineSpec(t, &machines.Items[0])
+	// Generate bad version to check failure return codes
+	savedAddress := spec.Private.Address
+	spec.Private.Address = "192.168.111.111"
+	codec, err := baremetalspecv1.NewCodec()
+	assert.NoError(t, err)
+	encodedSpec, err := codec.EncodeToProviderSpec(spec)
+	assert.NoError(t, err)
+	machines.Items[0].Spec.ProviderSpec = *encodedSpec
+	writeYamlManifest(t, machines, configPath("badmachines.yaml"))
+	// Restore valid config
+	spec.Private.Address = savedAddress
+	encodedSpec, err = codec.EncodeToProviderSpec(spec)
+	assert.NoError(t, err)
+	machines.Items[0].Spec.ProviderSpec = *encodedSpec
+
 	clusterManifestPath := configPath("cluster.yaml")
 	machinesManifestPath := configPath("machines.yaml")
 	clusterBytes, err := ioutil.ReadFile(clusterManifestPath)
@@ -442,8 +458,16 @@ func TestApply(t *testing.T) {
 		}
 	}()
 
+	// First test that bad apply returns non-zero exit code
+	badMachinesManifestPath := configPath("badmachines.yaml")
+	// Fail to install the cluster.
+	run, _ := apply(exe, "--cluster="+clusterManifestPath, "--machines="+badMachinesManifestPath, "--namespace=default",
+		"--config-directory="+configDir, "--sealed-secret-key="+configPath("ss.key"), "--sealed-secret-cert="+configPath("ss.cert"),
+		"--verbose=true", "--ssh-key="+sshKeyPath)
+	assert.Equal(t, 1, run.ExitCode())
+
 	// Install the Cluster.
-	run, err := apply(exe, "--cluster="+clusterManifestPath, "--machines="+machinesManifestPath, "--namespace=default",
+	run, err = apply(exe, "--cluster="+clusterManifestPath, "--machines="+machinesManifestPath, "--namespace=default",
 		"--config-directory="+configDir, "--sealed-secret-key="+configPath("ss.key"), "--sealed-secret-cert="+configPath("ss.cert"),
 		"--verbose=true", "--ssh-key="+sshKeyPath)
 	assert.NoError(t, err)

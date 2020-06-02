@@ -499,6 +499,7 @@ func (o OS) applySeedNodePlan(p *plan.Plan) error {
 	_, err = p.Apply(o.runner, plan.EmptyDiff())
 	if err != nil {
 		log.Errorf("Apply of Plan failed:\n%s\n", err)
+		return err
 	}
 	return nil
 }

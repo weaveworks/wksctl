@@ -149,8 +149,9 @@ func (a *Applier) initiateCluster(clusterManifestPath, machinesManifestPath stri
 	// TODO(damien): Transform the controller image into an addon.
 	controllerImage, err := addons.UpdateImage(a.Params.controllerImage, sp.ClusterSpec.ImageRepository)
 	if err != nil {
-		errors.Wrap(err, "failed to apply the cluster's image repository to the WKS controller's image")
+		return errors.Wrap(err, "failed to apply the cluster's image repository to the WKS controller's image")
 	}
+
 	if err := installer.SetupSeedNode(wksos.SeedNodeParams{
 		PublicIP:             sp.GetMasterPublicAddress(),
 		PrivateIP:            sp.GetMasterPrivateAddress(),

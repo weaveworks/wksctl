@@ -872,6 +872,7 @@ func (p *Plan) applyResources(g *graph, endpoints []string, diff *Diff, runner R
 	result := make(map[string]ValidityTree)
 	// ascend the graph propagating validity
 	if err := p.propagate(sorted, connectors, diff, runner); err != nil {
+		result["top"] = ValidityTree{ResourceID: "top", ValidityStatus: Invalid}
 		return result
 	}
 	// Wait for all results to reach the top
