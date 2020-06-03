@@ -17,7 +17,6 @@ import (
 	"time"
 
 	ssv1alpha1 "github.com/bitnami-labs/sealed-secrets/pkg/apis/sealed-secrets/v1alpha1"
-	"github.com/ghodss/yaml"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/weaveworks/wksctl/pkg/addons"
@@ -45,6 +44,7 @@ import (
 	certUtil "k8s.io/client-go/util/cert"
 	kubeadmapi "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm/v1beta1"
 	clusterv1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
+	"sigs.k8s.io/yaml"
 )
 
 const (
@@ -299,8 +299,8 @@ func (o OS) CreateSeedNodeSetupPlan(params SeedNodeParams) (*plan.Plan, error) {
 		return nil, errors.Wrap(err, "failed to generate manifests for CNI plugin")
 	}
 
-	if len(params.ServicesCIDRBlocks) > 0 && params.ServicesCIDRBlocks[0] != "" {
-		manifests, err = setCIDRBlocks(manifests, params.ServicesCIDRBlocks)
+	if len(params.PodsCIDRBlocks) > 0 && params.PodsCIDRBlocks[0] != "" {
+		manifests, err = setCIDRBlocks(manifests, params.PodsCIDRBlocks)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to inject ipalloc_range")
 		}
@@ -377,8 +377,8 @@ func (o OS) CreateSeedNodeSetupPlan(params SeedNodeParams) (*plan.Plan, error) {
 	return createPlan(b)
 }
 
-// Sets the IPALLOC_ADDR env var in weave-net based on the servicesCIDRBlocks read from the cluster.yaml
-func setCIDRBlocks(manifests [][]byte, servicesCIDRBlocks []string) ([][]byte, error) {
+// Sets the IPALLOC_ADDR env var in weave-net based on the podsCIDRBlocks read from the cluster.yaml
+func setCIDRBlocks(manifests [][]byte, podsCIDRBlocks []string) ([][]byte, error) {
 	manifestList := &v1.List{}
 	// Parse the manifest from weave-net.yaml into a List
 	err := yaml.Unmarshal(manifests[0], manifestList)
@@ -386,32 +386,51 @@ func setCIDRBlocks(manifests [][]byte, servicesCIDRBlocks []string) ([][]byte, e
 		return nil, errors.Wrap(err, "failed to parse weave-net daemonset manifest")
 	}
 
-	// Parse the DaemonSet included in the list into an object
+	// Find and parse the DaemonSet included in the manifest list into an object
 	weaveNetDaemonSet := &appsv1.DaemonSet{}
-	err = yaml.Unmarshal(manifestList.Items[5].Raw, weaveNetDaemonSet)
-	if err != nil {
+	for _, item := range manifestList.Items {
+		err = yaml.Unmarshal(item.Raw, weaveNetDaemonSet)
+		if err == nil && len(weaveNetDaemonSet.Spec.Template.Spec.Containers) > 0 {
+			break
+		}
+	}
+	if err != nil || len(weaveNetDaemonSet.Spec.Template.Spec.Containers) == 0 {
+		if err == nil {
+			return nil, errors.New("failed to parse weave-net daemonset manifest")
+		}
 		return nil, errors.Wrap(err, "failed to parse weave-net daemonset manifest")
 	}
 
-	// Check if the daemon set already defines the IPALLOC_RANGE, in which case raise an error
+	// Iterate over the containers defined in the daemon set manifest, and find "weave"
+	// Check if the the weave container defines the IPALLOC_RANGE, in which case raise an error
 	// A manifest should be used that doesn't contain the variable to avoid confusion
 	// in the case where the CIDR block is also set in the cluster.yaml
-	envVars := weaveNetDaemonSet.Spec.Template.Spec.Containers[0].Env
-	for _, envVar := range envVars {
-		if envVar.Name == "IPALLOC_RANGE" {
-			return nil, errors.Wrap(err, "weave-net manifest cannot contain env var IPALLOC_RANGE, set instead via cluster.yaml")
+	containerFound := false
+	for idx, container := range weaveNetDaemonSet.Spec.Template.Spec.Containers {
+		if container.Name == "weave" {
+			containerFound = true
+			envVars := container.Env
+			for _, envVar := range envVars {
+				if envVar.Name == "IPALLOC_RANGE" {
+					return nil, errors.New("weave-net manifest cannot contain env var IPALLOC_RANGE, set instead via cluster.yaml")
+				}
+			}
+
+			// Create and append the new env var
+			ipallocRange := &v1.EnvVar{
+				Name:  "IPALLOC_RANGE",
+				Value: podsCIDRBlocks[0],
+			}
+			envVars = append(envVars, *ipallocRange)
+			container.Env = envVars
+			weaveNetDaemonSet.Spec.Template.Spec.Containers[idx] = container
+			break
 		}
 	}
-
-	// Create and append the new env var
-	ipallocRange := &v1.EnvVar{
-		Name:  "IPALLOC_RANGE",
-		Value: servicesCIDRBlocks[0],
+	if !containerFound {
+		return nil, errors.New("did not find 'weave' container in weave-net daemonset manifest")
 	}
 
-	envVars = append(envVars, *ipallocRange)
-
-	weaveNetDaemonSet.Spec.Template.Spec.Containers[0].Env = envVars
 	weaveNetYaml, err := yaml.Marshal(weaveNetDaemonSet)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to marshal daemonset")

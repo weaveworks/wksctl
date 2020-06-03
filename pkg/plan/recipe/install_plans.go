@@ -334,7 +334,7 @@ func BuildCNIPlan(cni string, manifests [][]byte) plan.Resource {
 		b.AddResource(
 			"install-cni:apply-manifests-ds",
 			&resource.KubectlApply{Manifest: manifests[1], Filename: object.String(cni + "-daemon-set" + ".yaml")},
-		)
+			plan.DependOn("install-cni:apply-manifests"))
 	}
 
 	p, err := b.Plan()
