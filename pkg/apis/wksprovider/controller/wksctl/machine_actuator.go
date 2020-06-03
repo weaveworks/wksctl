@@ -378,6 +378,7 @@ func (a *MachineActuator) delete(ctx context.Context, cluster *clusterv1.Cluster
 	}); err != nil {
 		return err
 	}
+	fmt.Println(m)
 	if err = a.clientSet.CoreV1().Nodes().Delete(node.Name, &metav1.DeleteOptions{}); err != nil {
 		return err
 	}
