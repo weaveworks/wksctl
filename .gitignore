@@ -2,6 +2,7 @@
 /examples/.vagrant
 /rpm/output
 /test/resource/tests
+/test/integration/test/kubectl
 
 # Ignore generated binaries
 /cmd/controller/controller
