@@ -90,7 +90,20 @@ func BuildCRIPlan(criSpec *baremetalspecv1.ContainerRuntime, cfg *envcfg.EnvSpec
 	IsDockerOnCentOS := false
 	// Docker runtime
 	switch pkgType {
-	case resource.PkgTypeRPM, resource.PkgTypeRHEL:
+	case resource.PkgTypeRHEL:
+		b.AddResource("install:container-selinux",
+			&resource.Run{Script: object.String("yum install -y http://mirror.centos.org/centos/7/extras/x86_64/Packages/container-selinux-2.107-1.el7_6.noarch.rpm")})
+
+		b.AddResource("install:docker",
+			&resource.RPM{Name: criSpec.Package, Version: criSpec.Version},
+			plan.DependOn("install:container-selinux"))
+
+		// SELinux will be here along with docker and containerd-selinux packages
+		IsDockerOnCentOS = false
+
+	case resource.PkgTypeRPM:
+		b.AddResource("install:container-selinux",
+			&resource.Run{Script: object.String("yum install -y http://mirror.centos.org/centos/7/extras/x86_64/Packages/container-selinux-2.107-1.el7_6.noarch.rpm")})
 		b.AddResource("install:docker", &resource.RPM{Name: criSpec.Package, Version: criSpec.Version})
 		// SELinux will be here along with docker and containerd-selinux packages
 		IsDockerOnCentOS = true
