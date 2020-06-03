@@ -378,7 +378,7 @@ func (a *MachineActuator) delete(ctx context.Context, cluster *clusterv1.Cluster
 		return err
 	}
 	if isMaster && len(masters) == 1 {
-		return gerrors.Wrapf(err, "there should be at least one master")
+		return errors.New("there should be at least one master")
 	}
 	if err := drain.Drain(node, a.clientSet, drain.Params{
 		Force:               true,
