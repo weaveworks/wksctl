@@ -377,7 +377,7 @@ func (o OS) CreateSeedNodeSetupPlan(params SeedNodeParams) (*plan.Plan, error) {
 	return createPlan(b)
 }
 
-// Sets the IPALLOC_ADDR env var in weave-net based on the podsCIDRBlocks read from the cluster.yaml
+// Sets the IPALLOC_ADDR env var in weave-net based on the pods.cidrBlocks read from the cluster.yaml
 func setCIDRBlocks(manifests [][]byte, podsCIDRBlocks []string) ([][]byte, error) {
 	manifestList := &v1.List{}
 	// Parse the manifest from weave-net.yaml into a List

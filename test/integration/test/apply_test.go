@@ -6,7 +6,9 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"net"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 	"time"
@@ -294,12 +296,32 @@ func testDebugLogging(t *testing.T, kubeconfig string) {
 	}
 }
 
+func testPodsCIDRBlocks(t *testing.T, kubeconfig string) {
+	cmdItems := []string{kubectl,
+		fmt.Sprintf("--kubeconfig=%s", kubeconfig), "get", "pods", "-l", "name=wks-controller", "--namespace=default", "-o", "jsonpath={.items[].status.podIP}"}
+	cmd := exec.Command(cmdItems[0], cmdItems[1:]...)
+	podIP, err := cmd.CombinedOutput()
+	log.Printf("wks-controller has IP: %s\n", string(podIP))
+	assert.NoError(t, err)
+	isValid, err := assertIPisWithinRange(string(podIP), "192.168.0.0/16")
+	assert.NoError(t, err)
+	log.Printf("IP is inside 192.168.0.0/16 range: %v\n", isValid)
+	assert.True(t, isValid)
+}
+
 func nodeIsMaster(n *v1.Node) bool {
 	const masterLabel = "node-role.kubernetes.io/master"
 	if _, ok := n.Labels[masterLabel]; ok {
 		return true
 	}
 	return false
+}
+
+func assertIPisWithinRange(ip string, ipRange string) (bool, error) {
+	_, subnet, _ := net.ParseCIDR(ipRange)
+
+	parsedIP := net.ParseIP(ip)
+	return subnet.Contains(parsedIP), nil
 }
 
 func nodesNumMasters(l *v1.NodeList) int {
@@ -501,5 +523,10 @@ func TestApply(t *testing.T) {
 	// Test the we are getting debug logging messages.
 	t.Run("loglevel", func(t *testing.T) {
 		testDebugLogging(t, kubeconfig)
+	})
+
+	// Test that the pods.cidrBlocks are passed to weave-net
+	t.Run("PodsCIDRBlocks", func(t *testing.T) {
+		testPodsCIDRBlocks(t, kubeconfig)
 	})
 }
