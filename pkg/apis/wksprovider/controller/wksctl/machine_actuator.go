@@ -371,21 +371,14 @@ func (a *MachineActuator) delete(ctx context.Context, cluster *clusterv1.Cluster
 	if err != nil {
 		return err
 	}
-	if node.Roles == "master" {
-		// Check if there's an adequate number of masters
-		nodes, err := a.clientSet.CoreV1().Nodes().List(metav1.ListOptions{})
-		masters := 0
-		if err != nil {
-			return nil, gerrors.Wrap(err, "failed to list nodes")
-		}
-		for _, nod := range nodes.Items {
-			if nod.Roles == "master" {
-				masters++
-			}
-		}
-		if masters > 1 {
-			return gerrors.Wrapf(err, "there should be at least one master")
-		}
+	// Check if there's an adequate number of masters
+	isMaster := isMaster(node)
+	masters, err := a.getMasterNodes()
+	if err != nil {
+		return err
+	}
+	if isMaster && len(masters) > 1 {
+		return gerrors.Wrapf(err, "there should be at least one master")
 	}
 	if err := drain.Drain(node, a.clientSet, drain.Params{
 		Force:               true,
