@@ -1,6 +1,8 @@
 package kubeadm
 
 import (
+	"fmt"
+
 	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/config"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubeadmapi "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm/v1beta1"
@@ -26,6 +28,8 @@ type ClusterConfigurationParams struct {
 	AdditionalSANs []string
 	// Additional arguments for auth, etc.
 	ExtraArgs map[string]string
+	// The IP range for services
+	ServiceCIDRBlock string
 }
 
 // NewClusterConfiguration returns an ClusterConfiguration with appropriate
@@ -36,10 +40,15 @@ func NewClusterConfiguration(params ClusterConfigurationParams) *kubeadmapi.Clus
 	SANs = append(SANs, params.ExternalLoadBalancer)
 	SANs = append(SANs, params.AdditionalSANs...)
 
+	fmt.Println("Passed service CIDR block: ", params.ServiceCIDRBlock)
+
 	cc := &kubeadmapi.ClusterConfiguration{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       constants.ClusterConfigurationKind,
 			APIVersion: kubeadmapi.SchemeGroupVersion.String(),
+		},
+		Networking: kubeadmapi.Networking{
+			ServiceSubnet: params.ServiceCIDRBlock,
 		},
 		APIServer: kubeadmapi.APIServer{
 			CertSANs:              certSANs(SANs...),

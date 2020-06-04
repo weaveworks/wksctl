@@ -318,7 +318,11 @@ func nodeIsMaster(n *v1.Node) bool {
 }
 
 func assertIPisWithinRange(ip string, ipRange string) (bool, error) {
-	_, subnet, _ := net.ParseCIDR(ipRange)
+	_, subnet, err := net.ParseCIDR(ipRange)
+	if err != nil {
+		log.Printf("failed to parse CIDR from %s, err: %s\n", ipRange, err)
+		return false, err
+	}
 
 	parsedIP := net.ParseIP(ip)
 	return subnet.Contains(parsedIP), nil

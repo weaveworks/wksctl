@@ -72,6 +72,8 @@ type KubeadmInit struct {
 	Namespace fmt.Stringer
 	// Extra arguments to pass to the APIServer
 	ExtraAPIServerArgs map[string]string
+	// The IP range for service VIPs
+	ServiceCIDRBlock string
 }
 
 var _ plan.Resource = plan.RegisterResource(&KubeadmInit{})
@@ -104,6 +106,7 @@ func (ki *KubeadmInit) Apply(runner plan.Runner, diff plan.Diff) (bool, error) {
 		ExternalLoadBalancer: ki.ExternalLoadBalancer,
 		AdditionalSANs:       ki.AdditionalSANs,
 		ExtraArgs:            ki.ExtraAPIServerArgs,
+		ServiceCIDRBlock:     ki.ServiceCIDRBlock,
 	}))
 	if err != nil {
 		return false, errors.Wrap(err, "failed to serialize kubeadm's ClusterConfiguration object")
