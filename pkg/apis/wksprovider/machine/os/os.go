@@ -301,7 +301,7 @@ func (o OS) CreateSeedNodeSetupPlan(params SeedNodeParams) (*plan.Plan, error) {
 	}
 
 	if len(params.PodsCIDRBlocks) > 0 && params.PodsCIDRBlocks[0] != "" {
-		manifests, err = setCIDRBlocks(manifests, params.PodsCIDRBlocks)
+		manifests, err = setPodCIDRBlock(manifests, params.PodsCIDRBlocks[0])
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to inject ipalloc_range")
 		}
@@ -379,7 +379,7 @@ func (o OS) CreateSeedNodeSetupPlan(params SeedNodeParams) (*plan.Plan, error) {
 }
 
 // Sets the IPALLOC_ADDR env var in weave-net based on the pods.cidrBlocks read from the cluster.yaml
-func setCIDRBlocks(manifests [][]byte, podsCIDRBlocks []string) ([][]byte, error) {
+func setPodCIDRBlock(manifests [][]byte, podsCIDRBlock string) ([][]byte, error) {
 	manifestList := &v1.List{}
 	// Parse the manifest from weave-net.yaml into a List
 	err := yaml.Unmarshal(manifests[0], manifestList)
@@ -420,7 +420,7 @@ func setCIDRBlocks(manifests [][]byte, podsCIDRBlocks []string) ([][]byte, error
 			// Create and append the new env var
 			ipallocRange := &v1.EnvVar{
 				Name:  "IPALLOC_RANGE",
-				Value: podsCIDRBlocks[0],
+				Value: podsCIDRBlock,
 			}
 			envVars = append(envVars, *ipallocRange)
 			container.Env = envVars

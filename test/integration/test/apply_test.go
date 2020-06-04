@@ -296,7 +296,7 @@ func testDebugLogging(t *testing.T, kubeconfig string) {
 	}
 }
 
-func testPodsCIDRBlocks(t *testing.T, kubeconfig string) {
+func testCIDRBlocks(t *testing.T, kubeconfig string) {
 	cmdItems := []string{kubectl,
 		fmt.Sprintf("--kubeconfig=%s", kubeconfig), "get", "pods", "-l", "name=wks-controller", "--namespace=default", "-o", "jsonpath={.items[].status.podIP}"}
 	cmd := exec.Command(cmdItems[0], cmdItems[1:]...)
@@ -305,8 +305,20 @@ func testPodsCIDRBlocks(t *testing.T, kubeconfig string) {
 	assert.NoError(t, err)
 	isValid, err := assertIPisWithinRange(string(podIP), "192.168.0.0/16")
 	assert.NoError(t, err)
-	log.Printf("IP is inside 192.168.0.0/16 range: %v\n", isValid)
+	log.Printf("Pod IP %s is inside 192.168.0.0/16 range? %v\n", podIP, isValid)
 	assert.True(t, isValid)
+
+	cmdItems = []string{kubectl,
+		fmt.Sprintf("--kubeconfig=%s", kubeconfig), "get", "service", "kubernetes", "--namespace=default", "-o", "jsonpath={.spec.clusterIP}"}
+	cmd = exec.Command(cmdItems[0], cmdItems[1:]...)
+	serviceIP, err := cmd.CombinedOutput()
+	log.Printf("kubernetes service has IP: %s\n", string(serviceIP))
+	assert.NoError(t, err)
+	isValid, err = assertIPisWithinRange(string(serviceIP), "172.20.0.0/23")
+	assert.NoError(t, err)
+	log.Printf("Service IP %s is inside 172.20.0.0/23 range? %v\n", serviceIP, isValid)
+	assert.True(t, isValid)
+
 }
 
 func nodeIsMaster(n *v1.Node) bool {
@@ -530,7 +542,7 @@ func TestApply(t *testing.T) {
 	})
 
 	// Test that the pods.cidrBlocks are passed to weave-net
-	t.Run("PodsCIDRBlocks", func(t *testing.T) {
-		testPodsCIDRBlocks(t, kubeconfig)
+	t.Run("CIDRBlocks", func(t *testing.T) {
+		testCIDRBlocks(t, kubeconfig)
 	})
 }
