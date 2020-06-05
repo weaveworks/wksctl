@@ -312,6 +312,21 @@ items:
         priorityClassName: system-node-critical
     updateStrategy:
       type: RollingUpdate
+- apiVersion: rbac.authorization.k8s.io/v1
+  kind: RoleBinding
+  metadata:
+    name: weave-net
+    namespace: kube-system
+    labels:
+      name: weave-net
+  roleRef:
+    kind: Role
+    name: weave-net
+    apiGroup: rbac.authorization.k8s.io
+  subjects:
+    - kind: ServiceAccount
+      name: weave-net
+      namespace: kube-system
 `
 
 var sampleDaemonSet = `
@@ -363,24 +378,26 @@ spec:
 
 func TestFindDaemonSet(t *testing.T) {
 	// nil case
-	_, err := findDaemonSet(nil)
+	_, _, err := findDaemonSet(nil)
 	assert.Error(t, err, "nil manifest list should fail")
 
 	// empty case
 	manifestList := &v1.List{}
-	_, err = findDaemonSet(manifestList)
+	_, _, err = findDaemonSet(manifestList)
 	assert.Error(t, err, "empty manifest list should fail")
 
 	// invalid manifest case
 	err = yaml.Unmarshal([]byte(wrongManifestList), manifestList)
 	assert.NoError(t, err)
-	_, err = findDaemonSet(manifestList)
+	_, _, err = findDaemonSet(manifestList)
 	assert.Error(t, err, "manifest list without a daemonset should fail")
 
 	// valid manifest case
 	err = yaml.Unmarshal([]byte(validManifestList), manifestList)
 	assert.NoError(t, err)
-	_, err = findDaemonSet(manifestList)
+	idx, _, err := findDaemonSet(manifestList)
+	// the daemonSet is found at the 2nd position in the list
+	assert.Equal(t, idx, 1)
 	assert.NoError(t, err)
 }
 
@@ -389,7 +406,7 @@ func TestInjectEnvVarToContainer(t *testing.T) {
 	manifestList := &v1.List{}
 	err := yaml.Unmarshal([]byte(validManifestList), manifestList)
 	assert.NoError(t, err)
-	daemonSet, err := findDaemonSet(manifestList)
+	_, daemonSet, err := findDaemonSet(manifestList)
 	assert.NoError(t, err)
 
 	// inject a new env var

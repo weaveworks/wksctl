@@ -1,8 +1,6 @@
 package kubeadm
 
 import (
-	"fmt"
-
 	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/config"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubeadmapi "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm/v1beta1"
@@ -39,8 +37,6 @@ func NewClusterConfiguration(params ClusterConfigurationParams) *kubeadmapi.Clus
 	SANs = append(SANs, params.NodeIPs...)
 	SANs = append(SANs, params.ExternalLoadBalancer)
 	SANs = append(SANs, params.AdditionalSANs...)
-
-	fmt.Println("Passed service CIDR block: ", params.ServiceCIDRBlock)
 
 	cc := &kubeadmapi.ClusterConfiguration{
 		TypeMeta: metav1.TypeMeta{

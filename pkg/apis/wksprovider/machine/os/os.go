@@ -402,7 +402,7 @@ func setWeaveNetPodCIDRBlock(manifests [][]byte, podsCIDRBlock string, cni strin
 	}
 
 	// Find and parse the DaemonSet included in the manifest list into an object
-	daemonSet, err := findDaemonSet(manifestList)
+	idx, daemonSet, err := findDaemonSet(manifestList)
 	if err != nil {
 		return nil, errors.New("failed to find daemonset in weave-net manifest")
 	}
@@ -418,8 +418,11 @@ func setWeaveNetPodCIDRBlock(manifests [][]byte, podsCIDRBlock string, cni strin
 		return nil, errors.Wrap(err, "failed to marshal daemonset")
 	}
 
-	// First remove the default daemonset from the manifest list
+	// First remove the default daemonset from the manifest list at the index it was found
+	copy(manifestList.Items[idx:], manifestList.Items[idx+1:])
+	manifestList.Items[len(manifestList.Items)-1] = runtime.RawExtension{}
 	manifestList.Items = manifestList.Items[:len(manifestList.Items)-1]
+
 	manifests[0], err = yaml.Marshal(manifestList)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to marshal weave-net manifest list")
@@ -459,13 +462,15 @@ func injectEnvVarToContainer(
 }
 
 // Returns a daemonset manifest from a list
-func findDaemonSet(manifest *v1.List) (*appsv1.DaemonSet, error) {
+func findDaemonSet(manifest *v1.List) (int, *appsv1.DaemonSet, error) {
 	if manifest == nil {
-		return nil, errors.New("manifest is nil")
+		return -1, nil, errors.New("manifest is nil")
 	}
 	daemonSet := &appsv1.DaemonSet{}
 	var err error
-	for _, item := range manifest.Items {
+	var idx int
+	var item runtime.RawExtension
+	for idx, item = range manifest.Items {
 		err := yaml.Unmarshal(item.Raw, daemonSet)
 		if err == nil && daemonSet.Kind == "DaemonSet" {
 			break
@@ -473,13 +478,13 @@ func findDaemonSet(manifest *v1.List) (*appsv1.DaemonSet, error) {
 	}
 
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to unmarshal manifest list")
+		return -1, nil, errors.Wrap(err, "failed to unmarshal manifest list")
 	}
 	if daemonSet.Kind != "DaemonSet" {
-		return nil, errors.New("daemonset not found in manifest list")
+		return -1, nil, errors.New("daemonset not found in manifest list")
 	}
 
-	return daemonSet, nil
+	return idx, daemonSet, nil
 }
 
 func addAuthConfigMapIfNecessary(configMapManifests map[string][]byte, authConfigManifest []byte) {
