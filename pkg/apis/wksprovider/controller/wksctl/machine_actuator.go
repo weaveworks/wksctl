@@ -46,7 +46,9 @@ import (
 	"k8s.io/client-go/util/retry"
 	bootstrapapi "k8s.io/cluster-bootstrap/token/api"
 	clusterv1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
+	clusterclient "sigs.k8s.io/cluster-api/pkg/client/clientset_generated/clientset/typed/cluster/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	controllerconfig "sigs.k8s.io/controller-runtime/pkg/client/config"
 )
 
 const (
@@ -125,7 +127,7 @@ func (a *MachineActuator) create(ctx context.Context, cluster *clusterv1.Cluster
 	}
 	defer closer.Close()
 	// Bootstrap - set plan on seed node if not present before any updates can occur
-	if err = a.initializeMasterPlanIfNecessary(installer); err != nil {
+	if err = a.initializeMasterPlanIfNecessary(c); err != nil {
 		return err
 	}
 	// Also, update footloose IP from env
@@ -165,7 +167,7 @@ func (a *MachineActuator) create(ctx context.Context, cluster *clusterv1.Cluster
 // We set the plan annotation for a seed node at the first create of another mode so we
 // don't miss any updates. The plan is derived from the original seed node plan and stored in a config map
 // for use by the actuator.
-func (a *MachineActuator) initializeMasterPlanIfNecessary(installer *os.OS) error {
+func (a *MachineActuator) initializeMasterPlanIfNecessary(c *baremetalspecv1.BareMetalClusterProviderSpec) error {
 
 	// we also use this method to mark the first master as the "originalMaster"
 	originalMasterNode, err := a.getOriginalMasterNode()
@@ -174,6 +176,19 @@ func (a *MachineActuator) initializeMasterPlanIfNecessary(installer *os.OS) erro
 	}
 
 	if originalMasterNode.Annotations[planKey] == "" {
+		omAddress := getNodePrivateAddress(originalMasterNode)
+		if omAddress == "" {
+			return errors.New("Could not determine master node address")
+		}
+		machine, mspec, err := a.findMachineSpecForAddress(omAddress)
+		if err != nil {
+			return err
+		}
+		installer, closer, err := a.connectTo(machine, c, mspec)
+		if err != nil {
+			return err
+		}
+		defer closer.Close()
 		client := a.clientSet.CoreV1().ConfigMaps(a.controllerNamespace)
 		configMap, err := client.Get(os.SeedNodePlanName, metav1.GetOptions{})
 		if err != nil {
@@ -194,6 +209,44 @@ func (a *MachineActuator) initializeMasterPlanIfNecessary(installer *os.OS) erro
 		}
 	}
 	return nil
+}
+
+// findMachineSpecForAddress looks up machine resources and selects the one with a particular address. Used to tie
+// nodes and machines together.
+func (a *MachineActuator) findMachineSpecForAddress(addr string) (*clusterv1.Machine, *baremetalspecv1.BareMetalMachineProviderSpec, error) {
+	cfg, err := controllerconfig.GetConfig()
+	if err != nil {
+		return nil, nil, gerrors.Wrapf(err, "failed to get the coordinates of the API server")
+	}
+	clusterClient, err := clusterclient.NewForConfig(cfg)
+	if err != nil {
+		return nil, nil, err
+	}
+	mi := clusterClient.Machines(a.controllerNamespace)
+	mlist, err := mi.List(metav1.ListOptions{})
+	if err != nil {
+		return nil, nil, err
+	}
+	for _, m := range mlist.Items {
+		spec, err := a.codec.MachineProviderFromProviderSpec(m.Spec.ProviderSpec)
+		if err != nil {
+			return nil, nil, err
+		}
+		if spec.Private.Address == addr {
+			return &m, spec, nil
+		}
+	}
+	return nil, nil, fmt.Errorf("Could not find machine with node address: %s", addr)
+}
+
+// getNodePrivateAddress looks through the addresses for a node and extracts the private address
+func getNodePrivateAddress(node *corev1.Node) string {
+	for _, addr := range node.Status.Addresses {
+		if addr.Type == "InternalIP" {
+			return addr.Address
+		}
+	}
+	return ""
 }
 
 func (a *MachineActuator) parse(cluster *clusterv1.Cluster, machine *clusterv1.Machine) (*baremetalspecv1.BareMetalClusterProviderSpec, *baremetalspecv1.BareMetalMachineProviderSpec, error) {
@@ -417,7 +470,7 @@ func (a *MachineActuator) update(ctx context.Context, cluster *clusterv1.Cluster
 	defer closer.Close()
 
 	// Bootstrap - set plan on seed node if not present before any updates can occur
-	if err := a.initializeMasterPlanIfNecessary(installer); err != nil {
+	if err := a.initializeMasterPlanIfNecessary(c); err != nil {
 		return err
 	}
 	ids, err := installer.IDs()
