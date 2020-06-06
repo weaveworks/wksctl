@@ -407,8 +407,7 @@ func setWeaveNetPodCIDRBlock(manifests [][]byte, podsCIDRBlock string, cni strin
 		return nil, errors.New("failed to find daemonset in weave-net manifest")
 	}
 
-	daemonSet.Spec.Template.Spec.Containers, err = injectEnvVarToContainer(
-		daemonSet.Spec.Template.Spec.Containers, containerName, *podCIDRBlock)
+	err = injectEnvVarToContainer(daemonSet.Spec.Template.Spec.Containers, containerName, *podCIDRBlock)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to inject env var to weave container")
 	}
@@ -435,7 +434,7 @@ func setWeaveNetPodCIDRBlock(manifests [][]byte, podsCIDRBlock string, cni strin
 
 // Finds container in the list by name, adds an env var, fails if env var exists with different value
 func injectEnvVarToContainer(
-	containers []v1.Container, name string, newEnvVar v1.EnvVar) ([]v1.Container, error) {
+	containers []v1.Container, name string, newEnvVar v1.EnvVar) error {
 	containerFound := false
 	for idx, container := range containers {
 		if container.Name == name {
@@ -444,10 +443,10 @@ func injectEnvVarToContainer(
 			for _, envVar := range envVars {
 				if envVar.Name == newEnvVar.Name {
 					if envVar.Value != newEnvVar.Value {
-						return nil, errors.New(
+						return errors.New(
 							fmt.Sprintf("manifest already contains env var %s, and cannot overwrite", newEnvVar.Name))
 					}
-					return containers, nil
+					return nil
 				}
 			}
 			container.Env = append(envVars, newEnvVar)
@@ -456,9 +455,9 @@ func injectEnvVarToContainer(
 		}
 	}
 	if !containerFound {
-		return nil, errors.New(fmt.Sprintf("did not find container %s in manifest", name))
+		return errors.New(fmt.Sprintf("did not find container %s in manifest", name))
 	}
-	return containers, nil
+	return nil
 }
 
 // Returns a daemonset manifest from a list

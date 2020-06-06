@@ -415,12 +415,11 @@ func TestInjectEnvVarToContainer(t *testing.T) {
 		Value: "10.96.0.0/16",
 	}
 	// nil case
-	_, err = injectEnvVarToContainer(nil, "", *ipallocRange)
+	err = injectEnvVarToContainer(nil, "", *ipallocRange)
 	assert.Error(t, err, "nil case should return error")
 
 	// valid case, env var should be contained in daemonset
-	daemonSet.Spec.Template.Spec.Containers, err = injectEnvVarToContainer(
-		daemonSet.Spec.Template.Spec.Containers, "weave", *ipallocRange)
+	err = injectEnvVarToContainer(daemonSet.Spec.Template.Spec.Containers, "weave", *ipallocRange)
 	assert.NoError(t, err)
 	assert.True(t, strings.Contains(daemonSet.String(), "IPALLOC_RANGE"))
 
@@ -429,8 +428,7 @@ func TestInjectEnvVarToContainer(t *testing.T) {
 		Name:  "IPALLOC_RANGE",
 		Value: "172.20.0.0/23",
 	}
-	daemonSet.Spec.Template.Spec.Containers, err = injectEnvVarToContainer(
-		daemonSet.Spec.Template.Spec.Containers, "weave", *ipallocRange)
+	err = injectEnvVarToContainer(daemonSet.Spec.Template.Spec.Containers, "weave", *ipallocRange)
 	assert.Error(t, err, "env var exists with different value, should fail")
 
 	// test with sample manifest with containers that don't include env
@@ -438,8 +436,7 @@ func TestInjectEnvVarToContainer(t *testing.T) {
 	err = yaml.Unmarshal([]byte(sampleDaemonSet), daemonSet)
 	assert.NoError(t, err)
 
-	daemonSet.Spec.Template.Spec.Containers, err = injectEnvVarToContainer(
-		daemonSet.Spec.Template.Spec.Containers, "fluentd-elasticsearch", *ipallocRange)
+	err = injectEnvVarToContainer(daemonSet.Spec.Template.Spec.Containers, "fluentd-elasticsearch", *ipallocRange)
 	assert.NoError(t, err)
 	assert.True(t, strings.Contains(daemonSet.String(), "IPALLOC_RANGE"))
 }
