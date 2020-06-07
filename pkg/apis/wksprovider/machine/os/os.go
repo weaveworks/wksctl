@@ -435,28 +435,35 @@ func setWeaveNetPodCIDRBlock(manifests [][]byte, podsCIDRBlock string, cni strin
 // Finds container in the list by name, adds an env var, fails if env var exists with different value
 func injectEnvVarToContainer(
 	containers []v1.Container, name string, newEnvVar v1.EnvVar) error {
+	var targetContainer v1.Container
 	containerFound := false
-	for idx, container := range containers {
+	var idx int
+	var container v1.Container
+
+	for idx, container = range containers {
 		if container.Name == name {
+			targetContainer = container
 			containerFound = true
-			envVars := container.Env
-			for _, envVar := range envVars {
-				if envVar.Name == newEnvVar.Name {
-					if envVar.Value != newEnvVar.Value {
-						return errors.New(
-							fmt.Sprintf("manifest already contains env var %s, and cannot overwrite", newEnvVar.Name))
-					}
-					return nil
-				}
-			}
-			container.Env = append(envVars, newEnvVar)
-			containers[idx] = container
 			break
 		}
 	}
 	if !containerFound {
 		return errors.New(fmt.Sprintf("did not find container %s in manifest", name))
 	}
+
+	envVars := targetContainer.Env
+	for _, envVar := range envVars {
+		if envVar.Name == newEnvVar.Name {
+			if envVar.Value != newEnvVar.Value {
+				return errors.New(
+					fmt.Sprintf("manifest already contains env var %s, and cannot overwrite", newEnvVar.Name))
+			}
+			return nil
+		}
+	}
+	targetContainer.Env = append(envVars, newEnvVar)
+	containers[idx] = targetContainer
+
 	return nil
 }
 
