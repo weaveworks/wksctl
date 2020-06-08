@@ -568,6 +568,28 @@ func (a *MachineActuator) update(ctx context.Context, cluster *clusterv1.Cluster
 	return nil
 }
 
+// TODO: Figure out &resource.RPM return datatype
+/* func OSUpgradeCommands(installer *os.OS, lockingState bool) (*resou, string, error) {
+
+	if installer.Name == "centos" {
+		packageManager = &resource.RPM
+		if lockingState {
+			command = "yum versionlock add 'kube*' || true"
+		} else if !lockingState {
+			command = "yum versionlock delete 'kube*' || true"
+		}
+	} else if installer.Name == "ubuntu" {
+		packageManager = &resource.Deb
+		if lockingState {
+			command = "apt-mark hold 'kube*' || true"
+		} else if !lockingState {
+			command = "apt-mark unhold 'kube*' || true"
+		}
+	}
+
+	return packageManager, command, nil
+} */
+
 // kubeadmUpOrDowngrade does upgrade or downgrade a machine.
 // Parameter k8sversion specified here represents the version of both Kubernetes and Kubeadm.
 func (a *MachineActuator) kubeadmUpOrDowngrade(machine *clusterv1.Machine, node *corev1.Node, installer *os.OS,
@@ -577,16 +599,19 @@ func (a *MachineActuator) kubeadmUpOrDowngrade(machine *clusterv1.Machine, node 
 		b.AddResource(
 			"upgrade:node-unlock-kubernetes",
 			&resource.Run{Script: object.String("yum versionlock delete 'kube*' || true")})
+		b.AddResource(
+			"upgrade:node-install-kubeadm",
+			&resource.RPM{Name: "kubeadm", Version: k8sVersion, DisableExcludes: "kubernetes"},
+			plan.DependOn("upgrade:node-unlock-kubernetes"))
 	} else if installer.Name == "ubuntu" {
 		b.AddResource(
 			"upgrade:node-unlock-kubernetes",
-			// edit to ubuntu-specific locking
 			&resource.Run{Script: object.String("apt-mark unhold 'kube*' || true")})
+		b.AddResource(
+			"upgrade:node-install-kubeadm",
+			&resource.Deb{Name: "kubeadm", Suffix: "=" + k8sVersion + "-00"},
+			plan.DependOn("upgrade:node-unlock-kubernetes"))
 	}
-	b.AddResource(
-		"upgrade:node-install-kubeadm",
-		&resource.RPM{Name: "kubeadm", Version: k8sVersion, DisableExcludes: "kubernetes"},
-		plan.DependOn("upgrade:node-unlock-kubernetes"))
 
 	//
 	// For secondary masters
@@ -615,24 +640,35 @@ func (a *MachineActuator) kubeadmUpOrDowngrade(machine *clusterv1.Machine, node 
 			&resource.Run{Script: object.String(fmt.Sprintf("kubeadm upgrade node config --kubelet-version %s", k8sVersion))},
 			plan.DependOn("upgrade:node-install-kubeadm"))
 	}
-	b.AddResource(
-		"upgrade:node-kubelet",
-		&resource.RPM{Name: "kubelet", Version: k8sVersion, DisableExcludes: "kubernetes"},
-		plan.DependOn("upgrade:node-kubeadm-upgrade"))
+	if installer.Name == "centos" {
+		b.AddResource(
+			"upgrade:node-kubelet",
+			&resource.RPM{Name: "kubelet", Version: k8sVersion, DisableExcludes: "kubernetes"},
+			plan.DependOn("upgrade:node-kubeadm-upgrade"))
+	} else if installer.Name == "ubuntu" {
+		b.AddResource(
+			"upgrade:node-kubelet",
+			&resource.Deb{Name: "kubelet", Suffix: "=" + k8sVersion + "-00"},
+			plan.DependOn("upgrade:node-kubeadm-upgrade"))
+	}
 	b.AddResource(
 		"upgrade:node-restart-kubelet",
 		&resource.Run{Script: object.String("systemctl restart kubelet")},
 		plan.DependOn("upgrade:node-kubelet"))
-	b.AddResource(
-		"upgrade:node-kubectl",
-		&resource.RPM{Name: "kubectl", Version: k8sVersion, DisableExcludes: "kubernetes"},
-		plan.DependOn("upgrade:node-restart-kubelet"))
 	if installer.Name == "centos" {
+		b.AddResource(
+			"upgrade:node-kubectl",
+			&resource.RPM{Name: "kubectl", Version: k8sVersion, DisableExcludes: "kubernetes"},
+			plan.DependOn("upgrade:node-restart-kubelet"))
 		b.AddResource(
 			"upgrade:node-lock-kubernetes",
 			&resource.Run{Script: object.String("yum versionlock add 'kube*' || true")},
 			plan.DependOn("upgrade:node-kubectl"))
 	} else if installer.Name == "ubuntu" {
+		b.AddResource(
+			"upgrade:node-kubectl",
+			&resource.Deb{Name: "kubectl", Suffix: "=" + k8sVersion + "-00"},
+			plan.DependOn("upgrade:node-restart-kubelet"))
 		b.AddResource(
 			"upgrade:node-lock-kubernetes",
 			// edit to ubuntu-specific locking
