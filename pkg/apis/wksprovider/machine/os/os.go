@@ -285,10 +285,11 @@ func (o OS) CreateSeedNodeSetupPlan(params SeedNodeParams) (*plan.Plan, error) {
 			Namespace:             object.String(params.Namespace),
 			NodeName:              cfg.HostnameOverride,
 			ExtraAPIServerArgs:    apiServerArgs,
-			// kubeadm currently accepts a single subnet for services
+			// kubeadm currently accepts a single subnet for services and pods
 			// ref: https://godoc.org/k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm/v1beta1#Networking
 			// this should be ensured in the validation step in pkg.specs.validation.validateCIDRBlocks()
 			ServiceCIDRBlock: params.ServicesCIDRBlocks[0],
+			PodCIDRBlock:     params.PodsCIDRBlocks[0],
 		}
 	b.AddResource("kubeadm:init", kubeadmInitResource, plan.DependOn("install:k8s"))
 

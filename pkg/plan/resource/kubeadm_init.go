@@ -74,6 +74,8 @@ type KubeadmInit struct {
 	ExtraAPIServerArgs map[string]string
 	// The IP range for service VIPs
 	ServiceCIDRBlock string
+	// PodCIDRBlock is the subnet used by pods.
+	PodCIDRBlock string
 }
 
 var _ plan.Resource = plan.RegisterResource(&KubeadmInit{})
@@ -107,6 +109,7 @@ func (ki *KubeadmInit) Apply(runner plan.Runner, diff plan.Diff) (bool, error) {
 		AdditionalSANs:       ki.AdditionalSANs,
 		ExtraArgs:            ki.ExtraAPIServerArgs,
 		ServiceCIDRBlock:     ki.ServiceCIDRBlock,
+		PodCIDRBlock:         ki.PodCIDRBlock,
 	}))
 	if err != nil {
 		return false, errors.Wrap(err, "failed to serialize kubeadm's ClusterConfiguration object")
