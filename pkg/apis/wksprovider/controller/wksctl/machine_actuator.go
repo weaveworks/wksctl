@@ -581,7 +581,7 @@ func (a *MachineActuator) kubeadmUpOrDowngrade(machine *clusterv1.Machine, node 
 		b.AddResource(
 			"upgrade:node-unlock-kubernetes",
 			// edit to ubuntu-specific locking
-			&resource.Run{Script: object.String("yum versionlock delete 'kube*' || true")})
+			&resource.Run{Script: object.String("apt-mark unhold 'kube*' || true")})
 	}
 	b.AddResource(
 		"upgrade:node-install-kubeadm",
@@ -636,7 +636,7 @@ func (a *MachineActuator) kubeadmUpOrDowngrade(machine *clusterv1.Machine, node 
 		b.AddResource(
 			"upgrade:node-lock-kubernetes",
 			// edit to ubuntu-specific locking
-			&resource.Run{Script: object.String("yum versionlock add 'kube*' || true")},
+			&resource.Run{Script: object.String("apt-mark hold 'kube*' || true")},
 			plan.DependOn("upgrade:node-kubectl"))
 	}
 
