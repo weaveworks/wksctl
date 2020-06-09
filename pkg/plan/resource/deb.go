@@ -2,6 +2,7 @@ package resource
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/weaveworks/wksctl/pkg/plan"
 )
@@ -21,6 +22,10 @@ var _ plan.Resource = plan.RegisterResource(&Deb{})
 
 func (d *Deb) State() plan.State {
 	return toState(d)
+}
+
+func isLowerRevision(v1, v2 *Deb) bool {
+	return strings.Compare(v1.Suffix, v2.Suffix) < 0
 }
 
 func (d *Deb) QueryState(runner plan.Runner) (plan.State, error) {
@@ -44,13 +49,28 @@ func (d *Deb) Apply(runner plan.Runner, diff plan.Diff) (propagate bool, err err
 		return false, fmt.Errorf("update cache failed: %v", err)
 	}
 
-	if diff.CurrentState.IsEmpty() {
+	q := dpkgQuerier{Runner: runner}
+	installed, err := q.ShowInstalled(d.Name)
+
+	if err != nil {
+		return false, err
+	}
+
+	if len(installed) == 0 {
 		if err := a.Install(d.Name, d.Suffix); err != nil {
 			return false, err
 		}
-	} else {
-		if err := a.Upgrade(d.Name, d.Suffix); err != nil {
-			return false, err
+	} else if len(installed) > 0 {
+		currentVersion := DebResourceFromPackage(installed[0])
+
+		if isLowerRevision(currentVersion, d) {
+			if err := a.Upgrade(d.Name, d.Suffix); err != nil {
+				return false, err
+			}
+		} else if isLowerRevision(d, currentVersion) {
+			if err := a.Install(d.Name, d.Suffix); err != nil {
+				return false, err
+			}
 		}
 	}
 
