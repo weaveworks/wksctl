@@ -406,10 +406,10 @@ func TestApply(t *testing.T) {
 	writeYamlManifests(t, configPath("machines.yaml"), machines, bmMachines)
 
 	// Generate bad version to check failure return codes
-	savedAddress := bmMachines[0].Spec.PrivateAddress
-	bmMachines[0].Spec.PrivateAddress = "192.168.111.111"
+	savedAddress := bmMachines[0].Spec.Private.Address
+	bmMachines[0].Spec.Private.Address = "192.168.111.111"
 	writeYamlManifests(t, configPath("badmachines.yaml"), machines, bmMachines)
-	bmMachines[0].Spec.PrivateAddress = savedAddress
+	bmMachines[0].Spec.Private.Address = savedAddress
 
 	machinesManifestPath := configPath("machines.yaml")
 	_, m := machine.FirstMaster(machines, bmMachines)
