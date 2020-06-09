@@ -110,6 +110,15 @@ func ParseCluster(r io.ReadCloser) (cluster *clusterv1.Cluster, bmc *baremetalsp
 			return nil, nil, errors.Errorf("unexpected type %T", v)
 		}
 	}
+
+	if cluster == nil {
+		return nil, nil, errors.New("parsed cluster manifest lacks Cluster definition")
+	}
+
+	if bmc == nil {
+		return nil, nil, errors.New("parsed cluster manifest lacks BareMetalCluster definition")
+	}
+
 	return
 }
 
