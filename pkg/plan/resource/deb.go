@@ -49,7 +49,7 @@ func (d *Deb) Apply(runner plan.Runner, diff plan.Diff) (propagate bool, err err
 			return false, err
 		}
 	} else {
-		if err := a.Install(d.Name, d.Suffix); err != nil {
+		if err := a.Upgrade(d.Name, d.Suffix); err != nil {
 			return false, err
 		}
 	}
