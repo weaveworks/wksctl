@@ -37,16 +37,8 @@ var _ plan.Runner = &Client{}
 const tcp = "tcp"
 
 func NewClientForMachine(m *v1alpha3.BareMetalMachineSpec, user, keyPath string, printOutputs bool) (*Client, error) {
-	var ip string
-	var port uint16
-	if m.Public.Address != "" {
-		ip = m.Public.Address
-		port = m.Public.Port
-	} else {
-		// Fall back to the address at the root
-		ip = m.Address
-		port = m.Port
-	}
+	ip := m.Public.Address
+	port := m.Public.Port
 	return NewClient(ClientParams{
 		User:           user,
 		Host:           ip,

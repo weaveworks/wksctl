@@ -34,10 +34,6 @@ spec:
           type: object
         spec:
           properties:
-            address:
-              type: string
-            port:
-              type: integer
             private:
               description: EndPoint groups the details required to establish a connection.
               properties:
@@ -49,10 +45,6 @@ spec:
               - address
               - port
               type: object
-            privateAddress:
-              type: string
-            privateInterface:
-              type: string
             providerID:
               type: string
             public:
@@ -66,8 +58,6 @@ spec:
               - address
               - port
               type: object
-          required:
-          - address
           type: object
         status:
           properties:
