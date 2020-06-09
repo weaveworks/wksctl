@@ -38,6 +38,15 @@ func (a *aptInstaller) Install(name, suffix string) error {
 	return nil
 }
 
+func (a *aptInstaller) Upgrade(name, suffix string) error {
+	flags := "--yes --quiet --verbose-versions --no-install-recommends --only-upgrade"
+	cmd := fmt.Sprintf("%s '%s' %s install '%s%s'", env, a.CommandMaybeDefault(), flags, name, suffix)
+	if out, err := wrapRetry(a.Runner).RunCommand(cmd, nil); err != nil {
+		return fmt.Errorf("command %q failed: %v; output: %s", cmd, err, out)
+	}
+	return nil
+}
+
 func (a *aptInstaller) Purge(name string) error {
 	flags := "--yes --quiet --verbose-versions --auto-remove"
 	cmd := fmt.Sprintf("%s '%s' %s purge '%s'", env, a.CommandMaybeDefault(), flags, name)

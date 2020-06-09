@@ -568,28 +568,6 @@ func (a *MachineActuator) update(ctx context.Context, cluster *clusterv1.Cluster
 	return nil
 }
 
-// TODO: Figure out &resource.RPM return datatype
-/* func OSUpgradeCommands(installer *os.OS, lockingState bool) (*resou, string, error) {
-
-	if installer.Name == "centos" {
-		packageManager = &resource.RPM
-		if lockingState {
-			command = "yum versionlock add 'kube*' || true"
-		} else if !lockingState {
-			command = "yum versionlock delete 'kube*' || true"
-		}
-	} else if installer.Name == "ubuntu" {
-		packageManager = &resource.Deb
-		if lockingState {
-			command = "apt-mark hold 'kube*' || true"
-		} else if !lockingState {
-			command = "apt-mark unhold 'kube*' || true"
-		}
-	}
-
-	return packageManager, command, nil
-} */
-
 // kubeadmUpOrDowngrade does upgrade or downgrade a machine.
 // Parameter k8sversion specified here represents the version of both Kubernetes and Kubeadm.
 func (a *MachineActuator) kubeadmUpOrDowngrade(machine *clusterv1.Machine, node *corev1.Node, installer *os.OS,
@@ -671,7 +649,6 @@ func (a *MachineActuator) kubeadmUpOrDowngrade(machine *clusterv1.Machine, node 
 			plan.DependOn("upgrade:node-restart-kubelet"))
 		b.AddResource(
 			"upgrade:node-lock-kubernetes",
-			// edit to ubuntu-specific locking
 			&resource.Run{Script: object.String("apt-mark hold 'kube*' || true")},
 			plan.DependOn("upgrade:node-kubectl"))
 	}
