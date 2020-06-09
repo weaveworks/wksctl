@@ -111,13 +111,9 @@ type BareMetalMachine struct {
 }
 
 type BareMetalMachineSpec struct {
-	Address          string   `json:"address"`
-	Port             uint16   `json:"port,omitempty"`
-	PrivateAddress   string   `json:"privateAddress,omitempty"`
-	PrivateInterface string   `json:"privateInterface,omitempty"`
-	Private          EndPoint `json:"private,omitempty"`
-	Public           EndPoint `json:"public,omitempty"`
-	ProviderID       string   `json:"providerID,omitempty"`
+	Private    EndPoint `json:"private,omitempty"`
+	Public     EndPoint `json:"public,omitempty"`
+	ProviderID string   `json:"providerID,omitempty"`
 }
 
 type BareMetalMachineStatus struct {
