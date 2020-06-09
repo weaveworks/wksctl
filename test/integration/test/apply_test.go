@@ -392,6 +392,9 @@ func TestApply(t *testing.T) {
 	assert.NoError(t, clusterv1.AddToScheme(scheme.Scheme))
 	assert.NoError(t, baremetalspecv1.AddToScheme(scheme.Scheme))
 
+	clusterManifestPath := configPath("cluster.yaml")
+	_, c := parseClusterManifest(t, clusterManifestPath)
+
 	exe := run.NewExecutor()
 
 	// Prepare the machines manifest from terraform output.
@@ -408,9 +411,7 @@ func TestApply(t *testing.T) {
 	writeYamlManifests(t, configPath("badmachines.yaml"), machines, bmMachines)
 	bmMachines[0].Spec.PrivateAddress = savedAddress
 
-	clusterManifestPath := configPath("cluster.yaml")
 	machinesManifestPath := configPath("machines.yaml")
-	_, c := parseClusterManifest(t, clusterManifestPath)
 	_, m := machine.FirstMaster(machines, bmMachines)
 	assert.NotNil(t, m)
 	ip := m.Spec.Public.Address
