@@ -170,7 +170,7 @@ func kubectlRemoteApply(remoteURL string, runner plan.Runner) error {
 
 	if stdouterr, err := runner.RunCommand(withoutProxy(cmd), nil); err != nil {
 		log.WithField("stdouterr", stdouterr).WithField("URL", remoteURL).Debug(fmt.Sprintf("failed to apply Kubernetes manifest"))
-		return errors.Wrapf(err, "failed to apply manifest %q", remoteURL)
+		return errors.Wrapf(err, "failed to apply manifest %s; output %s", remoteURL, stdouterr)
 	}
 	return nil
 }
