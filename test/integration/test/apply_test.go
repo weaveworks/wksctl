@@ -6,7 +6,9 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"net"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 	"time"
@@ -294,12 +296,48 @@ func testDebugLogging(t *testing.T, kubeconfig string) {
 	}
 }
 
+func testCIDRBlocks(t *testing.T, kubeconfig string) {
+	cmdItems := []string{kubectl,
+		fmt.Sprintf("--kubeconfig=%s", kubeconfig), "get", "pods", "-l", "name=wks-controller", "--namespace=default", "-o", "jsonpath={.items[].status.podIP}"}
+	cmd := exec.Command(cmdItems[0], cmdItems[1:]...)
+	podIP, err := cmd.CombinedOutput()
+	log.Printf("wks-controller has IP: %s\n", string(podIP))
+	assert.NoError(t, err)
+	isValid, err := assertIPisWithinRange(string(podIP), "192.168.0.0/16")
+	assert.NoError(t, err)
+	log.Printf("Pod IP %s is inside 192.168.0.0/16 range? %v\n", podIP, isValid)
+	assert.True(t, isValid)
+
+	cmdItems = []string{kubectl,
+		fmt.Sprintf("--kubeconfig=%s", kubeconfig), "get", "service", "kubernetes", "--namespace=default", "-o", "jsonpath={.spec.clusterIP}"}
+	cmd = exec.Command(cmdItems[0], cmdItems[1:]...)
+	serviceIP, err := cmd.CombinedOutput()
+	log.Printf("kubernetes service has IP: %s\n", string(serviceIP))
+	assert.NoError(t, err)
+	isValid, err = assertIPisWithinRange(string(serviceIP), "172.20.0.0/23")
+	assert.NoError(t, err)
+	log.Printf("Service IP %s is inside 172.20.0.0/23 range? %v\n", serviceIP, isValid)
+	assert.True(t, isValid)
+
+}
+
 func nodeIsMaster(n *v1.Node) bool {
 	const masterLabel = "node-role.kubernetes.io/master"
 	if _, ok := n.Labels[masterLabel]; ok {
 		return true
 	}
 	return false
+}
+
+func assertIPisWithinRange(ip string, ipRange string) (bool, error) {
+	_, subnet, err := net.ParseCIDR(ipRange)
+	if err != nil {
+		log.Printf("failed to parse CIDR from %s, err: %s\n", ipRange, err)
+		return false, err
+	}
+
+	parsedIP := net.ParseIP(ip)
+	return subnet.Contains(parsedIP), nil
 }
 
 func nodesNumMasters(l *v1.NodeList) int {
@@ -501,5 +539,10 @@ func TestApply(t *testing.T) {
 	// Test the we are getting debug logging messages.
 	t.Run("loglevel", func(t *testing.T) {
 		testDebugLogging(t, kubeconfig)
+	})
+
+	// Test that the pods.cidrBlocks are passed to weave-net
+	t.Run("CIDRBlocks", func(t *testing.T) {
+		testCIDRBlocks(t, kubeconfig)
 	})
 }

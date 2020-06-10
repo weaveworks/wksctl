@@ -19,7 +19,7 @@ import (
 // Common code for commands that need to run ssh commands on master cluster nodes.
 
 type Specs struct {
-	cluster      *clusterv1.Cluster
+	Cluster      *clusterv1.Cluster
 	ClusterSpec  *baremetalspecv1.BareMetalClusterProviderSpec
 	MasterSpec   *baremetalspecv1.BareMetalMachineProviderSpec
 	machineCount int
@@ -60,7 +60,7 @@ func New(cluster *clusterv1.Cluster, machines []*clusterv1.Machine) *Specs {
 		}
 	}
 	return &Specs{
-		cluster:     cluster,
+		Cluster:     cluster,
 		ClusterSpec: clusterSpec,
 		MasterSpec:  masterSpec,
 
@@ -136,7 +136,7 @@ func TranslateServerArgumentsToStringMap(args []baremetalspecv1.ServerArgument) 
 
 // Getters for nested fields needed externally
 func (s *Specs) GetClusterName() string {
-	return s.cluster.ObjectMeta.Name
+	return s.Cluster.ObjectMeta.Name
 }
 
 func (s *Specs) GetMasterPublicAddress() string {

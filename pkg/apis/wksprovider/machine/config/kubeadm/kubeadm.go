@@ -26,6 +26,10 @@ type ClusterConfigurationParams struct {
 	AdditionalSANs []string
 	// Additional arguments for auth, etc.
 	ExtraArgs map[string]string
+	// The IP range for services
+	ServiceCIDRBlock string
+	// PodCIDRBlock is the subnet used by pods.
+	PodCIDRBlock string
 }
 
 // NewClusterConfiguration returns an ClusterConfiguration with appropriate
@@ -40,6 +44,10 @@ func NewClusterConfiguration(params ClusterConfigurationParams) *kubeadmapi.Clus
 		TypeMeta: metav1.TypeMeta{
 			Kind:       constants.ClusterConfigurationKind,
 			APIVersion: kubeadmapi.SchemeGroupVersion.String(),
+		},
+		Networking: kubeadmapi.Networking{
+			ServiceSubnet: params.ServiceCIDRBlock,
+			PodSubnet:     params.PodCIDRBlock,
 		},
 		APIServer: kubeadmapi.APIServer{
 			CertSANs:              certSANs(SANs...),
