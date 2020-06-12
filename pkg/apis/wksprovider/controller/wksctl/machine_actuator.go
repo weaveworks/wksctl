@@ -1176,7 +1176,7 @@ func getFootlooseMachineIP(uri string) (string, error) {
 func invokeFootlooseCreate(machine *clusterv1.Machine) (string, error) {
 	params := map[string]interface{}{
 		"name":       machine.Name,
-		"image":      "quay.io/footloose/centos7:0.6.1",
+		"image":      "quay.io/footloose/centos7:0.6.3",
 		"privileged": true,
 		"backend":    footlooseBackend,
 	}
