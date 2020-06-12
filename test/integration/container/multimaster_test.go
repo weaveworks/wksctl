@@ -343,7 +343,7 @@ func TestMultimasterSetup(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			// Start the footloose container "VMs" used for testing:
-			run(t, "footloose", "create", "-c", tc.path)
+			run(t, "footloose", "create", "--config", tc.path)
 			node0IP := sanitizeIP(run(t, "docker", "inspect", fmt.Sprintf("%s-multimaster-node0", tc.name), "--format='{{.NetworkSettings.IPAddress}}'"))
 			node1IP := sanitizeIP(run(t, "docker", "inspect", fmt.Sprintf("%s-multimaster-node1", tc.name), "--format='{{.NetworkSettings.IPAddress}}'"))
 			node2IP := sanitizeIP(run(t, "docker", "inspect", fmt.Sprintf("%s-multimaster-node2", tc.name), "--format='{{.NetworkSettings.IPAddress}}'"))
@@ -388,7 +388,7 @@ func TestMultimasterSetup(t *testing.T) {
 				for _, kubeletArg := range expectedKubeletArgs {
 					log.Infof("Checking kubelet arg (%s) on node%d", kubeletArg, i)
 					run(t, "footloose",
-						"-c", tc.path,
+						"--config", tc.path,
 						"ssh", fmt.Sprintf("root@node%d", i), fmt.Sprintf("ps -ef | grep -v 'ps -ef' | grep /usr/bin/kubelet | grep %s", kubeletArg))
 				}
 
@@ -397,7 +397,7 @@ func TestMultimasterSetup(t *testing.T) {
 					for _, apiServerArg := range expectedApiServerArgs {
 						log.Infof("Checking api server arg (%s) on node%d", apiServerArg, i)
 						run(t, "footloose",
-							"-c", tc.path,
+							"--config", tc.path,
 							"ssh", fmt.Sprintf("root@node%d", i), fmt.Sprintf("ps -ef | grep -v 'ps -ef' | grep kube-apiserver | grep %s", apiServerArg))
 					}
 				}
@@ -405,7 +405,7 @@ func TestMultimasterSetup(t *testing.T) {
 
 			if !t.Failed() { // Otherwise leave the footloose "VMs" & config files around for debugging purposes.
 				// Clean up:
-				defer run(t, "footloose", "delete", "-c", tc.path)
+				defer run(t, "footloose", "delete", "--config", tc.path)
 				defer os.Remove(dirName)
 				defer os.Remove(clusterYAML)
 				defer os.Remove(machinesYAML)
