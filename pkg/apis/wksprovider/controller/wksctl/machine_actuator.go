@@ -585,7 +585,7 @@ func getInstallPlan(installer *os.OS, k8sVersion string) map[string]plan.Resourc
 			"upgrade:node-install-kubeadm":   &resource.Deb{Name: "kubeadm", Suffix: "=" + k8sVersion + "-00"},
 			"upgrade:node-kubelet":           &resource.Deb{Name: "kubelet", Suffix: "=" + k8sVersion + "-00"},
 			"upgrade:node-kubectl":           &resource.Deb{Name: "kubectl", Suffix: "=" + k8sVersion + "-00"},
-			"upgrade:node-lock-kubernetes":   &resource.Run{Script: object.String("yum versionlock add 'kube*' || true")},
+			"upgrade:node-lock-kubernetes":   &resource.Run{Script: object.String("apt-mark hold 'kube*' || true")},
 		}
 		return resources
 	}
