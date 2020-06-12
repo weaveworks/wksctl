@@ -55,6 +55,10 @@ spec:
             configmap: repo
             key: local.repo
           destination: /etc/yum.repos.d/local.repo
+        - source:
+            configmap: repo
+            key: cloud-google-com.gpg.b64
+          destination: /tmp/cloud-google-com.gpg.b64
       cri:
         kind: docker
         package: docker-ce
@@ -328,6 +332,10 @@ func TestMultimasterSetup(t *testing.T) {
 		{
 			name: "centos",
 			path: "../../../examples/footloose/centos7/docker/multimaster.yaml",
+		},
+		{
+			name: "ubuntu",
+			path: "../../../examples/footloose/ubuntu1804/docker/multimaster.yaml",
 		},
 	}
 
