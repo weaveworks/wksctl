@@ -570,7 +570,7 @@ func (a *MachineActuator) update(ctx context.Context, cluster *clusterv1.Cluster
 
 // Runs upgrade commands based on the operating system
 func getInstallPlan(installer *os.OS, k8sVersion string) map[string]plan.Resource {
-	if installer.Name == "centos" {
+	if installer.Name == "centos" || installer.Name == "rhel" {
 		resources := map[string]plan.Resource{
 			"upgrade:node-unlock-kubernetes": &resource.Run{Script: object.String("yum versionlock delete 'kube*' || true")},
 			"upgrade:node-install-kubeadm":   &resource.RPM{Name: "kubeadm", Version: k8sVersion, DisableExcludes: "kubernetes"},
