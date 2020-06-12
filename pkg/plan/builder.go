@@ -50,6 +50,17 @@ func (b *Builder) AddResource(id string, r Resource, options ...func(*addOptions
 	return b
 }
 
+// AddResourceFrom adds a resource to the plan from a set of plans
+func (b *Builder) AddResourceFrom(id string, resourceMap map[string]Resource, options ...func(*addOptions)) *Builder {
+	res, ok := resourceMap[id]
+	if !ok {
+		err := fmt.Errorf("resource id %s not found in resources", id)
+		b.errors = append(b.errors, err)
+		return b
+	}
+	return b.AddResource(id, res, options...)
+}
+
 func (b *Builder) checkIfValidResource(n string) {
 	_, ok := b.plan.resources[n]
 	if !ok {
