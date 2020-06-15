@@ -6,7 +6,6 @@ import (
 	"os"
 	"reflect"
 	"strings"
-	"sync"
 
 	"github.com/pkg/errors"
 	bmv1alpha3 "github.com/weaveworks/wksctl/pkg/baremetal/v1alpha3"
@@ -20,8 +19,6 @@ import (
 	clusterv1alpha3 "sigs.k8s.io/cluster-api/api/v1alpha3"
 	"sigs.k8s.io/yaml"
 )
-
-var mutex *sync.Mutex = &sync.Mutex{}
 
 // cluster-api types
 const (

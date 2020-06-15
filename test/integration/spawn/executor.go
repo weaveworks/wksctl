@@ -16,7 +16,6 @@ type stream int
 const (
 	stdout stream = 1 << 0
 	stderr stream = 1 << 1
-	all    stream = stderr | stdout
 )
 
 func (s stream) String() string {
