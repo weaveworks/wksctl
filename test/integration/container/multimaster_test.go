@@ -333,10 +333,6 @@ func TestMultimasterSetup(t *testing.T) {
 			name: "centos",
 			path: "../../../examples/footloose/centos7/docker/multimaster.yaml",
 		},
-		{
-			name: "ubuntu",
-			path: "../../../examples/footloose/ubuntu1804/docker/multimaster.yaml",
-		},
 	}
 
 	for _, tc := range tests {
