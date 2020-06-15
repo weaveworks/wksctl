@@ -152,7 +152,8 @@ func (r *FootlooseRunner) Start() error {
 
 	r.ssh, err = r.makeSSHClientWithRetries(30)
 	if err != nil {
-		r.cluster.Delete()
+		//nolint:errcheck
+		r.cluster.Delete() // TODO: Error handling
 		return err
 	}
 

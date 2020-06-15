@@ -1127,7 +1127,8 @@ func (params NodeParams) Validate() error {
 // SetupSeedNode was called.
 func (o OS) SetupNode(p *plan.Plan) error {
 	// We don't know the state of the machine so undo at the beginning
-	p.Undo(o.runner, plan.EmptyState)
+	//nolint:errcheck
+	p.Undo(o.runner, plan.EmptyState) // TODO: Implement error checking
 
 	_, err := p.Apply(o.runner, plan.EmptyDiff())
 	if err != nil {

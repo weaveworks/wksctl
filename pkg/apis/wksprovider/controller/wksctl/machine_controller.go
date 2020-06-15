@@ -825,6 +825,8 @@ func (a *MachineController) setNodeLabel(node *corev1.Node, label, value string)
 	return nil
 }
 
+//nolint:unused
+// TODO: Remove if really unused
 func (a *MachineController) removeNodeLabel(node *corev1.Node, label string) error {
 	err := a.modifyNode(node, func(node *corev1.Node) {
 		delete(node.Labels, label)
@@ -909,8 +911,12 @@ func (a *MachineController) findNodeByID(machineID, systemUUID string) (*corev1.
 	return nil, apierrs.NewNotFound(schema.GroupResource{Group: "", Resource: "nodes"}, "")
 }
 
+//nolint:unused
+// TODO: Needed for getMasterNode()
 var staticRand = rand.New(rand.NewSource(time.Now().Unix()))
 
+//nolint:unused
+// TODO: Remove if really unused
 func (a *MachineController) getMasterNode() (*corev1.Node, error) {
 	masters, err := a.getMasterNodes()
 	if err != nil {
@@ -977,6 +983,8 @@ func (a *MachineController) getControllerNodeName() (string, error) {
 	return "", err
 }
 
+//nolint:unused
+// TODO: Remove if really unused
 func (a *MachineController) updateMachine(machine *baremetalspecv1.BareMetalMachine, ip string) {
 	machineIPs[getMachineID(machine)] = ip
 }

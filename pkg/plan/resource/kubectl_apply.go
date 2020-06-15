@@ -146,7 +146,8 @@ func kubectlApply(r plan.Runner, args kubectlApplyArgs, fname string) error {
 	if err != nil {
 		return errors.Wrap(err, "writeTempFile")
 	}
-	defer r.RunCommand(fmt.Sprintf("rm -vf %q", path), nil)
+	//nolint:errcheck
+	defer r.RunCommand(fmt.Sprintf("rm -vf %q", path), nil) // TODO: Deferred error checking
 
 	// Run kubectl apply.
 	if err := kubectlRemoteApply(path, r); err != nil {

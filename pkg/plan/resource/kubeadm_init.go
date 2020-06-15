@@ -129,7 +129,8 @@ func (ki *KubeadmInit) Apply(runner plan.Runner, diff plan.Diff) (bool, error) {
 		return false, errors.Wrap(err, "failed to upload kubeadm's configuration")
 	}
 	log.WithField("yaml", string(config)).Debug("uploaded kubeadm's configuration")
-	defer removeFile(remotePath, runner)
+	//nolint:errcheck
+	defer removeFile(remotePath, runner) // TODO: Deferred error checking
 
 	var stdOutErr string
 	p := buildKubeadmInitPlan(
