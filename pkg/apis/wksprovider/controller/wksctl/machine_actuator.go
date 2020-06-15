@@ -575,7 +575,7 @@ func getInstallPlan(installer *os.OS, k8sVersion string) map[string]plan.Resourc
 			"upgrade:node-unlock-kubernetes": &resource.Run{Script: object.String("yum versionlock delete 'kube*' || true")},
 			"upgrade:node-install-kubeadm":   &resource.RPM{Name: "kubeadm", Version: k8sVersion, DisableExcludes: "kubernetes"},
 			"upgrade:node-kubelet":           &resource.RPM{Name: "kubelet", Version: k8sVersion, DisableExcludes: "kubernetes"},
-			"upgrade:node-kubectl":           &resource.Deb{Name: "kubectl", Suffix: "=" + k8sVersion + "-00"},
+			"upgrade:node-kubectl":           &resource.RPM{Name: "kubectl", Version: k8sVersion, DisableExcludes: "kubernetes"},
 			"upgrade:node-lock-kubernetes":   &resource.Run{Script: object.String("yum versionlock add 'kube*' || true")},
 		}
 		return resources
