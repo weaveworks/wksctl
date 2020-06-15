@@ -98,7 +98,7 @@ func init() {
 	Cmd.Flags().StringVar(&initOptions.machinesManifestPath, "machines", "machines.yaml", "Location of machines manifest")
 	Cmd.Flags().StringVar(
 		&initOptions.dependencyPath, "dependency-file", "./dependencies.toml", "path to file containing version information for all dependencies")
-	Cmd.MarkPersistentFlagRequired("git-url")
+	_ = Cmd.MarkPersistentFlagRequired("git-url")
 }
 
 // selectors
@@ -206,7 +206,9 @@ func updateManifests(options initOptionType) error {
 					if err != nil {
 						return err
 					}
-					ioutil.WriteFile(path, newContents, info.Mode())
+					if err := ioutil.WriteFile(path, newContents, info.Mode()); err != nil {
+						return err
+					}
 					// Don't break; if multiple files "match", make sure we update all of them
 				}
 			}
