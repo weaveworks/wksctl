@@ -120,6 +120,7 @@ spec:
   user: "vagrant"
 `
 
+//nolint:unused
 const ClusterAuthenticationBadCacheTTL = `items:
 apiVersion: "cluster.x-k8s.io/v1alpha3"
 kind: Cluster
@@ -144,6 +145,7 @@ spec:
       url: http://127.0.0.1:5000/authenticate
 `
 
+//nolint:unused
 const ClusterAuthenticationBadServerURL = `items:
 apiVersion: "cluster.x-k8s.io/v1alpha3"
 kind: Cluster
@@ -168,6 +170,7 @@ spec:
 	  url: file:///127.0.0.1:5000/authenticate
 `
 
+//nolint:unused
 const ClusterAuthenticationNoClientCert = `items:
 apiVersion: "cluster.x-k8s.io/v1alpha3"
 kind: Cluster
@@ -195,6 +198,7 @@ spec:
 	  certificateAuthorityData: SGVsbG8sIFdvcmxkIQo=
 `
 
+//nolint:unused
 const ClusterAuthorizationNoServerCert = `items:
 apiVersion: "cluster.x-k8s.io/v1alpha3"
 kind: Cluster
@@ -245,6 +249,7 @@ spec:
   - name: foo
 `
 
+//nolint:unused
 const ClusterAddonBadParameters = `
 apiVersion: "cluster.x-k8s.io/v1alpha3"
 kind: Cluster
