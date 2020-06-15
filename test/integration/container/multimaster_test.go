@@ -366,7 +366,7 @@ func TestMultimasterSetup(t *testing.T) {
 
 			var nodeList corev1.NodeList
 			for {
-				jsonOut := runWithStdout(t, "kubectl", "get", "nodes", "-o", "json", fmt.Sprintf("--kubeconfig=%s", kubeconfig(out)))
+				jsonOut := runIgnoreError(t, "kubectl", "get", "nodes", "-o", "json", fmt.Sprintf("--kubeconfig=%s", kubeconfig(out)))
 				if err := json.Unmarshal([]byte(jsonOut), &nodeList); err != nil {
 					log.Warnf("Error deserialising output of kubectl get nodes: %s", err)
 				}
