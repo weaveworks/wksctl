@@ -73,7 +73,7 @@ spec:
 			continue
 		}
 		d := &v1beta2.Deployment{}
-		yaml.Unmarshal(out, d)
+		assert.NoError(t, yaml.Unmarshal(out, d))
 		if len(d.Spec.Template.Spec.Containers) == 0 {
 			continue
 		}
@@ -93,8 +93,9 @@ func TestFlux(t *testing.T) {
 	dk := "the deploy key"
 	f, err := ioutil.TempFile("", "")
 	assert.NoError(t, err)
-	f.WriteString(dk)
-	f.Close()
+	_, err = f.WriteString(dk)
+	assert.NoError(t, f.Close())
+	assert.NoError(t, err)
 	var gitDeployKeyPath = f.Name()
 	var tests = []struct {
 		URL, branch, deployKeyPath, notExp, expManifestText, notExpManifestText, msg string
@@ -120,8 +121,9 @@ func TestFlux(t *testing.T) {
 		b.AddResource("kubectl:apply:cluster", applyClstrRsc)
 		applyMachinesRsc := &resource.KubectlApply{ManifestPath: object.String("")}
 		b.AddResource("kubectl:apply:machines", applyMachinesRsc)
-		o.configureFlux(b, SeedNodeParams{GitData: GitParams{GitURL: test.URL, GitBranch: test.branch, GitDeployKeyPath: test.deployKeyPath},
+		err = o.configureFlux(b, SeedNodeParams{GitData: GitParams{GitURL: test.URL, GitBranch: test.branch, GitDeployKeyPath: test.deployKeyPath},
 			Namespace: "system"})
+		assert.NoError(t, err)
 		p, err := b.Plan()
 		assert.NoError(t, err)
 		rjson := p.ToJSON()

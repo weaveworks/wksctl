@@ -168,7 +168,7 @@ func validateVersions(machines []*clusterv1.Machine) field.ErrorList {
 				errors = append(errors, field.Invalid(
 					machinePath(i, "spec", "version"),
 					m.Spec.Version,
-					fmt.Sprintf("inconsistent kubernetes version, expected nil")))
+					"inconsistent kubernetes version, expected nil"))
 			}
 		} else {
 			if m.Spec.Version == nil {

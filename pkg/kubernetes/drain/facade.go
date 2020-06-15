@@ -138,7 +138,7 @@ func evictPodsOn(node *corev1.Node, drainer *Helper) (int, error) {
 }
 
 func wait(timeOut time.Duration, start time.Time) {
-	elapsed := time.Now().Sub(start)
+	elapsed := time.Since(start)
 	remainingTime := timeOut - elapsed
 	time.Sleep(min(remainingTime, max(5*time.Second, timeOut/10)))
 }

@@ -34,8 +34,9 @@ func TestSSHDeployKey(t *testing.T) {
 		Type:  "RSA PRIVATE KEY",
 		Bytes: x509.MarshalPKCS1PrivateKey(pk),
 	})
-	f.Write(keyPem)
-	f.Close()
+	_, err = f.Write(keyPem)
+	assert.NoError(t, f.Close())
+	assert.NoError(t, err)
 	co, err := cloneOptions("url", f.Name(), "")
 	assert.NoError(t, err)
 	assert.NotNil(t, co.Auth)

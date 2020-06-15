@@ -5,16 +5,11 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/gob"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"math/rand"
-	"net/http"
-	"net/url"
 	goos "os"
-	"path/filepath"
-	"regexp"
 	"time"
 
 	"github.com/chanwit/plandiff"
@@ -62,7 +57,6 @@ const (
 	controllerName      string = "wks-controller"
 	controllerSecret    string = "wks-controller-secrets"
 	bootstrapTokenID    string = "bootstrapTokenID"
-	clusterName         string = "wks-firekube"
 )
 
 type nodeType int
@@ -77,7 +71,6 @@ var (
 	footlooseAddr    = "<unknown>"
 	footlooseBackend = "docker"
 	machineIPs       = map[string]string{}
-	hostAddrRegexp   = regexp.MustCompile(`(?m)controlPlaneEndpoint[:]\s*([^:\s]+)`)
 )
 
 // STOPGAP: copy of machine def from footloose; the footloose version has private fields
@@ -193,8 +186,6 @@ func (r *MachineController) Reconcile(req ctrl.Request) (_ ctrl.Result, reterr e
 		}
 		return ctrl.Result{}, err
 	}
-
-	return ctrl.Result{}, nil
 }
 
 func (a *MachineController) create(ctx context.Context, installer *os.OS, c *baremetalspecv1.BareMetalCluster, machine *clusterv1.Machine, bmm *baremetalspecv1.BareMetalMachine) error {
@@ -838,14 +829,6 @@ func (a *MachineController) isOriginalMaster(node *corev1.Node) (bool, error) {
 	return masterNode.Name == node.Name, nil
 }
 
-func extractEndpointAddress(urlstr string) (string, error) {
-	u, err := url.Parse(urlstr)
-	if err != nil {
-		return "", err
-	}
-	return u.Hostname(), nil
-}
-
 func machineVersion(machine *clusterv1.Machine) string {
 	return "v" + machineutil.GetKubernetesVersion(machine)
 }
@@ -1062,72 +1045,6 @@ func (a *MachineController) getControllerNodeName() (string, error) {
 
 func (a *MachineController) updateMachine(machine *baremetalspecv1.BareMetalMachine, ip string) {
 	machineIPs[getMachineID(machine)] = ip
-}
-
-func getMachineName(uri string) string {
-	return filepath.Base(uri)
-}
-
-func getFootlooseMachineIP(uri string) (string, error) {
-	machineName := getMachineName(uri)
-	req := &http.Request{
-		Method: "GET",
-		URL: &url.URL{
-			Opaque: fmt.Sprintf("/api/clusters/%s/machines/%s", clusterName, machineName),
-			Scheme: "http",
-			Host:   footlooseAddr,
-		},
-		Close: true,
-	}
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("Error retrieving footloose machine: %v\n", err)
-	}
-	defer resp.Body.Close()
-	var m FootlooseMachine
-	if err := json.NewDecoder(resp.Body).Decode(&m); err != nil {
-		return "", err
-	}
-	nets := m.RuntimeNetworks
-	for _, net := range nets {
-		if net.Name == "bridge" {
-			return net.IP, nil
-		}
-	}
-	return "", fmt.Errorf("Could not find bridge network for machine: %s", machineName)
-}
-
-func invokeFootlooseCreate(machine *clusterv1.Machine) (string, error) {
-	params := map[string]interface{}{
-		"name":       machine.Name,
-		"image":      "quay.io/footloose/centos7:0.6.1",
-		"privileged": true,
-		"backend":    footlooseBackend,
-	}
-	postdata, err := json.Marshal(params)
-	if err != nil {
-		return "", err
-	}
-	resp, err := http.Post(fmt.Sprintf("http://%s/api/clusters/%s/machines", footlooseAddr, clusterName),
-		"application/json", bytes.NewReader(postdata))
-	if err != nil {
-		return "", fmt.Errorf("Error creating footloose machine: %v\n", err)
-	} else {
-		defer resp.Body.Close()
-	}
-	m := map[string]interface{}{}
-	if err := json.NewDecoder(resp.Body).Decode(&m); err != nil {
-		return "", err
-	}
-	uri, ok := m["uri"]
-	if !ok {
-		uri = []byte(fmt.Sprintf("http://%s/api/clusters/%s/machines/%s", footlooseAddr, clusterName, machine.Name))
-	}
-	ustr, ok := uri.(string)
-	if !ok {
-		return "", fmt.Errorf("Invalid uri for: %s", machine.Name)
-	}
-	return getFootlooseMachineIP(ustr)
 }
 
 func isMaster(node *corev1.Node) bool {

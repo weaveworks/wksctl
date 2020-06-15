@@ -121,9 +121,10 @@ func TestInvalidExistingConfig(t *testing.T) {
 	testDataDir := "./testdata/"
 	testDataPath := "./testdata/test_kubeconfig"
 	defer os.RemoveAll(testDataDir)
-	os.Mkdir(testDataDir, 0777)
+	err := os.Mkdir(testDataDir, 0777)
+	assert.NoError(t, err)
 
-	err := ioutil.WriteFile(testDataPath, []byte(invalidConfigWithSSHBanner), 0777)
+	err = ioutil.WriteFile(testDataPath, []byte(invalidConfigWithSSHBanner), 0777)
 	assert.NoError(t, err)
 
 	validConfig, err := clientcmd.Load([]byte(validConfig))

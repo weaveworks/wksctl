@@ -88,7 +88,7 @@ func init() {
 		&initOptions.version, "controller-version", version.Version, "version of wks-controller to use")
 	Cmd.Flags().StringVar(
 		&initOptions.dependencyPath, "dependency-file", "./dependencies.toml", "path to file containing version information for all dependencies")
-	Cmd.MarkPersistentFlagRequired("git-url")
+	_ = Cmd.MarkPersistentFlagRequired("git-url")
 }
 
 // selectors
@@ -155,7 +155,7 @@ func updateFluxManifests(contents []byte, options initOptionType) ([]byte, error
 
 func updateManifests(options initOptionType) error {
 	matches := 0
-	filepath.Walk(options.localRepoDirectory,
+	err := filepath.Walk(options.localRepoDirectory,
 		func(path string, info os.FileInfo, err error) error {
 			if err != nil {
 				return err
@@ -175,12 +175,18 @@ func updateManifests(options initOptionType) error {
 					if err != nil {
 						return err
 					}
-					ioutil.WriteFile(path, newContents, info.Mode())
+					err = ioutil.WriteFile(path, newContents, info.Mode())
+					if err != nil {
+						return err
+					}
 					// Don't break; if multiple files "match", make sure we update all of them
 				}
 			}
 			return nil
 		})
+	if err != nil {
+		return err
+	}
 	if matches < len(updates) {
 		return errors.New("Both 'flux.yaml' and 'wks-controller.yaml' must be present in the repository")
 	}

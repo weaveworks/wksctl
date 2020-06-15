@@ -5,11 +5,6 @@ package plan
 //   Copyright 2017 Hirotomo Moriwaki
 //   MIT licensed.
 
-// Added to support comparing graphs for equality
-type edge struct {
-	from, to string
-}
-
 type graph struct {
 	nodes   map[string]bool
 	edges   map[string]map[string]bool

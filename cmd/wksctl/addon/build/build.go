@@ -74,7 +74,9 @@ func addonBuildRun(cmd *cobra.Command, args []string) {
 	}
 
 	if opts.outputDirectory != "" {
-		os.MkdirAll(opts.outputDirectory, 0770)
+		if err = os.MkdirAll(opts.outputDirectory, 0770); err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	addonOptions := addons.BuildOptions{
