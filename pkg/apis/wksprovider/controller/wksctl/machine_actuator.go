@@ -571,23 +571,21 @@ func (a *MachineActuator) update(ctx context.Context, cluster *clusterv1.Cluster
 // Runs upgrade commands based on the operating system
 func getInstallPlan(installer *os.OS, k8sVersion string) map[string]plan.Resource {
 	if installer.PkgType == resource.PkgTypeRPM || installer.PkgType == resource.PkgTypeRHEL {
-		resources := map[string]plan.Resource{
+		return map[string]plan.Resource{
 			"upgrade:node-unlock-kubernetes": &resource.Run{Script: object.String("yum versionlock delete 'kube*' || true")},
 			"upgrade:node-install-kubeadm":   &resource.RPM{Name: "kubeadm", Version: k8sVersion, DisableExcludes: "kubernetes"},
 			"upgrade:node-kubelet":           &resource.RPM{Name: "kubelet", Version: k8sVersion, DisableExcludes: "kubernetes"},
 			"upgrade:node-kubectl":           &resource.RPM{Name: "kubectl", Version: k8sVersion, DisableExcludes: "kubernetes"},
 			"upgrade:node-lock-kubernetes":   &resource.Run{Script: object.String("yum versionlock add 'kube*' || true")},
 		}
-		return resources
 	} else if installer.PkgType == resource.PkgTypeDeb {
-		resources := map[string]plan.Resource{
+		return map[string]plan.Resource{
 			"upgrade:node-unlock-kubernetes": &resource.Run{Script: object.String("apt-mark unhold 'kube*' || true")},
 			"upgrade:node-install-kubeadm":   &resource.Deb{Name: "kubeadm", Suffix: "=" + k8sVersion + "-00"},
 			"upgrade:node-kubelet":           &resource.Deb{Name: "kubelet", Suffix: "=" + k8sVersion + "-00"},
 			"upgrade:node-kubectl":           &resource.Deb{Name: "kubectl", Suffix: "=" + k8sVersion + "-00"},
 			"upgrade:node-lock-kubernetes":   &resource.Run{Script: object.String("apt-mark hold 'kube*' || true")},
 		}
-		return resources
 	}
 	return nil
 }
