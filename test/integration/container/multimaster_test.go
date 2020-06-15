@@ -351,7 +351,7 @@ func TestMultimasterSetup(t *testing.T) {
 			_ = saveToFile(t, dirName, "repo-config.yaml", fmt.Sprintf(repoConfigMap, yumRepoIP))
 			_ = saveToFile(t, dirName, "docker-config.yaml", fmt.Sprintf(dockerConfigMap, registryIP, registryPort))
 
-			runWithStdout(t, "../../../cmd/wksctl/wksctl", "apply",
+			run(t, "../../../cmd/wksctl/wksctl", "apply",
 				fmt.Sprintf("--cluster=%s", clusterYAML), fmt.Sprintf("--machines=%s", machinesYAML),
 				fmt.Sprintf("--config-directory=%s", dirName),
 				"--verbose",
@@ -362,7 +362,7 @@ func TestMultimasterSetup(t *testing.T) {
 
 			var nodeList corev1.NodeList
 			for {
-				jsonOut := runIgnoreError(t, "kubectl", "get", "nodes", "-o", "json", fmt.Sprintf("--kubeconfig=%s", kubeconfig(out)))
+				jsonOut := run(t, "kubectl", "get", "nodes", "-o", "json", fmt.Sprintf("--kubeconfig=%s", kubeconfig(out)))
 				if err := json.Unmarshal([]byte(jsonOut), &nodeList); err != nil {
 					log.Warnf("Error deserialising output of kubectl get nodes: %s", err)
 				}
