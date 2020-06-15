@@ -7,14 +7,6 @@ import (
 
 type transform func(object) object
 
-func printObject(o object) {
-	json, err := o.toJSON()
-	if err != nil {
-		fmt.Println(err)
-	}
-	fmt.Println(string(json))
-}
-
 func list(items []object) object {
 	return object{
 		"apiVersion": "v1",

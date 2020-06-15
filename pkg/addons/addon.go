@@ -9,7 +9,6 @@ import (
 	"path"
 	"path/filepath"
 	"sort"
-	"sync"
 
 	"github.com/ghodss/yaml"
 	"github.com/google/go-jsonnet"
@@ -19,8 +18,6 @@ import (
 	"github.com/weaveworks/wksctl/pkg/registry"
 	"github.com/weaveworks/wksctl/pkg/utilities/manifest"
 )
-
-var mutex *sync.Mutex = &sync.Mutex{}
 
 const (
 	descriptor = "addon.json"

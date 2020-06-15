@@ -46,15 +46,6 @@ func (g *graph) AddNodes(names ...string) bool {
 	return updated
 }
 
-func containsEdge(edges []edge, edge edge) bool {
-	for _, e := range edges {
-		if e == edge {
-			return true
-		}
-	}
-	return false
-}
-
 func (g *graph) AddEdge(from, to string) bool {
 	edgesFrom := g.edges[from]
 	if edgesFrom == nil {

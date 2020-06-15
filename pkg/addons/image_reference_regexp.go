@@ -39,16 +39,8 @@ var (
 	// TagRegexp matches valid tag names. From docker/docker:graph/tags.go.
 	TagRegexp = match(`[\w][\w.-]{0,127}`)
 
-	// anchoredTagRegexp matches valid tag names, anchored at the start and
-	// end of the matched string.
-	anchoredTagRegexp = anchored(TagRegexp)
-
 	// DigestRegexp matches valid digests.
 	DigestRegexp = match(`[A-Za-z][A-Za-z0-9]*(?:[-_+.][A-Za-z][A-Za-z0-9]*)*[:][[:xdigit:]]{32,}`)
-
-	// anchoredDigestRegexp matches valid digests, anchored at the start and
-	// end of the matched string.
-	anchoredDigestRegexp = anchored(DigestRegexp)
 
 	// NameRegexp is the format for the name component of references. The
 	// regexp has capturing groups for the domain and name part omitting

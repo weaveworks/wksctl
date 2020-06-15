@@ -85,8 +85,6 @@ func Parse(r io.ReadCloser) (ml []*clusterv1.Machine, bl []*baremetalspecv1.Bare
 	return ml, bl, nil
 }
 
-type machineValidationFunc func(int, *clusterv1.Machine) field.ErrorList
-
 // Validate validates the provided machines.
 func Validate(machines []*clusterv1.Machine, bl []*baremetalspecv1.BareMetalMachine) field.ErrorList {
 	if len(machines) == 0 { // Some other validations crash on empty list
