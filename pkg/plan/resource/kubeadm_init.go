@@ -255,7 +255,7 @@ func buildKubeadmInitPlan(path string, ignorePreflightErrors string, useIPTables
 
 	// If we're at 1.17.0 or greater, we need to upgrade the kubeadm config before running "kubeadm init"
 	upgradeKubeadmConfig := false
-	if lt, err := version.LessThan(k8sVersion, "1.17.0"); err == nil && lt == false {
+	if lt, err := version.LessThan(k8sVersion, "1.17.0"); err == nil && !lt {
 		upgradeKubeadmConfig = true
 	}
 

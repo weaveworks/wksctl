@@ -102,7 +102,7 @@ func (p *Service) Apply(r plan.Runner, diff plan.Diff) (bool, error) {
 
 // Undo implements plan.Resource
 func (p *Service) Undo(r plan.Runner, current plan.State) error {
-	if current.Bool("enabled") == true {
+	if current.Bool("enabled") {
 		output, err := systemd(r, "disable %s", p.Name)
 		if err != nil {
 			if strings.Contains(output, "not loaded") {

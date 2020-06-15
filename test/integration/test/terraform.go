@@ -7,10 +7,8 @@ import (
 )
 
 const (
-	keyPrivateKeyPath = "private_key_path"
-	keyPublicIPs      = "public_ips"
-	keyPrivateIPs     = "private_ips"
-	keyUsername       = "username"
+	keyPublicIPs  = "public_ips"
+	keyPrivateIPs = "private_ips"
 )
 
 type terraformVariable struct {

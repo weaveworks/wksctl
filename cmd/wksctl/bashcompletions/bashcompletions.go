@@ -28,9 +28,13 @@ and follow instructions for your OS to configure/install the completion file.
 			if err != nil {
 				log.Fatal(err)
 			}
-			cmd.Root().GenBashCompletion(outfile)
+			if err = cmd.Root().GenBashCompletion(outfile); err != nil {
+				log.Fatal(err)
+			}
 		} else {
-			cmd.Root().GenBashCompletion(os.Stdout)
+			if err := cmd.Root().GenBashCompletion(os.Stdout); err != nil {
+				log.Fatal(err)
+			}
 		}
 	}}
 

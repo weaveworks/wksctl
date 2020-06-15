@@ -143,15 +143,13 @@ func (e *Executor) RunCmd(cmd *exec.Cmd) (*Entry, error) {
 		return nil, err
 	}
 
-	syncChan := make(chan bool)
+	syncChan := make(chan error)
 	go func() {
-		e.handStream(entry, stdout, stdoutPipe)
-		syncChan <- true
+		syncChan <- e.handStream(entry, stdout, stdoutPipe)
 	}()
 
 	go func() {
-		e.handStream(entry, stderr, stderrPipe)
-		syncChan <- true
+		syncChan <- e.handStream(entry, stderr, stderrPipe)
 	}()
 
 	if e.showBreadcrumbs {
@@ -163,6 +161,18 @@ func (e *Executor) RunCmd(cmd *exec.Cmd) (*Entry, error) {
 	}
 
 	// Make sure copying is finished
+	var results [2]error
+	for i := range results {
+		results[i] = <-syncChan
+	}
+
+	// Check for errors
+	for _, err = range results {
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	<-syncChan
 	<-syncChan
 

@@ -109,10 +109,7 @@ func (p *RPM) stateDifferent(current plan.State) bool {
 
 	desired := p.label()
 	installed := label(current.String("name"), current.String("version"), current.String("release"))
-	if strings.HasPrefix(installed, desired) {
-		return false
-	}
-	return true
+	return !strings.HasPrefix(installed, desired)
 }
 
 // WouldChangeState returns false if a call to Apply() is guaranteed not to change the installed version of the package, and true otherwise.
@@ -148,11 +145,8 @@ func (p *RPM) Apply(r plan.Runner, diff plan.Diff) (bool, error) {
 }
 
 func (p *RPM) shouldUndo(current plan.State) bool {
-	if current.IsEmpty() {
-		// Package isn't installed, nothing to do!
-		return false
-	}
-	return true
+	// If package isn't installed, nothing to do!
+	return !current.IsEmpty()
 }
 
 // Undo implements plan.Resource

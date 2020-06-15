@@ -46,9 +46,10 @@ func TestBuildAllAddons(t *testing.T) {
 
 	for _, addon := range List() {
 		t.Run(addon.ShortName, func(t *testing.T) {
-			addon.autoBuild(BuildOptions{
+			_, err = addon.autoBuild(BuildOptions{
 				OutputDirectory: dir,
 			})
+			assert.NoError(t, err)
 		})
 	}
 }

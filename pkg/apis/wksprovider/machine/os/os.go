@@ -50,8 +50,6 @@ import (
 const (
 	ConfigDestDir             = "/etc/pki/weaveworks/wksctl"
 	PemDestDir                = "/etc/pki/weaveworks/wksctl/pem"
-	authCmapName              = "authn-authz"
-	masterConfigKey           = "master-config"
 	sealedSecretVersion       = "v0.11.0"
 	sealedSecretKeySecretName = "sealed-secrets-key"
 )
@@ -197,7 +195,7 @@ func (params SeedNodeParams) Validate() error {
 }
 
 func (params SeedNodeParams) GetAddonNamespace(name string) string {
-	if ns, ok := params.AddonNamespaces[name]; ok == true {
+	if ns, ok := params.AddonNamespaces[name]; ok {
 		return ns
 	}
 	return params.Namespace
@@ -526,10 +524,8 @@ func addSealedSecretResourcesIfNecessary(b *plan.Builder, kubectlApplyDeps []str
 		b.AddResource("install:sealed-secrets", sealedSecretRsc, plan.DependOn(kubectlApplyDeps[0], kubectlApplyDeps[1:]...))
 
 		// Now that the cluster is up, if auth is configured, create a secret containing the data for use by the machine actuator
-		if pemSecretResources != nil {
-			for _, resourceSpec := range pemSecretResources {
-				b.AddResource(fmt.Sprintf("install:pem-secret-%s", resourceSpec.secretName), resourceSpec.resource, plan.DependOn("install:sealed-secrets"))
-			}
+		for _, resourceSpec := range pemSecretResources {
+			b.AddResource(fmt.Sprintf("install:pem-secret-%s", resourceSpec.secretName), resourceSpec.resource, plan.DependOn("install:sealed-secrets"))
 		}
 		return []string{"install:sealed-secrets"}, nil
 	}
@@ -958,10 +954,8 @@ func (o OS) configureFlux(b *plan.Builder, params SeedNodeParams) error {
 	return nil
 }
 
-func findManifest(dir, name string) (string, error) {
-	result := ""
-	err := fmt.Errorf("No %q manifest found in directory: %q", name, dir)
-	filepath.Walk(dir,
+func findManifest(dir, name string) (result string, err error) {
+	err = filepath.Walk(dir,
 		func(path string, info os.FileInfo, e error) error {
 			if e != nil {
 				return nil // Other files may still be okay
@@ -971,12 +965,18 @@ func findManifest(dir, name string) (string, error) {
 			}
 			if info.Name() == name {
 				result = path
-				err = nil
 				return filepath.SkipDir
 			}
 			return nil
 		})
-	return result, err
+	if err != nil {
+		result = ""
+		return
+	}
+	if result == "" {
+		err = fmt.Errorf("No %q manifest found in directory: %q", name, dir)
+	}
+	return
 }
 
 func findFluxManifest(dir string) (string, error) {
@@ -1159,7 +1159,9 @@ func (o OS) CreateNodeSetupPlan(params NodeParams) (*plan.Plan, error) {
 	authConfigMap := params.AuthConfigMap
 	if authConfigMap != nil && params.IsMaster {
 		for _, authType := range []string{"authentication", "authorization"} {
-			addAuthConfigResources(b, authConfigMap, authType, params.Namespace)
+			if err := addAuthConfigResources(b, authConfigMap, authType, params.Namespace); err != nil {
+				return nil, err
+			}
 		}
 	}
 

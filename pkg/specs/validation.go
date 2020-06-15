@@ -3,9 +3,7 @@ package specs
 import (
 	"fmt"
 	"net"
-	"os"
 	"path/filepath"
-	"time"
 
 	"github.com/weaveworks/launcher/pkg/kubectl"
 	"github.com/weaveworks/wksctl/pkg/addons"
@@ -119,11 +117,6 @@ func validateServiceDomain(cluster *clusterv1.Cluster, _ *baremetalspecv1.BareMe
 	return field.ErrorList{}
 }
 
-func fileExists(s string) bool {
-	_, err := os.Stat(s)
-	return err == nil
-}
-
 func validateSSHKeyEmpty(_ *clusterv1.Cluster, spec *baremetalspecv1.BareMetalClusterSpec, manifestPath string) field.ErrorList {
 	if spec.DeprecatedSSHKeyPath != "" {
 		return field.ErrorList{
@@ -135,11 +128,6 @@ func validateSSHKeyEmpty(_ *clusterv1.Cluster, spec *baremetalspecv1.BareMetalCl
 	}
 
 	return field.ErrorList{}
-}
-
-func isDuration(s string) bool {
-	_, err := time.ParseDuration(s)
-	return err == nil
 }
 
 func addonPath(i int, args ...string) *field.Path {

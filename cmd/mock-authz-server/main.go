@@ -27,8 +27,14 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 		sar.Status.Allowed = true
 	}
 
+	err = json.NewEncoder(w).Encode(sar)
+	if err != nil {
+		log.Println("[Error]", err.Error())
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(sar)
 }
 
 func main() {
