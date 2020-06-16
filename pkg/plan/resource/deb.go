@@ -3,7 +3,6 @@ package resource
 import (
 	"fmt"
 
-	"github.com/hashicorp/go-version"
 	"github.com/weaveworks/wksctl/pkg/plan"
 )
 
@@ -22,24 +21,6 @@ var _ plan.Resource = plan.RegisterResource(&Deb{})
 
 func (d *Deb) State() plan.State {
 	return toState(d)
-}
-
-func isLowerRevision(v1, v2 *Deb) (bool, error) {
-	// return strings.Compare(v1.Suffix, v2.Suffix) < 0
-	compareV1, err := version.NewVersion(v1.Suffix)
-	if err != nil {
-		return false, err
-	}
-
-	compareV2, err := version.NewVersion(v2.Suffix)
-	if err != nil {
-		return false, err
-	}
-
-	if compareV1.LessThan(compareV2) {
-		return true, nil
-	}
-	return false, nil
 }
 
 func (d *Deb) QueryState(runner plan.Runner) (plan.State, error) {
@@ -63,36 +44,8 @@ func (d *Deb) Apply(runner plan.Runner, diff plan.Diff) (propagate bool, err err
 		return false, fmt.Errorf("update cache failed: %v", err)
 	}
 
-	q := dpkgQuerier{Runner: runner}
-	installed, err := q.ShowInstalled(d.Name)
-
-	if err != nil {
+	if err := a.Install(d.Name, d.Suffix); err != nil {
 		return false, err
-	}
-
-	if len(installed) == 0 {
-		if err := a.Install(d.Name, d.Suffix); err != nil {
-			return false, err
-		}
-	} else if len(installed) > 0 {
-		currentVersion := DebResourceFromPackage(installed[0])
-		isLower, err := isLowerRevision(currentVersion, d)
-
-		if err != nil {
-			return false, err
-		}
-
-		// Check if current version is lower than the new one
-		// to either decide to upgrade or install the new version
-		if isLower {
-			if err := a.Upgrade(d.Name, d.Suffix); err != nil {
-				return false, err
-			}
-		} else if !isLower {
-			if err := a.Install(d.Name, d.Suffix); err != nil {
-				return false, err
-			}
-		}
 	}
 
 	return true, nil
