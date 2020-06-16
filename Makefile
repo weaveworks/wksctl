@@ -114,7 +114,7 @@ install: cmd/wksctl/wksctl
 	cp cmd/wksctl/wksctl $(WKSCTL_INSTALL_PATH)
 
 lint:
-	@bin/go-lint
+	@tools/go-lint
 
 clean:
 	$(SUDO) docker rmi $(IMAGE_NAMES) >/dev/null 2>&1 || true
