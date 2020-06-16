@@ -13,6 +13,7 @@ UPTODATE := .uptodate
 # $(IMAGE_PREFIX)<dirname>. Dependencies (i.e. things that go in the image)
 # still need to be explicitly declared.
 %/$(UPTODATE): %/Dockerfile %/*
+	mkdir -p bin # Restrict the build context to bin, create it here if it doesn't exist.
 	$(SUDO) docker build --build-arg=revision="$(GIT_REVISION)" -t "$(IMAGE_PREFIX)$(shell basename $(@D))" -f "$(@D)/Dockerfile" bin
 	$(SUDO) docker tag "$(IMAGE_PREFIX)$(shell basename $(@D))" "$(IMAGE_PREFIX)$(shell basename $(@D)):$(IMAGE_TAG)"
 	touch "$@"
@@ -120,7 +121,7 @@ lint:
 
 clean:
 	$(SUDO) docker rmi $(IMAGE_NAMES) >/dev/null 2>&1 || true
-	rm -f $(UPTODATE_FILES)
+	find docker test -type f -name "$(UPTODATE)" -delete
 	rm -f $(BINARIES)
 
 push:
