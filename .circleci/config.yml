@@ -59,8 +59,8 @@ jobs:
           root: .
           paths:
           - kubectl
-          - cmd/wksctl/wksctl
-          - cmd/mock-https-authz-server/server
+          - bin/wksctl
+          - bin/mock-https-authz-server
       - run:
           # Allow builds from forks
           name: Push image if docker login is available
@@ -180,7 +180,7 @@ jobs:
 
       - attach_workspace:
           at: /tmp/workspace
-      - run: /tmp/workspace/cmd/wksctl/wksctl version
+      - run: /tmp/workspace/bin/wksctl version
       - run:
           name: Install kubectl
           command: |
@@ -207,7 +207,7 @@ jobs:
 
       - attach_workspace:
           at: /tmp/workspace
-      - run: /tmp/workspace/cmd/wksctl/wksctl version
+      - run: /tmp/workspace/bin/wksctl version
       - run:
           name: Install kubectl
           command: |
@@ -236,7 +236,7 @@ jobs:
 
       - attach_workspace:
           at: /tmp/workspace
-      - run: /tmp/workspace/cmd/wksctl/wksctl version
+      - run: /tmp/workspace/bin/wksctl version
       - run:
           name: Install kubectl
           command: |
