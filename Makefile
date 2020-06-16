@@ -13,7 +13,6 @@ UPTODATE := .uptodate
 # $(IMAGE_PREFIX)<dirname>. Dependencies (i.e. things that go in the image)
 # still need to be explicitly declared.
 %/$(UPTODATE): %/Dockerfile %/*
-	mkdir -p bin # Restrict the build context to bin, create it here if it doesn't exist.
 	$(SUDO) docker build --build-arg=revision="$(GIT_REVISION)" -t "$(IMAGE_PREFIX)$(shell basename $(@D))" -f - bin < "$(@D)/Dockerfile"
 	$(SUDO) docker tag "$(IMAGE_PREFIX)$(shell basename $(@D))" "$(IMAGE_PREFIX)$(shell basename $(@D)):$(IMAGE_TAG)"
 	touch "$@"
@@ -121,7 +120,7 @@ lint:
 
 clean:
 	$(SUDO) docker rmi $(IMAGE_NAMES) >/dev/null 2>&1 || true
-	find docker test -type f -name "$(UPTODATE)" -delete
+	find docker -type f -name "$(UPTODATE)" -delete
 	find test -type f -name ".tmp-key-*" -delete
 	rm -f $(BINARIES)
 
@@ -139,7 +138,7 @@ unit-tests: generated
 mkfile_path := $(abspath $(lastword $(MAKEFILE_LIST)))
 mkfile_dir := $(dir $(mkfile_path))
 
-container-tests: test/container/images/centos7/.uptodate pkg/apis/wksprovider/machine/scripts/scripts_vfsdata.go pkg/apis/wksprovider/controller/manifests/manifests_vfsdata.go
+container-tests: pkg/apis/wksprovider/machine/scripts/scripts_vfsdata.go pkg/apis/wksprovider/controller/manifests/manifests_vfsdata.go
 	go test -count=1 ./test/container/...
 
 integration-tests-container: bin/wksctl docker/controller/.uptodate
