@@ -342,13 +342,13 @@ func TestMultimasterSetup(t *testing.T) {
 	_ = saveToFile(t, dirName, "repo-config.yaml", fmt.Sprintf(repoConfigMap, yumRepoIP))
 	_ = saveToFile(t, dirName, "docker-config.yaml", fmt.Sprintf(dockerConfigMap, registryIP, registryPort))
 
-	run(t, "../../../cmd/wksctl/wksctl", "apply",
+	run(t, "../../../bin/wksctl", "apply",
 		fmt.Sprintf("--cluster=%s", clusterYAML), fmt.Sprintf("--machines=%s", machinesYAML),
 		fmt.Sprintf("--config-directory=%s", dirName),
 		"--verbose",
 		fmt.Sprintf("--controller-image=docker.io/weaveworks/wksctl-controller:%s", tag))
 
-	out := run(t, "../../../cmd/wksctl/wksctl", "kubeconfig",
+	out := run(t, "../../../bin/wksctl", "kubeconfig",
 		fmt.Sprintf("--cluster=%s", clusterYAML), fmt.Sprintf("--machines=%s", machinesYAML))
 
 	var nodeList corev1.NodeList

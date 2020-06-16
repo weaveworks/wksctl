@@ -360,7 +360,7 @@ func TestApply(t *testing.T) {
 		PrintOutputs:   true,
 	})
 	require.NoError(t, err)
-	err = writeTmpFile(sshClient, "/tmp/workspace/cmd/mock-https-authz-server/server", "authserver")
+	err = writeTmpFile(sshClient, "/tmp/workspace/bin/mock-https-authz-server", "authserver")
 	assert.NoError(t, err)
 	for _, authFile := range []string{"rootCA.pem", "server.crt", "server.key"} {
 		err = writeTmpFile(sshClient, configPath(authFile), authFile)
