@@ -50,7 +50,6 @@ jobs:
       - checkout
       - setup_remote_docker
       - run: make
-      - run: make lint
       - run:
           name: Check that generated files haven't been changed since checkout
           command: |
