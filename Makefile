@@ -1,7 +1,7 @@
 .PHONY: all install clean generated images lint unit-tests check
 .DEFAULT_GOAL := all
 
-# Boiler plate for bulding Docker containers.
+# Boilerplate for building Docker containers.
 # All this must go at top of file I'm afraid.
 IMAGE_PREFIX := docker.io/weaveworks/wksctl-
 IMAGE_TAG := $(shell tools/image-tag)
@@ -13,9 +13,9 @@ UPTODATE := .uptodate
 # $(IMAGE_PREFIX)<dirname>. Dependencies (i.e. things that go in the image)
 # still need to be explicitly declared.
 %/$(UPTODATE): %/Dockerfile %/*
-	$(SUDO) docker build --build-arg=revision=$(GIT_REVISION) -t $(IMAGE_PREFIX)$(shell basename $(@D)) $(@D)/
-	$(SUDO) docker tag $(IMAGE_PREFIX)$(shell basename $(@D)) $(IMAGE_PREFIX)$(shell basename $(@D)):$(IMAGE_TAG)
-	touch $@
+	$(SUDO) docker build --build-arg=revision="$(GIT_REVISION)" -t "$(IMAGE_PREFIX)$(shell basename $(@D))" -f "$(@D)/Dockerfile" bin
+	$(SUDO) docker tag "$(IMAGE_PREFIX)$(shell basename $(@D))" "$(IMAGE_PREFIX)$(shell basename $(@D)):$(IMAGE_TAG)"
+	touch "$@"
 
 # Get a list of directories containing Dockerfiles
 DOCKERFILES := $(shell find . \
@@ -55,10 +55,10 @@ all: $(UPTODATE_FILES) binaries
 check: all lint unit-tests container-tests
 
 BINARIES = \
-	cmd/wksctl/wksctl \
-	cmd/mock-authz-server/server \
-	cmd/mock-https-authz-server/server \
-	cmd/controller/controller \
+	bin/wksctl \
+	bin/mock-authz-server \
+	bin/mock-https-authz-server \
+	bin/controller \
 	$(NULL)
 
 binaries: $(BINARIES)
@@ -87,21 +87,23 @@ pkg/apis/wksprovider/machine/os/crds_vfsdata.go: $(CRDS)
 
 generated: pkg/addons/assets/assets_vfsdata.go pkg/apis/wksprovider/controller/manifests/manifests_vfsdata.go pkg/apis/wksprovider/machine/scripts/scripts_vfsdata.go pkg/apis/wksprovider/machine/os/crds_vfsdata.go
 
-cmd/wksctl/wksctl: $(DEPS) generated
-cmd/wksctl/wksctl: cmd/wksctl/*.go
-	CGO_ENABLED=0 GOARCH=amd64 go build -ldflags "-X github.com/weaveworks/wksctl/pkg/version.Version=$(VERSION) -X github.com/weaveworks/wksctl/pkg/version.ImageTag=$(IMAGE_TAG)" -o $@ cmd/wksctl/*.go
+bin/wksctl: $(DEPS) generated
+bin/wksctl: cmd/wksctl/*.go
+	CGO_ENABLED=0 GOARCH=amd64 go build -ldflags \
+		"-X github.com/weaveworks/wksctl/pkg/version.Version=$(VERSION) -X github.com/weaveworks/wksctl/pkg/version.ImageTag=$(IMAGE_TAG)" \
+		-o $@ cmd/wksctl/*.go
 
-cmd/controller/.uptodate: cmd/controller/controller cmd/controller/Dockerfile
-cmd/controller/controller: $(DEPS) generated
-cmd/controller/controller: cmd/controller/*.go
+docker/controller/.uptodate: bin/controller docker/controller/Dockerfile
+bin/controller: $(DEPS) generated
+bin/controller: cmd/controller/*.go
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-X main.version=$(VERSION)" -o $@ cmd/controller/*.go
 
-cmd/mock-authz-server/.uptodate: cmd/mock-authz-server/server cmd/mock-authz-server/Dockerfile
-cmd/mock-authz-server/server: cmd/mock-authz-server/*.go
+docker/mock-authz-server/.uptodate: bin/mock-authz-server docker/mock-authz-server/Dockerfile
+bin/mock-authz-server: cmd/mock-authz-server/*.go
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-X main.version=$(VERSION)" -o $@ cmd/mock-authz-server/*.go
 
-cmd/mock-https-authz-server/.uptodate: cmd/mock-https-authz-server/server cmd/mock-https-authz-server/Dockerfile
-cmd/mock-https-authz-server/server: cmd/mock-https-authz-server/*.go
+docker/mock-https-authz-server/.uptodate: bin/mock-https-authz-server docker/mock-https-authz-server/Dockerfile
+bin/mock-https-authz-server: cmd/mock-https-authz-server/*.go
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-X main.version=$(VERSION)" -o $@ cmd/mock-https-authz-server/*.go
 
 ifneq ($(shell go env GOBIN),)
@@ -110,17 +112,16 @@ else
   WKSCTL_INSTALL_PATH=$(shell go env GOPATH)/bin
 endif
 
-install: cmd/wksctl/wksctl
-	cp cmd/wksctl/wksctl $(WKSCTL_INSTALL_PATH)
+install: bin/wksctl
+	cp bin/wksctl "$(WKSCTL_INSTALL_PATH)"
 
 lint:
-	@tools/go-lint
+	tools/go-lint
 
 clean:
 	$(SUDO) docker rmi $(IMAGE_NAMES) >/dev/null 2>&1 || true
-	rm -rf $(UPTODATE_FILES)
-	rm -f cmd/wksctl/wksctl
-	rm -f cmd/controller/controller
+	rm -f $(UPTODATE_FILES)
+	rm -f $(BINARIES)
 
 push:
 	for IMAGE_NAME in $(IMAGE_NAMES); do \
@@ -139,7 +140,7 @@ mkfile_dir := $(dir $(mkfile_path))
 container-tests: pkg/apis/wksprovider/machine/scripts/scripts_vfsdata.go pkg/apis/wksprovider/controller/manifests/manifests_vfsdata.go
 	go test -count=1 ./test/container/...
 
-integration-tests-container: cmd/wksctl/wksctl cmd/controller/.uptodate
+integration-tests-container: bin/wksctl docker/controller/.uptodate
 	IMAGE_TAG=$(IMAGE_TAG) go test -v -timeout 20m ./test/integration/container/...
 
 FORCE:
