@@ -2,7 +2,7 @@
 
 set -e
 
-if [ ! $(command -v golangci-lint) ]
+if [ ! -x "$(command -v golangci-lint)" ]
 then
     go get github.com/golangci/golangci-lint/cmd/golangci-lint@v1.17.1
 fi
