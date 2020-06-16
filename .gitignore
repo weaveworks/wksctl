@@ -3,7 +3,7 @@
 /rpm/output
 /test/resource/tests
 
-# Ignore generated binaries
+# Ignore generated binaries:
 /cmd/controller/controller
 /cmd/mock-authz-server/server
 /cmd/mock-https-authz-server/server
@@ -17,6 +17,10 @@ footloose.yaml
 # OS-specific files:
 .DS_Store
 
+# IDE-specific configuration:
+.idea
+.vscode
+
 # Ignore direnv's .envrc files, as they should not be shared and may contain
 # sensitive information:
 .envrc
@@ -28,5 +32,5 @@ terraform.tfstate.backup
 .terraform.tfstate.lock.info
 tf.json
 
-# Docs
+# Docs:
 site
