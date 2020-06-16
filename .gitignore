@@ -3,7 +3,7 @@
 /rpm/output
 /test/resource/tests
 
-# Ignore generated binaries
+# Ignore generated binaries:
 /cmd/controller/controller
 /cmd/mock-authz-server/server
 /cmd/mock-https-authz-server/server
@@ -28,5 +28,5 @@ terraform.tfstate.backup
 .terraform.tfstate.lock.info
 tf.json
 
-# Docs
+# Docs:
 site
