@@ -14,7 +14,7 @@ UPTODATE := .uptodate
 # still need to be explicitly declared.
 %/$(UPTODATE): %/Dockerfile %/*
 	mkdir -p bin # Restrict the build context to bin, create it here if it doesn't exist.
-	$(SUDO) docker build --build-arg=revision="$(GIT_REVISION)" -t "$(IMAGE_PREFIX)$(shell basename $(@D))" -f "$(@D)/Dockerfile" bin
+	$(SUDO) docker build --build-arg=revision="$(GIT_REVISION)" -t "$(IMAGE_PREFIX)$(shell basename $(@D))" -f - bin < "$(@D)/Dockerfile"
 	$(SUDO) docker tag "$(IMAGE_PREFIX)$(shell basename $(@D))" "$(IMAGE_PREFIX)$(shell basename $(@D)):$(IMAGE_TAG)"
 	touch "$@"
 
