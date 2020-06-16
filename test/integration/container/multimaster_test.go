@@ -328,15 +328,26 @@ func TestMultimasterSetup(t *testing.T) {
 	tests := []struct {
 		name string
 		path string
+		skip bool
 	}{
 		{
 			name: "centos",
 			path: "../../../examples/footloose/centos7/docker/multimaster.yaml",
+			skip: false,
+		},
+		{
+			name: "ubuntu",
+			path: "../../../examples/footloose/ubuntu1804/docker/multimaster.yaml",
+			skip: true,
 		},
 	}
 
 	for _, tc := range tests {
 		tc := tc
+		if tc.skip {
+			continue
+		}
+
 		t.Run(tc.name, func(t *testing.T) {
 			// Start the footloose container "VMs" used for testing:
 			run(t, "footloose", "create", "--config", tc.path)
