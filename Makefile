@@ -122,6 +122,7 @@ lint:
 clean:
 	$(SUDO) docker rmi $(IMAGE_NAMES) >/dev/null 2>&1 || true
 	find docker test -type f -name "$(UPTODATE)" -delete
+	find test -type f -name ".tmp-key-*" -delete
 	rm -f $(BINARIES)
 
 push:
