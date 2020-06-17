@@ -565,7 +565,11 @@ func (a *MachineActuator) kubeadmUpOrDowngrade(machine *clusterv1.Machine, node 
 	k8sVersion, planKey, planJSON string, ntype recipe.NodeType) error {
 	b := plan.NewBuilder()
 
-	upgradeRes := recipe.BuildUpgradePlan(installer.PkgType, k8sVersion, ntype)
+	upgradeRes, err := recipe.BuildUpgradePlan(installer.PkgType, k8sVersion, ntype)
+
+	if err != nil {
+		return err
+	}
 
 	b.AddResource("upgrade:k8s", upgradeRes)
 
