@@ -22,8 +22,8 @@ import (
 	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/controller/manifests"
 	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/config"
 	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/crds"
-	baremetalspecv1 "github.com/weaveworks/wksctl/pkg/baremetal/v1alpha3"
 	"github.com/weaveworks/wksctl/pkg/cluster/machine"
+	existinginfrav1 "github.com/weaveworks/wksctl/pkg/existinginfra/v1alpha3"
 	"github.com/weaveworks/wksctl/pkg/plan"
 	"github.com/weaveworks/wksctl/pkg/plan/recipe"
 	"github.com/weaveworks/wksctl/pkg/plan/resource"
@@ -292,7 +292,7 @@ func (o OS) CreateSeedNodeSetupPlan(params SeedNodeParams) (*plan.Plan, error) {
 	// TODO(damien): Add a CNI section in cluster.yaml once we support more than one CNI plugin.
 	const cni = "weave-net"
 
-	cniAdddon := baremetalspecv1.Addon{Name: cni}
+	cniAdddon := existinginfrav1.Addon{Name: cni}
 
 	// we use the namespace defined in addon-namespace map to make weave-net run in kube-system
 	// as weave-net requires to run in the kube-system namespace *only*.
@@ -537,7 +537,7 @@ func storeIfNotEmpty(vals map[string]string, key, value string) {
 	}
 }
 
-func getAPIServerArgs(providerSpec *baremetalspecv1.BareMetalClusterSpec, pemSecretResources map[string]*secretResourceSpec) map[string]string {
+func getAPIServerArgs(providerSpec *existinginfrav1.ExistingInfraClusterSpec, pemSecretResources map[string]*secretResourceSpec) map[string]string {
 	result := map[string]string{}
 	authnResourceSpec := pemSecretResources["authentication"]
 	if authnResourceSpec != nil {
@@ -574,7 +574,7 @@ func addClusterAPICRDs(b *plan.Builder) ([]string, error) {
 	return crdIDs, nil
 }
 
-func (o OS) seedNodeSetupPlan(params SeedNodeParams, providerSpec *baremetalspecv1.BareMetalClusterSpec, providerConfigMaps map[string]*v1.ConfigMap, authConfigMap *v1.ConfigMap, secretResources map[string]*secretResourceSpec, kubernetesVersion, kubernetesNamespace string) (*plan.Plan, error) {
+func (o OS) seedNodeSetupPlan(params SeedNodeParams, providerSpec *existinginfrav1.ExistingInfraClusterSpec, providerConfigMaps map[string]*v1.ConfigMap, authConfigMap *v1.ConfigMap, secretResources map[string]*secretResourceSpec, kubernetesVersion, kubernetesNamespace string) (*plan.Plan, error) {
 	secrets := map[string]resource.SecretData{}
 	for k, v := range secretResources {
 		secrets[k] = v.decrypted
@@ -612,7 +612,7 @@ func (o OS) applySeedNodePlan(p *plan.Plan) error {
 	return err
 }
 
-func createConfigFileResourcesFromFiles(providerSpec *baremetalspecv1.BareMetalClusterSpec, configDir, namespace string) (map[string][]byte, map[string]*v1.ConfigMap, []*resource.File, error) {
+func createConfigFileResourcesFromFiles(providerSpec *existinginfrav1.ExistingInfraClusterSpec, configDir, namespace string) (map[string][]byte, map[string]*v1.ConfigMap, []*resource.File, error) {
 	fileSpecs := providerSpec.OS.Files
 	configMapManifests, err := getConfigMapManifests(fileSpecs, configDir, namespace)
 	if err != nil {
@@ -633,7 +633,7 @@ func createConfigFileResourcesFromFiles(providerSpec *baremetalspecv1.BareMetalC
 	return configMapManifests, configMaps, resources, nil
 }
 
-func createConfigFileResourcesFromConfigMaps(fileSpecs []baremetalspecv1.FileSpec, configMaps map[string]*v1.ConfigMap) ([]*resource.File, error) {
+func createConfigFileResourcesFromConfigMaps(fileSpecs []existinginfrav1.FileSpec, configMaps map[string]*v1.ConfigMap) ([]*resource.File, error) {
 	fileResources := make([]*resource.File, len(fileSpecs))
 	for idx, file := range fileSpecs {
 		source := &file.Source
@@ -655,7 +655,7 @@ func createConfigFileResourcesFromConfigMaps(fileSpecs []baremetalspecv1.FileSpe
 	return fileResources, nil
 }
 
-func getConfigMapManifests(fileSpecs []baremetalspecv1.FileSpec, configDir, namespace string) (map[string][]byte, error) {
+func getConfigMapManifests(fileSpecs []existinginfrav1.FileSpec, configDir, namespace string) (map[string][]byte, error) {
 	configMapManifests := map[string][]byte{}
 	for _, fileSpec := range fileSpecs {
 		mapName := fileSpec.Source.ConfigMap
@@ -707,7 +707,7 @@ type secretResourceSpec struct {
 // directory, decrypts it using the GitHub deploy key, creates file
 // resources for .pem files stored in the secret, and creates a SealedSecret resource
 // for them that can be used by the machine actuator
-func processPemFilesIfAny(builder *plan.Builder, providerSpec *baremetalspecv1.BareMetalClusterSpec, configDir string, ns, privateKeyPath, certPath string) (map[string]*secretResourceSpec, *v1.ConfigMap, []byte, error) {
+func processPemFilesIfAny(builder *plan.Builder, providerSpec *existinginfrav1.ExistingInfraClusterSpec, configDir string, ns, privateKeyPath, certPath string) (map[string]*secretResourceSpec, *v1.ConfigMap, []byte, error) {
 	if err := checkPemValues(providerSpec, privateKeyPath, certPath); err != nil {
 		return nil, nil, nil, err
 	}
@@ -780,7 +780,7 @@ func getPrivateKey(privateKeyPath string) (*rsa.PrivateKey, error) {
 	return privateKey, nil
 }
 
-func checkPemValues(providerSpec *baremetalspecv1.BareMetalClusterSpec, privateKeyPath, certPath string) error {
+func checkPemValues(providerSpec *existinginfrav1.ExistingInfraClusterSpec, privateKeyPath, certPath string) error {
 	if privateKeyPath == "" || certPath == "" {
 		if providerSpec.Authentication != nil || providerSpec.Authorization != nil {
 			return errors.New("Encryption keys not specified; cannot process authentication and authorization specifications.")
@@ -930,7 +930,7 @@ func (o OS) configureFlux(b *plan.Builder, params SeedNodeParams) error {
 		if err != nil {
 			return errors.Wrap(err, "failed to process the git deploy key")
 		}
-		fluxAddon := baremetalspecv1.Addon{Name: "flux", Params: gitParams}
+		fluxAddon := existinginfrav1.Addon{Name: "flux", Params: gitParams}
 		manifests, err := buildAddon(fluxAddon, params.ImageRepository, params.ClusterManifestPath, params.GetAddonNamespace("flux"))
 		if err != nil {
 			return errors.Wrap(err, "failed to generate manifests for flux")
@@ -1107,8 +1107,8 @@ type NodeParams struct {
 	CertificateKey           string // kubeadm's --certificate-key
 	KubeletConfig            config.KubeletConfig
 	KubernetesVersion        string
-	CRI                      baremetalspecv1.ContainerRuntime
-	ConfigFileSpecs          []baremetalspecv1.FileSpec
+	CRI                      existinginfrav1.ContainerRuntime
+	ConfigFileSpecs          []existinginfrav1.FileSpec
 	ProviderConfigMaps       map[string]*v1.ConfigMap
 	AuthConfigMap            *v1.ConfigMap
 	Secrets                  map[string]resource.SecretData // kind of auth -> names/values as-in v1.Secret
@@ -1259,7 +1259,7 @@ func fetchOSID(sshClient *ssh.Client) (string, error) {
 }
 
 // parseCluster converts the manifest file into a Cluster
-func parseCluster(clusterManifestPath string) (bmc *baremetalspecv1.BareMetalCluster, err error) {
+func parseCluster(clusterManifestPath string) (bmc *existinginfrav1.ExistingInfraCluster, err error) {
 	f, err := os.Open(clusterManifestPath)
 	if err != nil {
 		return nil, err
@@ -1303,7 +1303,7 @@ func parseAddons(ClusterManifestPath, namespace string, addonNamespaces map[stri
 	return ret, nil
 }
 
-func buildAddon(addonDefn baremetalspecv1.Addon, imageRepository string, ClusterManifestPath, namespace string) ([][]byte, error) {
+func buildAddon(addonDefn existinginfrav1.Addon, imageRepository string, ClusterManifestPath, namespace string) ([][]byte, error) {
 	log.WithField("addon", addonDefn.Name).Debug("building addon")
 	// Generate the addon manifest.
 	addon, err := addons.Get(addonDefn.Name)

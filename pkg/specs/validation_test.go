@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	baremetalspecv1 "github.com/weaveworks/wksctl/pkg/baremetal/v1alpha3"
+	existinginfrav1 "github.com/weaveworks/wksctl/pkg/existinginfra/v1alpha3"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/client-go/kubernetes/scheme"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"
@@ -24,11 +24,11 @@ spec:
     pods:
       cidrBlocks: ["192.168.0.0/16"]
     infrastructureRef:
-      kind: BareMetalCluster
+      kind: ExistingInfraCluster
       name: example
 ---
 apiVersion: "cluster.weave.works/v1alpha3"
-kind: "BareMetalCluster"
+kind: "ExistingInfraCluster"
 metadata:
   name: example
 spec:
@@ -47,11 +47,11 @@ spec:
     pods:
       cidrBlocks: ["192.168.0.0/16"]
     infrastructureRef:
-      kind: BareMetalCluster
+      kind: ExistingInfraCluster
       name: example
 ---
 apiVersion: "cluster.weave.works/v1alpha3"
-kind: "BareMetalCluster"
+kind: "ExistingInfraCluster"
 metadata:
   name: example
 spec:
@@ -73,7 +73,7 @@ spec:
     serviceDomain: "foo.bar"
 ---
 apiVersion: "cluster.weave.works/v1alpha3"
-kind: "BareMetalCluster"
+kind: "ExistingInfraCluster"
 metadata:
   name: example
 spec:
@@ -93,7 +93,7 @@ spec:
       cidrBlocks: ["192.168.0.0/72"]
 ---
 apiVersion: "cluster.weave.works/v1alpha3"
-kind: "BareMetalCluster"
+kind: "ExistingInfraCluster"
 metadata:
   name: example
 spec:
@@ -113,7 +113,7 @@ spec:
       cidrBlocks: ["10.96.0.0/16"]
 ---
 apiVersion: "cluster.weave.works/v1alpha3"
-kind: "BareMetalCluster"
+kind: "ExistingInfraCluster"
 metadata:
   name: example
 spec:
@@ -134,7 +134,7 @@ spec:
       cidrBlocks: ["192.168.0.0/16"]
 ---
 apiVersion: "cluster.weave.works/v1alpha3"
-kind: "BareMetalCluster"
+kind: "ExistingInfraCluster"
 metadata:
   name: example
 spec:
@@ -159,7 +159,7 @@ spec:
       cidrBlocks: ["192.168.0.0/16"]
 ---
 apiVersion: "cluster.weave.works/v1alpha3"
-kind: "BareMetalCluster"
+kind: "ExistingInfraCluster"
 metadata:
   name: example
 spec:
@@ -184,7 +184,7 @@ spec:
       cidrBlocks: ["192.168.0.0/16"]
 ---
 apiVersion: "cluster.weave.works/v1alpha3"
-kind: "BareMetalCluster"
+kind: "ExistingInfraCluster"
 metadata:
   name: example
 spec:
@@ -212,7 +212,7 @@ spec:
       cidrBlocks: ["192.168.0.0/16"]
 ---
 apiVersion: "cluster.weave.works/v1alpha3"
-kind: "BareMetalCluster"
+kind: "ExistingInfraCluster"
 metadata:
   name: example
 spec:
@@ -240,7 +240,7 @@ spec:
       cidrBlocks: ["192.168.0.0/16"]
 ---
 apiVersion: "cluster.weave.works/v1alpha3"
-kind: "BareMetalCluster"
+kind: "ExistingInfraCluster"
 metadata:
   name: example
 spec:
@@ -263,7 +263,7 @@ spec:
       cidrBlocks: ["192.168.0.0/16"]
 ---
 apiVersion: "cluster.weave.works/v1alpha3"
-kind: "BareMetalCluster"
+kind: "ExistingInfraCluster"
 metadata:
   name: example
 spec:
@@ -274,7 +274,7 @@ spec:
 	  keytab: /foo
 `
 
-func clusterFromString(t *testing.T, s string) (*clusterv1.Cluster, *baremetalspecv1.BareMetalCluster) {
+func clusterFromString(t *testing.T, s string) (*clusterv1.Cluster, *existinginfrav1.ExistingInfraCluster) {
 	r := ioutil.NopCloser(strings.NewReader(s))
 	cluster, bmc, err := ParseCluster(r)
 	assert.NoError(t, err)
@@ -292,7 +292,7 @@ func fieldsInError(errors field.ErrorList) []string {
 
 func TestValidateCluster(t *testing.T) {
 	assert.NoError(t, clusterv1.AddToScheme(scheme.Scheme))
-	assert.NoError(t, baremetalspecv1.AddToScheme(scheme.Scheme))
+	assert.NoError(t, existinginfrav1.AddToScheme(scheme.Scheme))
 	tests := []struct {
 		input  string
 		errors []string

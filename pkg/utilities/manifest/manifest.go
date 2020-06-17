@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	bmv1alpha3 "github.com/weaveworks/wksctl/pkg/baremetal/v1alpha3"
+	bmv1alpha3 "github.com/weaveworks/wksctl/pkg/existinginfra/v1alpha3"
 	"gopkg.in/oleiade/reflections.v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -41,8 +41,8 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&clusterv1alpha3.MachineList{},
 	)
 	scheme.AddKnownTypes(bmv1alpha3.SchemeGroupVersion,
-		&bmv1alpha3.BareMetalCluster{},
-		&bmv1alpha3.BareMetalMachine{},
+		&bmv1alpha3.ExistingInfraCluster{},
+		&bmv1alpha3.ExistingInfraMachine{},
 	)
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
 	return nil

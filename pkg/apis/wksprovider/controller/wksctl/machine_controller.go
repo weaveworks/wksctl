@@ -14,8 +14,8 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/config"
 	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/os"
-	baremetalspecv1 "github.com/weaveworks/wksctl/pkg/baremetal/v1alpha3"
 	machineutil "github.com/weaveworks/wksctl/pkg/cluster/machine"
+	existinginfrav1 "github.com/weaveworks/wksctl/pkg/existinginfra/v1alpha3"
 	"github.com/weaveworks/wksctl/pkg/kubernetes/drain"
 	"github.com/weaveworks/wksctl/pkg/plan"
 	"github.com/weaveworks/wksctl/pkg/plan/recipe"
@@ -70,7 +70,7 @@ func (r *MachineController) Reconcile(req ctrl.Request) (_ ctrl.Result, reterr e
 	contextLog := log.WithField("name", req.NamespacedName)
 
 	// request only contains the name of the object, so fetch it from the api-server
-	bmm := &baremetalspecv1.BareMetalMachine{}
+	bmm := &existinginfrav1.ExistingInfraMachine{}
 	err := r.client.Get(ctx, req.NamespacedName, bmm)
 	if err != nil {
 		if apierrs.IsNotFound(err) { // isn't there; give in
@@ -98,22 +98,22 @@ func (r *MachineController) Reconcile(req ctrl.Request) (_ ctrl.Result, reterr e
 	}
 
 	if util.IsPaused(cluster, bmm) {
-		contextLog.Info("BareMetalMachine or linked Cluster is marked as paused. Won't reconcile")
+		contextLog.Info("ExistingInfraMachine or linked Cluster is marked as paused. Won't reconcile")
 		return ctrl.Result{}, nil
 	}
 	contextLog = contextLog.WithField("cluster", cluster.Name)
 
-	// Now go from the Cluster to the BareMetalCluster
+	// Now go from the Cluster to the ExistingInfraCluster
 	if cluster.Spec.InfrastructureRef == nil || cluster.Spec.InfrastructureRef.Name == "" {
 		contextLog.Info("Cluster is missing infrastructureRef")
 		return ctrl.Result{}, nil
 	}
-	bmc := &baremetalspecv1.BareMetalCluster{}
+	bmc := &existinginfrav1.ExistingInfraCluster{}
 	if err := r.client.Get(ctx, client.ObjectKey{
 		Namespace: bmm.Namespace,
 		Name:      cluster.Spec.InfrastructureRef.Name,
 	}, bmc); err != nil {
-		contextLog.Info("BareMetalCluster is not available yet")
+		contextLog.Info("ExistingInfraCluster is not available yet")
 		return ctrl.Result{}, nil
 	}
 
@@ -122,10 +122,10 @@ func (r *MachineController) Reconcile(req ctrl.Request) (_ ctrl.Result, reterr e
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-	// Attempt to Patch the BareMetalMachine object and status after each reconciliation.
+	// Attempt to Patch the ExistingInfraMachine object and status after each reconciliation.
 	defer func() {
 		if err := patchHelper.Patch(ctx, bmm); err != nil {
-			contextLog.Errorf("failed to patch BareMetalMachine: %v", err)
+			contextLog.Errorf("failed to patch ExistingInfraMachine: %v", err)
 			if reterr == nil {
 				reterr = err
 			}
@@ -148,7 +148,7 @@ func (r *MachineController) Reconcile(req ctrl.Request) (_ ctrl.Result, reterr e
 	return ctrl.Result{}, err
 }
 
-func (a *MachineController) create(ctx context.Context, installer *os.OS, c *baremetalspecv1.BareMetalCluster, machine *clusterv1.Machine, bmm *baremetalspecv1.BareMetalMachine) error {
+func (a *MachineController) create(ctx context.Context, installer *os.OS, c *existinginfrav1.ExistingInfraCluster, machine *clusterv1.Machine, bmm *existinginfrav1.ExistingInfraMachine) error {
 	contextLog := log.WithFields(log.Fields{"machine": machine.Name, "cluster": c.Name})
 	contextLog.Info("creating machine...")
 
@@ -180,7 +180,7 @@ func (a *MachineController) create(ctx context.Context, installer *os.OS, c *bar
 	return nil
 }
 
-func (a *MachineController) connectTo(ctx context.Context, c *baremetalspecv1.BareMetalCluster, m *baremetalspecv1.BareMetalMachine) (*os.OS, io.Closer, error) {
+func (a *MachineController) connectTo(ctx context.Context, c *existinginfrav1.ExistingInfraCluster, m *existinginfrav1.ExistingInfraMachine) (*os.OS, io.Closer, error) {
 	sshKey, err := a.sshKey(ctx)
 	if err != nil {
 		return nil, nil, gerrors.Wrap(err, "failed to read SSH key")
@@ -315,7 +315,7 @@ func (a *MachineController) installNewBootstrapToken(ctx context.Context, ns str
 }
 
 // Delete the machine. If no error is returned, it is assumed that all dependent resources have been cleaned up.
-func (a *MachineController) delete(ctx context.Context, c *baremetalspecv1.BareMetalCluster, machine *clusterv1.Machine, bmm *baremetalspecv1.BareMetalMachine) error {
+func (a *MachineController) delete(ctx context.Context, c *existinginfrav1.ExistingInfraCluster, machine *clusterv1.Machine, bmm *existinginfrav1.ExistingInfraMachine) error {
 	contextLog := log.WithFields(log.Fields{"machine": machine.Name, "cluster": c.Name})
 	contextLog.Info("deleting machine ...")
 
@@ -356,7 +356,7 @@ func (a *MachineController) delete(ctx context.Context, c *baremetalspecv1.BareM
 }
 
 // Update the machine to the provided definition.
-func (a *MachineController) update(ctx context.Context, c *baremetalspecv1.BareMetalCluster, machine *clusterv1.Machine, bmm *baremetalspecv1.BareMetalMachine) error {
+func (a *MachineController) update(ctx context.Context, c *existinginfrav1.ExistingInfraCluster, machine *clusterv1.Machine, bmm *existinginfrav1.ExistingInfraMachine) error {
 	contextLog := log.WithFields(log.Fields{"machine": machine.Name, "cluster": c.Name})
 	contextLog.Info("updating machine...")
 	installer, closer, err := a.connectTo(ctx, c, bmm)
@@ -531,7 +531,7 @@ func (a *MachineController) performActualUpdate(
 	machine *clusterv1.Machine,
 	node *corev1.Node,
 	nodePlan *plan.Plan,
-	cluster *baremetalspecv1.BareMetalCluster) error {
+	cluster *existinginfrav1.ExistingInfraCluster) error {
 	if err := drain.Drain(node, a.clientSet, drain.Params{
 		Force:               true,
 		DeleteLocalData:     true,
@@ -548,7 +548,7 @@ func (a *MachineController) performActualUpdate(
 	return nil
 }
 
-func (a *MachineController) getNodePlan(ctx context.Context, provider *baremetalspecv1.BareMetalCluster, machine *clusterv1.Machine, machineAddress string, installer *os.OS) (*plan.Plan, error) {
+func (a *MachineController) getNodePlan(ctx context.Context, provider *existinginfrav1.ExistingInfraCluster, machine *clusterv1.Machine, machineAddress string, installer *os.OS) (*plan.Plan, error) {
 	namespace := a.controllerNamespace
 	secrets, err := a.kubeadmJoinSecrets(ctx)
 	if err != nil {
@@ -641,7 +641,7 @@ func (a *MachineController) getAuthSecrets(ctx context.Context, authConfigMap *v
 	return authSecrets, nil
 }
 
-func (a *MachineController) getProviderConfigMaps(ctx context.Context, provider *baremetalspecv1.BareMetalCluster) (map[string]*v1.ConfigMap, error) {
+func (a *MachineController) getProviderConfigMaps(ctx context.Context, provider *existinginfrav1.ExistingInfraCluster) (map[string]*v1.ConfigMap, error) {
 	fileSpecs := provider.Spec.OS.Files
 	client := a.clientSet.CoreV1().ConfigMaps(a.controllerNamespace)
 	configMaps := map[string]*v1.ConfigMap{}
@@ -990,18 +990,18 @@ func (a *MachineController) recordEvent(object runtime.Object, eventType, reason
 	}
 }
 
-func (a *MachineController) getMachineAddress(m *baremetalspecv1.BareMetalMachine) string {
+func (a *MachineController) getMachineAddress(m *existinginfrav1.ExistingInfraMachine) string {
 	return m.Spec.Private.Address
 }
 
 func (a *MachineController) SetupWithManager(mgr ctrl.Manager, options controller.Options) error {
 	controller, err := ctrl.NewControllerManagedBy(mgr).
 		WithOptions(options).
-		For(&baremetalspecv1.BareMetalMachine{}).
+		For(&existinginfrav1.ExistingInfraMachine{}).
 		Watches(
 			&source.Kind{Type: &clusterv1.Machine{}},
 			&handler.EnqueueRequestsFromMapFunc{
-				ToRequests: util.MachineToInfrastructureMapFunc(baremetalspecv1.SchemeGroupVersion.WithKind("BareMetalMachine")),
+				ToRequests: util.MachineToInfrastructureMapFunc(existinginfrav1.SchemeGroupVersion.WithKind("ExistingInfraMachine")),
 			},
 		).
 		// TODO: add watch to reconcile all machines that need it
@@ -1024,7 +1024,7 @@ type MachineControllerParams struct {
 	Verbose             bool
 }
 
-// NewMachineController creates a new baremetal machine reconciler.
+// NewMachineController creates a new existinginfra machine reconciler.
 func NewMachineController(params MachineControllerParams) (*MachineController, error) {
 	return &MachineController{
 		client:              params.Client,

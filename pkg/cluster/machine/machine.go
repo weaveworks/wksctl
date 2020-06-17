@@ -9,7 +9,7 @@ import (
 	"github.com/blang/semver"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
-	baremetalspecv1 "github.com/weaveworks/wksctl/pkg/baremetal/v1alpha3"
+	existinginfrav1 "github.com/weaveworks/wksctl/pkg/existinginfra/v1alpha3"
 	"github.com/weaveworks/wksctl/pkg/kubernetes"
 	"github.com/weaveworks/wksctl/pkg/utilities/manifest"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -40,8 +40,8 @@ func IsNode(machine *clusterv1.Machine) bool {
 
 // FirstMaster scans the provided array of machines and return the first
 // one which is a "Master" or nil if none.
-// Machines and BareMetalMachines must be in the same order
-func FirstMaster(machines []*clusterv1.Machine, bl []*baremetalspecv1.BareMetalMachine) (*clusterv1.Machine, *baremetalspecv1.BareMetalMachine) {
+// Machines and ExistingInfraMachines must be in the same order
+func FirstMaster(machines []*clusterv1.Machine, bl []*existinginfrav1.ExistingInfraMachine) (*clusterv1.Machine, *existinginfrav1.ExistingInfraMachine) {
 	// TODO: validate size and ordering of lists
 	for i, machine := range machines {
 		if IsMaster(machine) {
@@ -52,7 +52,7 @@ func FirstMaster(machines []*clusterv1.Machine, bl []*baremetalspecv1.BareMetalM
 }
 
 // ParseManifest parses the provided machines manifest file.
-func ParseManifest(file string) (ml []*clusterv1.Machine, bl []*baremetalspecv1.BareMetalMachine, err error) {
+func ParseManifest(file string) (ml []*clusterv1.Machine, bl []*existinginfrav1.ExistingInfraMachine, err error) {
 	f, err := os.Open(file)
 	if err != nil {
 		return nil, nil, err
@@ -65,7 +65,7 @@ func ParseManifest(file string) (ml []*clusterv1.Machine, bl []*baremetalspecv1.
 }
 
 // Parse parses the provided machines io.Reader.
-func Parse(r io.ReadCloser) (ml []*clusterv1.Machine, bl []*baremetalspecv1.BareMetalMachine, err error) {
+func Parse(r io.ReadCloser) (ml []*clusterv1.Machine, bl []*existinginfrav1.ExistingInfraMachine, err error) {
 	decoder := clusteryaml.NewYAMLDecoder(r)
 	defer decoder.Close()
 
@@ -80,7 +80,7 @@ func Parse(r io.ReadCloser) (ml []*clusterv1.Machine, bl []*baremetalspecv1.Bare
 		switch v := obj.(type) {
 		case *clusterv1.Machine:
 			ml = append(ml, v)
-		case *baremetalspecv1.BareMetalMachine:
+		case *existinginfrav1.ExistingInfraMachine:
 			bl = append(bl, v)
 		default:
 			return nil, nil, fmt.Errorf("unexpected type %T", v)
@@ -91,7 +91,7 @@ func Parse(r io.ReadCloser) (ml []*clusterv1.Machine, bl []*baremetalspecv1.Bare
 }
 
 // Validate validates the provided machines.
-func Validate(machines []*clusterv1.Machine, bl []*baremetalspecv1.BareMetalMachine) field.ErrorList {
+func Validate(machines []*clusterv1.Machine, bl []*existinginfrav1.ExistingInfraMachine) field.ErrorList {
 	if len(machines) == 0 { // Some other validations crash on empty list
 		return field.ErrorList{nonFieldError("no machines")}
 	}
@@ -109,7 +109,7 @@ func Validate(machines []*clusterv1.Machine, bl []*baremetalspecv1.BareMetalMach
 
 	// Check 1-1 correspondence between lists
 	if len(machines) != len(bl) {
-		errors = append(errors, nonFieldError("mismatch: %d Machines and %d BareMetalMachines", len(machines), len(bl)))
+		errors = append(errors, nonFieldError("mismatch: %d Machines and %d ExistingInfraMachines", len(machines), len(bl)))
 	} else {
 		// TODO: what if the user has a mixture of our machines and someone else's?
 		for i, m := range machines {
@@ -270,7 +270,7 @@ func Populate(machines []*clusterv1.Machine) {
 
 // InvalidMachinesHandler encapsulates logic to apply in case of an invalid
 // machines manifest being provided.
-type InvalidMachinesHandler = func(machines []*clusterv1.Machine, bl []*baremetalspecv1.BareMetalMachine, errors field.ErrorList) ([]*clusterv1.Machine, []*baremetalspecv1.BareMetalMachine, error)
+type InvalidMachinesHandler = func(machines []*clusterv1.Machine, bl []*existinginfrav1.ExistingInfraMachine, errors field.ErrorList) ([]*clusterv1.Machine, []*existinginfrav1.ExistingInfraMachine, error)
 
 // NoOpInvalidMachinesHandler does nothing when an invalid machines manifest
 // is being provided.
@@ -280,7 +280,7 @@ var NoOpInvalidMachinesHandler = func(machines []*clusterv1.Machine, errors fiel
 
 // ParseAndDefaultAndValidate parses the provided manifest, validates it and
 // defaults values where possible.
-func ParseAndDefaultAndValidate(machinesManifestPath string, errorsHandler InvalidMachinesHandler) ([]*clusterv1.Machine, []*baremetalspecv1.BareMetalMachine, error) {
+func ParseAndDefaultAndValidate(machinesManifestPath string, errorsHandler InvalidMachinesHandler) ([]*clusterv1.Machine, []*existinginfrav1.ExistingInfraMachine, error) {
 	machines, bl, err := ParseManifest(machinesManifestPath)
 	if err != nil {
 		return nil, nil, err
@@ -305,7 +305,7 @@ func GetKubernetesVersionFromManifest(machinesManifestPath string) (string, stri
 // GetKubernetesVersionFromMasterIn reads the version of the Kubernetes control
 // plane from the provided machines. If no version is configured, the default
 // Kubernetes version will be returned.
-func GetKubernetesVersionFromMasterIn(machines []*clusterv1.Machine, bl []*baremetalspecv1.BareMetalMachine) (string, string, error) {
+func GetKubernetesVersionFromMasterIn(machines []*clusterv1.Machine, bl []*existinginfrav1.ExistingInfraMachine) (string, string, error) {
 	// Ensures all machines have the same version (either specified or empty):
 	errs := Validate(machines, bl)
 	if len(errs) > 0 {

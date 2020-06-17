@@ -8,15 +8,15 @@ import (
 // +groupName=cluster.weave.works
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type BareMetalCluster struct {
+type ExistingInfraCluster struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   BareMetalClusterSpec   `json:"spec,omitempty"`
-	Status BareMetalClusterStatus `json:"status,omitempty"`
+	Spec   ExistingInfraClusterSpec   `json:"spec,omitempty"`
+	Status ExistingInfraClusterStatus `json:"status,omitempty"`
 }
 
-type BareMetalClusterSpec struct {
+type ExistingInfraClusterSpec struct {
 	User                 string `json:"user"`
 	DeprecatedSSHKeyPath string `json:"sshKeyPath"`
 	HTTPProxy            string `json:"httpProxy,omitempty"`
@@ -38,15 +38,15 @@ type BareMetalClusterSpec struct {
 	CloudProvider string `json:"cloudProvider,omitempty"`
 }
 
-type BareMetalClusterStatus struct {
+type ExistingInfraClusterStatus struct {
 	Ready bool `json:"ready"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type BareMetalClusterList struct {
+type ExistingInfraClusterList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []BareMetalCluster `json:"items"`
+	Items           []ExistingInfraCluster `json:"items"`
 }
 
 type OSConfig struct {
@@ -102,30 +102,30 @@ type Addon struct {
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-type BareMetalMachine struct {
+type ExistingInfraMachine struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   BareMetalMachineSpec   `json:"spec,omitempty"`
-	Status BareMetalMachineStatus `json:"status,omitempty"`
+	Spec   ExistingInfraMachineSpec   `json:"spec,omitempty"`
+	Status ExistingInfraMachineStatus `json:"status,omitempty"`
 }
 
-type BareMetalMachineSpec struct {
+type ExistingInfraMachineSpec struct {
 	Private    EndPoint `json:"private,omitempty"`
 	Public     EndPoint `json:"public,omitempty"`
 	ProviderID string   `json:"providerID,omitempty"`
 }
 
-type BareMetalMachineStatus struct {
+type ExistingInfraMachineStatus struct {
 	Ready bool `json:"ready"`
 }
 
-// BareMetalMachineList contains a list of Machine
+// ExistingInfraMachineList contains a list of Machine
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-type BareMetalMachineList struct {
+type ExistingInfraMachineList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []BareMetalMachine `json:"items"`
+	Items           []ExistingInfraMachine `json:"items"`
 }
 
 // EndPoint groups the details required to establish a connection.

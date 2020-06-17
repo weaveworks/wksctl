@@ -20,7 +20,7 @@ import (
 	"github.com/weaveworks/wksctl/cmd/wksctl/registrysynccommands"
 	"github.com/weaveworks/wksctl/cmd/wksctl/version"
 	"github.com/weaveworks/wksctl/cmd/wksctl/zshcompletions"
-	baremetalv1 "github.com/weaveworks/wksctl/pkg/baremetal/v1alpha3"
+	existinginfrav1 "github.com/weaveworks/wksctl/pkg/existinginfra/v1alpha3"
 	v "github.com/weaveworks/wksctl/pkg/version"
 )
 
@@ -48,7 +48,7 @@ func main() {
 	if err := clusterv1.AddToScheme(scheme.Scheme); err != nil {
 		log.Fatal(err)
 	}
-	if err := baremetalv1.AddToScheme(scheme.Scheme); err != nil {
+	if err := existinginfrav1.AddToScheme(scheme.Scheme); err != nil {
 		log.Fatal(err)
 	}
 
