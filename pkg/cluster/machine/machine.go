@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/blang/semver"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	baremetalspecv1 "github.com/weaveworks/wksctl/pkg/baremetal/v1alpha3"
 	"github.com/weaveworks/wksctl/pkg/kubernetes"
@@ -56,7 +57,11 @@ func ParseManifest(file string) (ml []*clusterv1.Machine, bl []*baremetalspecv1.
 	if err != nil {
 		return nil, nil, err
 	}
-	return Parse(f)
+	ml, bl, err = Parse(f)
+	if err != nil {
+		err = errors.Wrapf(err, "parsing %q", file)
+	}
+	return
 }
 
 // Parse parses the provided machines io.Reader.
