@@ -1,4 +1,4 @@
-FROM quay.io/footloose/centos7:0.3.0
+FROM quay.io/footloose/centos7:0.6.3
 
 RUN yum -y install sudo kubernetes-client
 
