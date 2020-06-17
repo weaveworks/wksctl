@@ -90,6 +90,7 @@ const machinesYAML = `
       apiVersion: "cluster.weave.works/v1alpha3"
       kind: BareMetalMachine
       name: master-1
+    bootstrap: {}
 ---
   apiVersion: "cluster.weave.works/v1alpha3"
   kind: "BareMetalMachine"
@@ -115,6 +116,7 @@ const machinesYAML = `
       apiVersion: "cluster.weave.works/v1alpha3"
       kind: BareMetalMachine
       name: master-2
+    bootstrap: {}
 ---
   apiVersion: "cluster.weave.works/v1alpha3"
   kind: "BareMetalMachine"
@@ -140,6 +142,7 @@ const machinesYAML = `
       apiVersion: "cluster.weave.works/v1alpha3"
       kind: BareMetalMachine
       name: master-3
+    bootstrap: {}
 ---
   apiVersion: "cluster.weave.works/v1alpha3"
   kind: "BareMetalMachine"
@@ -165,6 +168,7 @@ const machinesYAML = `
       apiVersion: "cluster.weave.works/v1alpha3"
       kind: BareMetalMachine
       name: worker-1
+    bootstrap: {}
 ---
   apiVersion: "cluster.weave.works/v1alpha3"
   kind: "BareMetalMachine"
