@@ -4,7 +4,7 @@ cluster:
 machines:
 - count: 2
   spec:
-    image: quay.io/footloose/ubuntu18.04:0.4.0
+    image: quay.io/footloose/ubuntu18.04:0.6.3
     name: node%d
     portMappings:
     - containerPort: 22
