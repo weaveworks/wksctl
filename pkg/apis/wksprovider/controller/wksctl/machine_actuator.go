@@ -28,11 +28,10 @@ import (
 	machineutil "github.com/weaveworks/wksctl/pkg/cluster/machine"
 	"github.com/weaveworks/wksctl/pkg/kubernetes/drain"
 	"github.com/weaveworks/wksctl/pkg/plan"
-	"github.com/weaveworks/wksctl/pkg/plan/resource"
+	"github.com/weaveworks/wksctl/pkg/plan/recipe"
 	"github.com/weaveworks/wksctl/pkg/plan/runners/ssh"
 	"github.com/weaveworks/wksctl/pkg/specs"
 	bootstraputils "github.com/weaveworks/wksctl/pkg/utilities/kubeadm"
-	"github.com/weaveworks/wksctl/pkg/utilities/object"
 	"github.com/weaveworks/wksctl/pkg/utilities/version"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
@@ -59,14 +58,6 @@ const (
 	controllerSecret    string = "wks-controller-secrets"
 	bootstrapTokenID    string = "bootstrapTokenID"
 	clusterName         string = "wks-firekube"
-)
-
-type nodeType int
-
-const (
-	originalMaster nodeType = iota
-	secondaryMaster
-	worker
 )
 
 var (
@@ -549,12 +540,12 @@ func (a *MachineActuator) update(ctx context.Context, cluster *clusterv1.Cluster
 					return err
 				}
 			} else if isOriginal {
-				return a.kubeadmUpOrDowngrade(machine, node, installer, version, planKey, planJSON, originalMaster)
+				return a.kubeadmUpOrDowngrade(machine, node, installer, version, planKey, planJSON, recipe.OriginalMaster)
 			} else {
-				return a.kubeadmUpOrDowngrade(machine, node, installer, version, planKey, planJSON, secondaryMaster)
+				return a.kubeadmUpOrDowngrade(machine, node, installer, version, planKey, planJSON, recipe.SecondaryMaster)
 			}
 		}
-		return a.kubeadmUpOrDowngrade(machine, node, installer, version, planKey, planJSON, worker)
+		return a.kubeadmUpOrDowngrade(machine, node, installer, version, planKey, planJSON, recipe.Worker)
 	}
 
 	if err = a.performActualUpdate(installer, machine, node, nodePlan, c); err != nil {
@@ -568,87 +559,15 @@ func (a *MachineActuator) update(ctx context.Context, cluster *clusterv1.Cluster
 	return nil
 }
 
-// Runs upgrade commands based on the operating system
-func getInstallPlan(installer *os.OS, k8sVersion string) map[string]plan.Resource {
-	if installer.PkgType == resource.PkgTypeRPM || installer.PkgType == resource.PkgTypeRHEL {
-		return map[string]plan.Resource{
-			"upgrade:node-unlock-kubernetes": &resource.Run{Script: object.String("yum versionlock delete 'kube*' || true")},
-			"upgrade:node-install-kubeadm":   &resource.RPM{Name: "kubeadm", Version: k8sVersion, DisableExcludes: "kubernetes"},
-			"upgrade:node-kubelet":           &resource.RPM{Name: "kubelet", Version: k8sVersion, DisableExcludes: "kubernetes"},
-			"upgrade:node-kubectl":           &resource.RPM{Name: "kubectl", Version: k8sVersion, DisableExcludes: "kubernetes"},
-			"upgrade:node-lock-kubernetes":   &resource.Run{Script: object.String("yum versionlock add 'kube*' || true")},
-		}
-	} else if installer.PkgType == resource.PkgTypeDeb {
-		return map[string]plan.Resource{
-			"upgrade:node-unlock-kubernetes": &resource.Run{Script: object.String("apt-mark unhold 'kube*' || true")},
-			"upgrade:node-install-kubeadm":   &resource.Deb{Name: "kubeadm", Suffix: "=" + k8sVersion + "-00"},
-			"upgrade:node-kubelet":           &resource.Deb{Name: "kubelet", Suffix: "=" + k8sVersion + "-00"},
-			"upgrade:node-kubectl":           &resource.Deb{Name: "kubectl", Suffix: "=" + k8sVersion + "-00"},
-			"upgrade:node-lock-kubernetes":   &resource.Run{Script: object.String("apt-mark hold 'kube*' || true")},
-		}
-	}
-	return nil
-}
-
 // kubeadmUpOrDowngrade does upgrade or downgrade a machine.
 // Parameter k8sversion specified here represents the version of both Kubernetes and Kubeadm.
 func (a *MachineActuator) kubeadmUpOrDowngrade(machine *clusterv1.Machine, node *corev1.Node, installer *os.OS,
-	k8sVersion, planKey, planJSON string, ntype nodeType) error {
+	k8sVersion, planKey, planJSON string, ntype recipe.NodeType) error {
 	b := plan.NewBuilder()
 
-	planResources := getInstallPlan(installer, k8sVersion)
+	upgradeRes := recipe.BuildUpgradePlan(installer.PkgType, k8sVersion, ntype)
 
-	b.AddResourceFrom(
-		"upgrade:node-unlock-kubernetes",
-		planResources)
-	b.AddResourceFrom(
-		"upgrade:node-install-kubeadm",
-		planResources,
-		plan.DependOn("upgrade:node-unlock-kubernetes"))
-
-	//
-	// For secondary masters
-	// version >= 1.16.0 uses: kubeadm upgrade node
-	// version >= 1.14.0 && < 1.16.0 uses: kubeadm upgrade node experimental-control-plane
-	//
-	secondaryMasterUpgradeControlPlaneFlag := ""
-	if lt, err := version.LessThan(k8sVersion, "v1.16.0"); err == nil && lt {
-		secondaryMasterUpgradeControlPlaneFlag = "experimental-control-plane"
-	}
-
-	switch ntype {
-	case originalMaster:
-		b.AddResource(
-			"upgrade:node-kubeadm-upgrade",
-			&resource.Run{Script: object.String(fmt.Sprintf("kubeadm upgrade plan && kubeadm upgrade apply -y %s", k8sVersion))},
-			plan.DependOn("upgrade:node-install-kubeadm"))
-	case secondaryMaster:
-		b.AddResource(
-			"upgrade:node-kubeadm-upgrade",
-			&resource.Run{Script: object.String(fmt.Sprintf("kubeadm upgrade node %s", secondaryMasterUpgradeControlPlaneFlag))},
-			plan.DependOn("upgrade:node-install-kubeadm"))
-	case worker:
-		b.AddResource(
-			"upgrade:node-kubeadm-upgrade",
-			&resource.Run{Script: object.String(fmt.Sprintf("kubeadm upgrade node config --kubelet-version %s", k8sVersion))},
-			plan.DependOn("upgrade:node-install-kubeadm"))
-	}
-	b.AddResourceFrom(
-		"upgrade:node-kubelet",
-		planResources,
-		plan.DependOn("upgrade:node-kubeadm-upgrade"))
-	b.AddResource(
-		"upgrade:node-restart-kubelet",
-		&resource.Run{Script: object.String("systemctl restart kubelet")},
-		plan.DependOn("upgrade:node-kubelet"))
-	b.AddResourceFrom(
-		"upgrade:node-kubectl",
-		planResources,
-		plan.DependOn("upgrade:node-restart-kubelet"))
-	b.AddResourceFrom(
-		"upgrade:node-lock-kubernetes",
-		planResources,
-		plan.DependOn("upgrade:node-kubectl"))
+	b.AddResource("upgrade:k8s", upgradeRes)
 
 	p, err := b.Plan()
 	if err != nil {

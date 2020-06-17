@@ -30,24 +30,6 @@ func TestBuilder(t *testing.T) {
 	assert.Equal(t, []string{"rpm:docker", "file:daemon.json", "service:docker"}, sorted)
 }
 
-func TestAddResourceFrom(t *testing.T) {
-	resources := map[string]Resource{
-		"rpm:docker":     &testResource{ID: "rpm:docker"},
-		"service:docker": &testResource{ID: "service:docker"},
-	}
-
-	b := NewBuilder()
-	b.AddResourceFrom("rpm:docker", resources)
-	b.AddResourceFrom("service:docker", resources, DependOn("rpm:docker", "file:daemon.json"))
-	assert.Equal(t, 0, len(b.Errors()))
-
-	// missing resource
-	b.AddResourceFrom("rpm:k8s", resources)
-	assert.Equal(t, 1, len(b.Errors()))
-	errstr := b.Errors()[0].Error()
-	assert.Equal(t, "resource id rpm:k8s not found in resources", errstr)
-}
-
 func makeInvalidBuilder() *Builder {
 	b := NewBuilder()
 	b.AddResource(
