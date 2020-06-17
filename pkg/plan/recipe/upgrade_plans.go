@@ -3,7 +3,6 @@ package recipe
 import (
 	"fmt"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/weaveworks/wksctl/pkg/plan"
 	"github.com/weaveworks/wksctl/pkg/plan/resource"
 	"github.com/weaveworks/wksctl/pkg/utilities/object"
@@ -19,7 +18,7 @@ const (
 )
 
 // BuildUpgradePlan creates a sub-plan to run upgrade using respective package management commands.
-func BuildUpgradePlan(pkgType resource.PkgType, k8sVersion string, ntype NodeType) plan.Resource {
+func BuildUpgradePlan(pkgType resource.PkgType, k8sVersion string, ntype NodeType) (plan.Resource, error) {
 	b := plan.NewBuilder()
 
 	switch pkgType {
@@ -107,7 +106,7 @@ func BuildUpgradePlan(pkgType resource.PkgType, k8sVersion string, ntype NodeTyp
 
 	p, err := b.Plan()
 	if err != nil {
-		log.Fatalf("%v", err)
+		return nil, err
 	}
-	return &p
+	return &p, nil
 }
