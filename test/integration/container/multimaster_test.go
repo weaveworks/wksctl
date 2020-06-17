@@ -295,75 +295,90 @@ func TestMultimasterSetup(t *testing.T) {
 	}
 	yumRepoIP := sanitizeIP(run(t, "docker", "inspect", "yumrepo", "--format='{{.NetworkSettings.IPAddress}}'"))
 
-	// Start the footloose container "VMs" used for testing:
-	run(t, "footloose", "create", "-c", "../../../examples/footloose/centos7/docker/multimaster.yaml")
-	node0IP := sanitizeIP(run(t, "docker", "inspect", "centos-multimaster-node0", "--format='{{.NetworkSettings.IPAddress}}'"))
-	node1IP := sanitizeIP(run(t, "docker", "inspect", "centos-multimaster-node1", "--format='{{.NetworkSettings.IPAddress}}'"))
-	node2IP := sanitizeIP(run(t, "docker", "inspect", "centos-multimaster-node2", "--format='{{.NetworkSettings.IPAddress}}'"))
-	node3IP := sanitizeIP(run(t, "docker", "inspect", "centos-multimaster-node3", "--format='{{.NetworkSettings.IPAddress}}'"))
-
-	dirName := tempDir(t)
-	clusterYAML := saveToFile(t, dirName, "cluster.yaml", fmt.Sprintf(clusterYAML, registryIP, registryPort))
-	machinesYAML := saveToFile(t, dirName, "machines.yaml", fmt.Sprintf(machinesYAML, node0IP, node1IP, node2IP, node3IP))
-	_ = saveToFile(t, dirName, "repo-config.yaml", fmt.Sprintf(repoConfigMap, yumRepoIP))
-	_ = saveToFile(t, dirName, "docker-config.yaml", fmt.Sprintf(dockerConfigMap, registryIP, registryPort))
-
-	run(t, "../../../cmd/wksctl/wksctl", "apply",
-		fmt.Sprintf("--cluster=%s", clusterYAML), fmt.Sprintf("--machines=%s", machinesYAML),
-		fmt.Sprintf("--config-directory=%s", dirName),
-		"--verbose",
-		fmt.Sprintf("--controller-image=docker.io/weaveworks/wksctl-controller:%s", tag))
-
-	out := run(t, "../../../cmd/wksctl/wksctl", "kubeconfig",
-		fmt.Sprintf("--cluster=%s", clusterYAML), fmt.Sprintf("--machines=%s", machinesYAML))
-
-	var nodeList corev1.NodeList
-	for {
-		jsonOut := run(t, "kubectl", "get", "nodes", "-o", "json", fmt.Sprintf("--kubeconfig=%s", kubeconfig(out)))
-		if err := json.Unmarshal([]byte(jsonOut), &nodeList); err != nil {
-			log.Warnf("Error deserialising output of kubectl get nodes: %s", err)
-		}
-		log.Infof("The cluster currently has %d node(s)", len(nodeList.Items))
-		if len(nodeList.Items) == 4 {
-			break
-		}
-		time.Sleep(30 * time.Second)
+	tests := []struct {
+		name string
+		path string
+	}{
+		{
+			name: "centos",
+			path: "../../../examples/footloose/centos7/docker/multimaster.yaml",
+		},
 	}
 
-	assert.Len(t, nodeList.Items, 4)
-	assert.Len(t, nodes.Masters(nodeList).Items, 3)
-	assert.Len(t, nodes.Workers(nodeList).Items, 1)
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			// Start the footloose container "VMs" used for testing:
+			run(t, "footloose", "create", "-c", "../../../examples/footloose/centos7/docker/multimaster.yaml")
+			node0IP := sanitizeIP(run(t, "docker", "inspect", "centos-multimaster-node0", "--format='{{.NetworkSettings.IPAddress}}'"))
+			node1IP := sanitizeIP(run(t, "docker", "inspect", "centos-multimaster-node1", "--format='{{.NetworkSettings.IPAddress}}'"))
+			node2IP := sanitizeIP(run(t, "docker", "inspect", "centos-multimaster-node2", "--format='{{.NetworkSettings.IPAddress}}'"))
+			node3IP := sanitizeIP(run(t, "docker", "inspect", "centos-multimaster-node3", "--format='{{.NetworkSettings.IPAddress}}'"))
 
-	expectedKubeletArgs := []string{"alsologtostderr=true", "container-runtime=docker"}
-	expectedApiServerArgs := []string{"alsologtostderr=true", "audit-log-maxsize=10000"}
+			dirName := tempDir(t)
+			clusterYAML := saveToFile(t, dirName, "cluster.yaml", fmt.Sprintf(clusterYAML, registryIP, registryPort))
+			machinesYAML := saveToFile(t, dirName, "machines.yaml", fmt.Sprintf(machinesYAML, node0IP, node1IP, node2IP, node3IP))
+			_ = saveToFile(t, dirName, "repo-config.yaml", fmt.Sprintf(repoConfigMap, yumRepoIP))
+			_ = saveToFile(t, dirName, "docker-config.yaml", fmt.Sprintf(dockerConfigMap, registryIP, registryPort))
 
-	for i := 0; i < 4; i++ {
-		for _, kubeletArg := range expectedKubeletArgs {
-			log.Infof("Checking kubelet arg (%s) on node%d", kubeletArg, i)
-			run(t, "footloose",
-				"-c", "../../../examples/footloose/centos7/docker/multimaster.yaml",
-				"ssh", fmt.Sprintf("root@node%d", i), fmt.Sprintf("ps -ef | grep -v 'ps -ef' | grep /usr/bin/kubelet | grep %s", kubeletArg))
-		}
+			run(t, "../../../cmd/wksctl/wksctl", "apply",
+				fmt.Sprintf("--cluster=%s", clusterYAML), fmt.Sprintf("--machines=%s", machinesYAML),
+				fmt.Sprintf("--config-directory=%s", dirName),
+				"--verbose",
+				fmt.Sprintf("--controller-image=docker.io/weaveworks/wksctl-controller:%s", tag))
 
-		// node0 - node2 are masters
-		if i < 3 {
-			for _, apiServerArg := range expectedApiServerArgs {
-				log.Infof("Checking api server arg (%s) on node%d", apiServerArg, i)
-				run(t, "footloose",
-					"-c", "../../../examples/footloose/centos7/docker/multimaster.yaml",
-					"ssh", fmt.Sprintf("root@node%d", i), fmt.Sprintf("ps -ef | grep -v 'ps -ef' | grep kube-apiserver | grep %s", apiServerArg))
+			out := run(t, "../../../cmd/wksctl/wksctl", "kubeconfig",
+				fmt.Sprintf("--cluster=%s", clusterYAML), fmt.Sprintf("--machines=%s", machinesYAML))
+
+			var nodeList corev1.NodeList
+			for {
+				jsonOut := run(t, "kubectl", "get", "nodes", "-o", "json", fmt.Sprintf("--kubeconfig=%s", kubeconfig(out)))
+				if err := json.Unmarshal([]byte(jsonOut), &nodeList); err != nil {
+					log.Warnf("Error deserialising output of kubectl get nodes: %s", err)
+				}
+				log.Infof("The cluster currently has %d node(s)", len(nodeList.Items))
+				if len(nodeList.Items) == 4 {
+					break
+				}
+				time.Sleep(30 * time.Second)
 			}
-		}
-	}
 
-	if !t.Failed() { // Otherwise leave the footloose "VMs" & config files around for debugging purposes.
-		// Clean up:
-		defer run(t, "footloose", "delete", "-c", "../../../examples/footloose/centos7/docker/multimaster.yaml")
-		defer os.Remove(dirName)
-		defer os.Remove(clusterYAML)
-		defer os.Remove(machinesYAML)
-		defer os.Remove(repoConfigMap)
-		defer os.Remove(repoConfigMap)
+			assert.Len(t, nodeList.Items, 4)
+			assert.Len(t, nodes.Masters(nodeList).Items, 3)
+			assert.Len(t, nodes.Workers(nodeList).Items, 1)
+
+			expectedKubeletArgs := []string{"alsologtostderr=true", "container-runtime=docker"}
+			expectedApiServerArgs := []string{"alsologtostderr=true", "audit-log-maxsize=10000"}
+
+			for i := 0; i < 4; i++ {
+				for _, kubeletArg := range expectedKubeletArgs {
+					log.Infof("Checking kubelet arg (%s) on node%d", kubeletArg, i)
+					run(t, "footloose",
+						"--config", tc.path,
+						"ssh", fmt.Sprintf("root@node%d", i), fmt.Sprintf("ps -ef | grep -v 'ps -ef' | grep /usr/bin/kubelet | grep %s", kubeletArg))
+				}
+
+				// node0 - node2 are masters
+				if i < 3 {
+					for _, apiServerArg := range expectedApiServerArgs {
+						log.Infof("Checking api server arg (%s) on node%d", apiServerArg, i)
+						run(t, "footloose",
+							"--config", tc.path,
+							"ssh", fmt.Sprintf("root@node%d", i), fmt.Sprintf("ps -ef | grep -v 'ps -ef' | grep kube-apiserver | grep %s", apiServerArg))
+					}
+				}
+			}
+
+			if !t.Failed() { // Otherwise leave the footloose "VMs" & config files around for debugging purposes.
+				// Clean up:
+				defer run(t, "footloose", "delete", "--config", tc.path)
+				defer os.Remove(dirName)
+				defer os.Remove(clusterYAML)
+				defer os.Remove(machinesYAML)
+				defer os.Remove(repoConfigMap)
+				defer os.Remove(repoConfigMap)
+			}
+		})
 	}
 }
 
