@@ -143,6 +143,8 @@ func (p *RPM) Apply(r plan.Runner, diff plan.Diff) (bool, error) {
 	if p.DisableExcludes != "" {
 		cmd = fmt.Sprintf("%s --disableexcludes %s", cmd, p.DisableExcludes)
 	}
+
+	cmd = fmt.Sprintf("%s --setopt=obsoletes=0", cmd)
 	_, err := r.RunCommand(cmd, nil)
 	return err == nil, err
 }
