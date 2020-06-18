@@ -144,7 +144,8 @@ func (p *RPM) Apply(r plan.Runner, diff plan.Diff) (bool, error) {
 		cmd = fmt.Sprintf("%s --disableexcludes %s", cmd, p.DisableExcludes)
 	}
 
-	cmd = fmt.Sprintf("%s --setopt=obsoletes=0", cmd)
+	// Added as a workaround for https://github.com/kubernetes/kubernetes/issues/92242
+	cmd += " --setopt obsoletes=0"
 	_, err := r.RunCommand(cmd, nil)
 	return err == nil, err
 }
