@@ -57,7 +57,6 @@ require (
 replace (
 	github.com/appscode/jsonpatch => gomodules.xyz/jsonpatch/v2 v2.0.0+incompatible
 	github.com/googleapis/gnostic => github.com/googleapis/gnostic v0.1.0
-	github.com/weaveworks/wksctl/pkg/baremetalproviderspec/v1alpha3/baremetalproviderspec/v1alpha3 => ./pkg/baremetalproviderspec/v1alpha3/baremetalproviderspec/v1alpha3
 	k8s.io/api => k8s.io/api v0.17.2
 	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.17.2
 	k8s.io/apimachinery => k8s.io/apimachinery v0.17.2
