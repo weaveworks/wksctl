@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	baremetalv1 "github.com/weaveworks/wksctl/pkg/baremetal/v1alpha3"
+	byobv1 "github.com/weaveworks/wksctl/pkg/byob/v1alpha3"
 	"k8s.io/client-go/kubernetes/scheme"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"
 )
@@ -144,11 +144,11 @@ spec:
       cidrBlocks: [192.168.0.0/16]
     serviceDomain: cluster.local
     infrastructureRef:
-      kind: BareMetalCluster
+      kind: BYOBCluster
       name: example
 ---
 apiVersion: cluster.weave.works/v1alpha3
-kind: "BareMetalCluster"
+kind: "BYOBCluster"
 metadata:
   name: example
 spec:
@@ -182,11 +182,11 @@ spec:
       set: master
   spec:
     infrastructureRef:
-      kind: BareMetalMachine
+      kind: BYOBMachine
       name: master-0
 ---
   apiVersion: "cluster.weave.works/v1alpha3"
-  kind: "BareMetalMachine"
+  kind: "BYOBMachine"
   metadata:
     name: master-0
   spec:
@@ -205,11 +205,11 @@ spec:
       set: node
   spec:
     infrastructureRef:
-        kind: BareMetalMachine
+        kind: BYOBMachine
         name: node-0
 ---
   apiVersion: "cluster.weave.works/v1alpha3"
-  kind: "BareMetalMachine"
+  kind: "BYOBMachine"
   metadata:
     name: node-0
   spec:
@@ -251,7 +251,7 @@ var nstests = []struct {
 
 func TestManifestWithNamespace(t *testing.T) {
 	assert.NoError(t, clusterv1.AddToScheme(scheme.Scheme))
-	assert.NoError(t, baremetalv1.AddToScheme(scheme.Scheme))
+	assert.NoError(t, byobv1.AddToScheme(scheme.Scheme))
 	for _, tt := range nstests {
 		t.Run(tt.name, func(t *testing.T) {
 			fname := createFile(t, tt.content, tt.fileName).Name()

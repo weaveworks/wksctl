@@ -32,11 +32,11 @@ spec:
     serviceDomain: cluster.local
   infrastructureRef:
     apiVersion: "cluster.weave.works/v1alpha3"
-    kind: BareMetalCluster
+    kind: BYOBCluster
     name: test-multimaster
 ---
 apiVersion: cluster.weave.works/v1alpha3
-kind: "BareMetalCluster"
+kind: "BYOBCluster"
 metadata:
   name: test-multimaster
 spec:
@@ -88,12 +88,12 @@ const machinesYAML = `
     clusterName: test-multimaster
     infrastructureRef:
       apiVersion: "cluster.weave.works/v1alpha3"
-      kind: BareMetalMachine
+      kind: BYOBMachine
       name: master-1
     bootstrap: {}
 ---
   apiVersion: "cluster.weave.works/v1alpha3"
-  kind: "BareMetalMachine"
+  kind: "BYOBMachine"
   metadata:
     name: master-1
   spec:
@@ -114,12 +114,12 @@ const machinesYAML = `
     clusterName: test-multimaster
     infrastructureRef:
       apiVersion: "cluster.weave.works/v1alpha3"
-      kind: BareMetalMachine
+      kind: BYOBMachine
       name: master-2
     bootstrap: {}
 ---
   apiVersion: "cluster.weave.works/v1alpha3"
-  kind: "BareMetalMachine"
+  kind: "BYOBMachine"
   metadata:
     name: master-2
   spec:
@@ -140,12 +140,12 @@ const machinesYAML = `
     clusterName: test-multimaster
     infrastructureRef:
       apiVersion: "cluster.weave.works/v1alpha3"
-      kind: BareMetalMachine
+      kind: BYOBMachine
       name: master-3
     bootstrap: {}
 ---
   apiVersion: "cluster.weave.works/v1alpha3"
-  kind: "BareMetalMachine"
+  kind: "BYOBMachine"
   metadata:
     name: master-3
   spec:
@@ -166,12 +166,12 @@ const machinesYAML = `
     clusterName: test-multimaster
     infrastructureRef:
       apiVersion: "cluster.weave.works/v1alpha3"
-      kind: BareMetalMachine
+      kind: BYOBMachine
       name: worker-1
     bootstrap: {}
 ---
   apiVersion: "cluster.weave.works/v1alpha3"
-  kind: "BareMetalMachine"
+  kind: "BYOBMachine"
   metadata:
     name: worker-1
   spec:

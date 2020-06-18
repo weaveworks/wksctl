@@ -5,7 +5,7 @@ import (
 	"errors"
 
 	log "github.com/sirupsen/logrus"
-	baremetalspecv1 "github.com/weaveworks/wksctl/pkg/baremetal/v1alpha3"
+	byobv1 "github.com/weaveworks/wksctl/pkg/byob/v1alpha3"
 	corev1 "k8s.io/api/core/v1"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -30,7 +30,7 @@ func (a *ClusterReconciler) Reconcile(req ctrl.Request) (_ ctrl.Result, reterr e
 	contextLog := log.WithField("name", req.NamespacedName)
 
 	// request only contains the name of the object, so fetch it from the api-server
-	bmc := &baremetalspecv1.BareMetalCluster{}
+	bmc := &byobv1.BYOBCluster{}
 	err := a.client.Get(ctx, req.NamespacedName, bmc)
 	if err != nil {
 		if apierrs.IsNotFound(err) { // isn't there; give in
@@ -51,7 +51,7 @@ func (a *ClusterReconciler) Reconcile(req ctrl.Request) (_ ctrl.Result, reterr e
 	contextLog = contextLog.WithField("cluster", cluster.Name)
 
 	if util.IsPaused(cluster, bmc) {
-		contextLog.Info("BareMetalCluster or linked Cluster is marked as paused. Won't reconcile")
+		contextLog.Info("BYOBCluster or linked Cluster is marked as paused. Won't reconcile")
 		return ctrl.Result{}, nil
 	}
 
@@ -61,10 +61,10 @@ func (a *ClusterReconciler) Reconcile(req ctrl.Request) (_ ctrl.Result, reterr e
 		return ctrl.Result{}, err
 	}
 
-	// Attempt to Patch the BareMetalMachine object and status after each reconciliation.
+	// Attempt to Patch the BYOBMachine object and status after each reconciliation.
 	defer func() {
 		if err := patchHelper.Patch(ctx, bmc); err != nil {
-			contextLog.Errorf("failed to patch BareMetalCluster: %v", err)
+			contextLog.Errorf("failed to patch BYOBCluster: %v", err)
 			if reterr == nil {
 				reterr = err
 			}
@@ -85,7 +85,7 @@ func (a *ClusterReconciler) Reconcile(req ctrl.Request) (_ ctrl.Result, reterr e
 func (r *ClusterReconciler) SetupWithManager(mgr ctrl.Manager, options controller.Options) error {
 	controller, err := ctrl.NewControllerManagedBy(mgr).
 		WithOptions(options).
-		For(&baremetalspecv1.BareMetalCluster{}).
+		For(&byobv1.BYOBCluster{}).
 		WithEventFilter(pausedPredicates()).
 		Build(r)
 

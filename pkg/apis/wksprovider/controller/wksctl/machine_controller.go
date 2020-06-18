@@ -24,7 +24,7 @@ import (
 	fconfig "github.com/weaveworks/footloose/pkg/config"
 	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/config"
 	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/os"
-	baremetalspecv1 "github.com/weaveworks/wksctl/pkg/baremetal/v1alpha3"
+	byobv1 "github.com/weaveworks/wksctl/pkg/byob/v1alpha3"
 	machineutil "github.com/weaveworks/wksctl/pkg/cluster/machine"
 	"github.com/weaveworks/wksctl/pkg/kubernetes/drain"
 	"github.com/weaveworks/wksctl/pkg/plan"
@@ -115,7 +115,7 @@ func (r *MachineController) Reconcile(req ctrl.Request) (_ ctrl.Result, reterr e
 	contextLog := log.WithField("name", req.NamespacedName)
 
 	// request only contains the name of the object, so fetch it from the api-server
-	bmm := &baremetalspecv1.BareMetalMachine{}
+	bmm := &byobv1.BYOBMachine{}
 	err := r.client.Get(ctx, req.NamespacedName, bmm)
 	if err != nil {
 		if apierrs.IsNotFound(err) { // isn't there; give in
@@ -143,22 +143,22 @@ func (r *MachineController) Reconcile(req ctrl.Request) (_ ctrl.Result, reterr e
 	}
 
 	if util.IsPaused(cluster, bmm) {
-		contextLog.Info("BareMetalMachine or linked Cluster is marked as paused. Won't reconcile")
+		contextLog.Info("BYOBMachine or linked Cluster is marked as paused. Won't reconcile")
 		return ctrl.Result{}, nil
 	}
 	contextLog = contextLog.WithField("cluster", cluster.Name)
 
-	// Now go from the Cluster to the BareMetalCluster
+	// Now go from the Cluster to the BYOBCluster
 	if cluster.Spec.InfrastructureRef == nil || cluster.Spec.InfrastructureRef.Name == "" {
 		contextLog.Info("Cluster is missing infrastructureRef")
 		return ctrl.Result{}, nil
 	}
-	bmc := &baremetalspecv1.BareMetalCluster{}
+	bmc := &byobv1.BYOBCluster{}
 	if err := r.client.Get(ctx, client.ObjectKey{
 		Namespace: bmm.Namespace,
 		Name:      cluster.Spec.InfrastructureRef.Name,
 	}, bmc); err != nil {
-		contextLog.Info("BareMetalCluster is not available yet")
+		contextLog.Info("BYOBCluster is not available yet")
 		return ctrl.Result{}, nil
 	}
 
@@ -167,10 +167,10 @@ func (r *MachineController) Reconcile(req ctrl.Request) (_ ctrl.Result, reterr e
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-	// Attempt to Patch the BareMetalMachine object and status after each reconciliation.
+	// Attempt to Patch the BYOBMachine object and status after each reconciliation.
 	defer func() {
 		if err := patchHelper.Patch(ctx, bmm); err != nil {
-			contextLog.Errorf("failed to patch BareMetalMachine: %v", err)
+			contextLog.Errorf("failed to patch BYOBMachine: %v", err)
 			if reterr == nil {
 				reterr = err
 			}
@@ -197,7 +197,7 @@ func (r *MachineController) Reconcile(req ctrl.Request) (_ ctrl.Result, reterr e
 	return ctrl.Result{}, nil
 }
 
-func (a *MachineController) create(ctx context.Context, installer *os.OS, c *baremetalspecv1.BareMetalCluster, machine *clusterv1.Machine, bmm *baremetalspecv1.BareMetalMachine) error {
+func (a *MachineController) create(ctx context.Context, installer *os.OS, c *byobv1.BYOBCluster, machine *clusterv1.Machine, bmm *byobv1.BYOBMachine) error {
 	contextLog := log.WithFields(log.Fields{"machine": machine.Name, "cluster": c.Name})
 	contextLog.Info("creating machine...")
 
@@ -275,7 +275,7 @@ func (a *MachineController) initializeMasterPlanIfNecessary(installer *os.OS) er
 	return nil
 }
 
-func (a *MachineController) connectTo(c *baremetalspecv1.BareMetalCluster, m *baremetalspecv1.BareMetalMachine) (*os.OS, io.Closer, error) {
+func (a *MachineController) connectTo(c *byobv1.BYOBCluster, m *byobv1.BYOBMachine) (*os.OS, io.Closer, error) {
 	sshKey, err := a.sshKey()
 	if err != nil {
 		return nil, nil, gerrors.Wrap(err, "failed to read SSH key")
@@ -410,7 +410,7 @@ func (a *MachineController) installNewBootstrapToken(ns string) (*corev1.Secret,
 }
 
 // Delete the machine. If no error is returned, it is assumed that all dependent resources have been cleaned up.
-func (a *MachineController) delete(ctx context.Context, c *baremetalspecv1.BareMetalCluster, machine *clusterv1.Machine, bmm *baremetalspecv1.BareMetalMachine) error {
+func (a *MachineController) delete(ctx context.Context, c *byobv1.BYOBCluster, machine *clusterv1.Machine, bmm *byobv1.BYOBMachine) error {
 	contextLog := log.WithFields(log.Fields{"machine": machine.Name, "cluster": c.Name})
 	contextLog.Info("deleting machine ...")
 
@@ -442,7 +442,7 @@ func (a *MachineController) delete(ctx context.Context, c *baremetalspecv1.BareM
 }
 
 // Update the machine to the provided definition.
-func (a *MachineController) update(ctx context.Context, c *baremetalspecv1.BareMetalCluster, machine *clusterv1.Machine, bmm *baremetalspecv1.BareMetalMachine) error {
+func (a *MachineController) update(ctx context.Context, c *byobv1.BYOBCluster, machine *clusterv1.Machine, bmm *byobv1.BYOBMachine) error {
 	contextLog := log.WithFields(log.Fields{"machine": machine.Name, "cluster": c.Name})
 	contextLog.Info("updating machine...")
 	installer, closer, err := a.connectTo(c, bmm)
@@ -652,7 +652,7 @@ func (a *MachineController) performActualUpdate(
 	machine *clusterv1.Machine,
 	node *corev1.Node,
 	nodePlan *plan.Plan,
-	cluster *baremetalspecv1.BareMetalCluster) error {
+	cluster *byobv1.BYOBCluster) error {
 	if err := drain.Drain(node, a.clientSet, drain.Params{
 		Force:               true,
 		DeleteLocalData:     true,
@@ -669,7 +669,7 @@ func (a *MachineController) performActualUpdate(
 	return nil
 }
 
-func (a *MachineController) getNodePlan(provider *baremetalspecv1.BareMetalCluster, machine *clusterv1.Machine, machineAddress string, installer *os.OS) (*plan.Plan, error) {
+func (a *MachineController) getNodePlan(provider *byobv1.BYOBCluster, machine *clusterv1.Machine, machineAddress string, installer *os.OS) (*plan.Plan, error) {
 	namespace := a.controllerNamespace
 	secrets, err := a.kubeadmJoinSecrets()
 	if err != nil {
@@ -735,7 +735,7 @@ func (a *MachineController) getAuthConfigMap() (*v1.ConfigMap, error) {
 	return nil, nil
 }
 
-func (a *MachineController) getProviderConfigMaps(provider *baremetalspecv1.BareMetalCluster) (map[string]*v1.ConfigMap, error) {
+func (a *MachineController) getProviderConfigMaps(provider *byobv1.BYOBCluster) (map[string]*v1.ConfigMap, error) {
 	fileSpecs := provider.Spec.OS.Files
 	client := a.clientSet.CoreV1().ConfigMaps(a.controllerNamespace)
 	configMaps := map[string]*v1.ConfigMap{}
@@ -1060,7 +1060,7 @@ func (a *MachineController) getControllerNodeName() (string, error) {
 	return "", err
 }
 
-func (a *MachineController) updateMachine(machine *baremetalspecv1.BareMetalMachine, ip string) {
+func (a *MachineController) updateMachine(machine *byobv1.BYOBMachine, ip string) {
 	machineIPs[getMachineID(machine)] = ip
 }
 
@@ -1156,11 +1156,11 @@ func (a *MachineController) recordEvent(object runtime.Object, eventType, reason
 	}
 }
 
-func getMachineID(machine *baremetalspecv1.BareMetalMachine) string {
+func getMachineID(machine *byobv1.BYOBMachine) string {
 	return machine.Namespace + ":" + machine.Name
 }
 
-func (a *MachineController) getMachineAddress(m *baremetalspecv1.BareMetalMachine) string {
+func (a *MachineController) getMachineAddress(m *byobv1.BYOBMachine) string {
 	if m.Spec.Private.Address != "" {
 		return m.Spec.Private.Address
 	}
@@ -1170,11 +1170,11 @@ func (a *MachineController) getMachineAddress(m *baremetalspecv1.BareMetalMachin
 func (a *MachineController) SetupWithManager(mgr ctrl.Manager, options controller.Options) error {
 	controller, err := ctrl.NewControllerManagedBy(mgr).
 		WithOptions(options).
-		For(&baremetalspecv1.BareMetalMachine{}).
+		For(&byobv1.BYOBMachine{}).
 		Watches(
 			&source.Kind{Type: &clusterv1.Machine{}},
 			&handler.EnqueueRequestsFromMapFunc{
-				ToRequests: util.MachineToInfrastructureMapFunc(baremetalspecv1.SchemeGroupVersion.WithKind("BareMetalMachine")),
+				ToRequests: util.MachineToInfrastructureMapFunc(byobv1.SchemeGroupVersion.WithKind("BYOBMachine")),
 			},
 		).
 		// TODO: add watch to reconcile all machines that need it
@@ -1197,7 +1197,7 @@ type MachineControllerParams struct {
 	Verbose             bool
 }
 
-// NewMachineController creates a new baremetal machine reconciler.
+// NewMachineController creates a new byob machine reconciler.
 func NewMachineController(params MachineControllerParams) (*MachineController, error) {
 	return &MachineController{
 		client:              params.Client,

@@ -8,7 +8,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	wks "github.com/weaveworks/wksctl/pkg/apis/wksprovider/controller/wksctl"
-	baremetalv1 "github.com/weaveworks/wksctl/pkg/baremetal/v1alpha3"
+	byobv1 "github.com/weaveworks/wksctl/pkg/byob/v1alpha3"
 	machineutil "github.com/weaveworks/wksctl/pkg/cluster/machine"
 	"k8s.io/client-go/kubernetes"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"
@@ -91,7 +91,7 @@ func run(cmd *cobra.Command, args []string) {
 	}
 
 	log.Info("registering scheme for all resources")
-	if err := baremetalv1.AddToScheme(mgr.GetScheme()); err != nil {
+	if err := byobv1.AddToScheme(mgr.GetScheme()); err != nil {
 		log.Fatal(err)
 	}
 	if err := clusterv1.AddToScheme(mgr.GetScheme()); err != nil {

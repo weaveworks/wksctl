@@ -7,7 +7,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/controller/manifests"
-	baremetalspecv1 "github.com/weaveworks/wksctl/pkg/baremetal/v1alpha3"
+	byobv1 "github.com/weaveworks/wksctl/pkg/byob/v1alpha3"
 	"github.com/weaveworks/wksctl/pkg/plan"
 	"github.com/weaveworks/wksctl/pkg/plan/resource"
 	"github.com/weaveworks/wksctl/pkg/utilities/envcfg"
@@ -74,7 +74,7 @@ func BuildConfigMapPlan(manifests map[string][]byte, namespace string) plan.Reso
 }
 
 // BuildCRIPlan creates a plan for installing a CRI.  Currently, Docker is the only supported CRI
-func BuildCRIPlan(criSpec *baremetalspecv1.ContainerRuntime, cfg *envcfg.EnvSpecificConfig, pkgType resource.PkgType) plan.Resource {
+func BuildCRIPlan(criSpec *byobv1.ContainerRuntime, cfg *envcfg.EnvSpecificConfig, pkgType resource.PkgType) plan.Resource {
 	b := plan.NewBuilder()
 
 	// Docker Repo

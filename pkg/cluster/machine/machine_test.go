@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	baremetalspecv1 "github.com/weaveworks/wksctl/pkg/baremetal/v1alpha3"
+	byobv1 "github.com/weaveworks/wksctl/pkg/byob/v1alpha3"
 	"github.com/weaveworks/wksctl/pkg/cluster/machine"
 	"github.com/weaveworks/wksctl/pkg/kubernetes"
 	"github.com/weaveworks/wksctl/pkg/utilities/manifest"
@@ -44,7 +44,7 @@ func TestIsNode(t *testing.T) {
 }
 
 func TestFirstMasterInPointersArray(t *testing.T) {
-	bl := []*baremetalspecv1.BareMetalMachine{nil, nil}
+	bl := []*byobv1.BYOBMachine{nil, nil}
 	v1, _ := machine.FirstMaster([]*clusterv1.Machine{
 		&worker,
 		&master,
@@ -67,12 +67,12 @@ const machinesValid = `
       set: master
   spec:
     infrastructureRef:
-        kind: BareMetalMachine
+        kind: BYOBMachine
         name: master-0
     version: "1.16.2"
 ---
   apiVersion: "cluster.weave.works/v1alpha3"
-  kind: "BareMetalMachine"
+  kind: "BYOBMachine"
   metadata:
     name: master-0
   spec:
@@ -86,12 +86,12 @@ const machinesValid = `
       set: node
   spec:
     infrastructureRef:
-        kind: BareMetalMachine
+        kind: BYOBMachine
         name: node-0
     version: "1.16.2"
 ---
   apiVersion: "cluster.weave.works/v1alpha3"
-  kind: "BareMetalMachine"
+  kind: "BYOBMachine"
   metadata:
     name: node-0
   spec:
@@ -112,12 +112,12 @@ const machinesInconsistentKubeVersion = `
       set: master
   spec:
     infrastructureRef:
-        kind: BareMetalMachine
+        kind: BYOBMachine
         name: master-0
     version: "1.16.4"
 ---
   apiVersion: "cluster.weave.works/v1alpha3"
-  kind: "BareMetalMachine"
+  kind: "BYOBMachine"
   metadata:
     name: master-0
   spec:
@@ -131,12 +131,12 @@ const machinesInconsistentKubeVersion = `
       set: node
   spec:
     infrastructureRef:
-        kind: BareMetalMachine
+        kind: BYOBMachine
         name: node-0
     version: "1.16.3"
 ---
   apiVersion: "cluster.weave.works/v1alpha3"
-  kind: "BareMetalMachine"
+  kind: "BYOBMachine"
   metadata:
     name: node-0
   spec:
@@ -152,12 +152,12 @@ const machinesUnsupportedKubernetesVersion = `  apiVersion: "cluster.x-k8s.io/v1
       set: master
   spec:
     infrastructureRef:
-        kind: BareMetalMachine
+        kind: BYOBMachine
         name: master-0
     version: "1.13.2"
 ---
   apiVersion: "cluster.weave.works/v1alpha3"
-  kind: "BareMetalMachine"
+  kind: "BYOBMachine"
   metadata:
     name: master-0
   spec:
@@ -171,12 +171,12 @@ const machinesUnsupportedKubernetesVersion = `  apiVersion: "cluster.x-k8s.io/v1
       set: node
   spec:
     infrastructureRef:
-        kind: BareMetalMachine
+        kind: BYOBMachine
         name: node-0
     version: "1.13.2"
 ---
   apiVersion: "cluster.weave.works/v1alpha3"
-  kind: "BareMetalMachine"
+  kind: "BYOBMachine"
   metadata:
     name: node-0
   spec:
@@ -192,19 +192,19 @@ const machinesNoGodNoMaster = `
       set: node
   spec:
     infrastructureRef:
-        kind: BareMetalMachine
+        kind: BYOBMachine
         name: node-0
     version: "1.16.2"
 ---
   apiVersion: "cluster.weave.works/v1alpha3"
-  kind: "BareMetalMachine"
+  kind: "BYOBMachine"
   metadata:
     name: node-0
   spec:
     address: "172.17.8.102"
 `
 
-func machinesFromString(t *testing.T, s string) ([]*clusterv1.Machine, []*baremetalspecv1.BareMetalMachine) {
+func machinesFromString(t *testing.T, s string) ([]*clusterv1.Machine, []*byobv1.BYOBMachine) {
 	r := ioutil.NopCloser(strings.NewReader(s))
 	machines, bml, err := machine.Parse(r)
 	assert.NoError(t, err)
@@ -222,7 +222,7 @@ func fieldsInError(errors field.ErrorList) []string {
 
 func TestValidateMachines(t *testing.T) {
 	assert.NoError(t, clusterv1.AddToScheme(scheme.Scheme))
-	assert.NoError(t, baremetalspecv1.AddToScheme(scheme.Scheme))
+	assert.NoError(t, byobv1.AddToScheme(scheme.Scheme))
 
 	tests := []struct {
 		input  string
@@ -264,11 +264,11 @@ const machinesWithoutVersions = `
       set: master
   spec:
     infrastructureRef:
-        kind: BareMetalMachine
+        kind: BYOBMachine
         name: master-0
 ---
   apiVersion: "cluster.weave.works/v1alpha3"
-  kind: "BareMetalMachine"
+  kind: "BYOBMachine"
   metadata:
     name: master-0
   spec:
@@ -282,11 +282,11 @@ const machinesWithoutVersions = `
       set: node
   spec:
     infrastructureRef:
-        kind: BareMetalMachine
+        kind: BYOBMachine
         name: node-0
 ---
   apiVersion: "cluster.weave.works/v1alpha3"
-  kind: "BareMetalMachine"
+  kind: "BYOBMachine"
   metadata:
     name: node-0
   spec:

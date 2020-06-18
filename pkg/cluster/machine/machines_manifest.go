@@ -7,7 +7,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/thanhpk/randstr"
-	baremetalspecv1 "github.com/weaveworks/wksctl/pkg/baremetal/v1alpha3"
+	byobv1 "github.com/weaveworks/wksctl/pkg/byob/v1alpha3"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"
 	"sigs.k8s.io/yaml"
 )
@@ -39,7 +39,7 @@ func UpdateWithGeneratedNames(r io.ReadCloser) (string, error) {
 	namesTaken := readNames(machines)
 	for i := range machines {
 		if machines[i].ObjectMeta.GenerateName != "" {
-			// TODO: update BareMetalMachine list here too
+			// TODO: update BYOBMachine list here too
 			if len(bml) > i && bml[i].ObjectMeta.GenerateName != "" {
 				return "", errors.New("generateName not implemented for v1alpha3")
 			}
@@ -55,7 +55,7 @@ func UpdateWithGeneratedNames(r io.ReadCloser) (string, error) {
 	return buf.String(), err
 }
 
-func WriteMachines(w io.Writer, machines []*clusterv1.Machine, bml []*baremetalspecv1.BareMetalMachine) error {
+func WriteMachines(w io.Writer, machines []*clusterv1.Machine, bml []*byobv1.BYOBMachine) error {
 	// Need to do this in a loop because we want a stream not an array
 	for _, machine := range machines {
 		manifestBytes, err := yaml.Marshal(machine)

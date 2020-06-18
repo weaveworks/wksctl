@@ -17,7 +17,7 @@ import (
 	"github.com/weaveworks/wksctl/pkg/plan/runners/ssh"
 	"github.com/weaveworks/wksctl/pkg/specs"
 
-	baremetalspecv1 "github.com/weaveworks/wksctl/pkg/baremetal/v1alpha3"
+	byobv1 "github.com/weaveworks/wksctl/pkg/byob/v1alpha3"
 	spawn "github.com/weaveworks/wksctl/test/integration/spawn"
 
 	"github.com/stretchr/testify/assert"
@@ -66,22 +66,22 @@ func setLabel(role role) string {
 	}
 }
 
-func appendMachine(t *testing.T, ordinal int, ml *[]*clusterv1.Machine, bl *[]*baremetalspecv1.BareMetalMachine, clusterName, role role, publicIP, privateIP string) {
+func appendMachine(t *testing.T, ordinal int, ml *[]*clusterv1.Machine, bl *[]*byobv1.BYOBMachine, clusterName, role role, publicIP, privateIP string) {
 	name := generateName(role, ordinal)
-	spec := baremetalspecv1.BareMetalMachine{
+	spec := byobv1.BYOBMachine{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "cluster.weave.works/v1alpha3",
-			Kind:       "BareMetalMachine",
+			Kind:       "BYOBMachine",
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 		},
-		Spec: baremetalspecv1.BareMetalMachineSpec{
-			Public: baremetalspecv1.EndPoint{
+		Spec: byobv1.BYOBMachineSpec{
+			Public: byobv1.EndPoint{
 				Address: publicIP,
 				Port:    22,
 			},
-			Private: baremetalspecv1.EndPoint{
+			Private: byobv1.EndPoint{
 				Address: privateIP,
 				Port:    22,
 			}},
@@ -121,7 +121,7 @@ func appendMachine(t *testing.T, ordinal int, ml *[]*clusterv1.Machine, bl *[]*b
 // numMachines is the number of machines to use. It can be less than the number
 // of provisionned terraform machines. -1 means use all machines setup by
 // terraform. The minimum number of machines to use is 2.
-func makeMachinesFromTerraform(t *testing.T, clusterName string, terraform *terraformOutput, numMachines int) (ml []*clusterv1.Machine, bl []*baremetalspecv1.BareMetalMachine) {
+func makeMachinesFromTerraform(t *testing.T, clusterName string, terraform *terraformOutput, numMachines int) (ml []*clusterv1.Machine, bl []*byobv1.BYOBMachine) {
 	publicIPs := terraform.stringArrayVar(keyPublicIPs)
 	privateIPs := terraform.stringArrayVar(keyPrivateIPs)
 	assert.True(t, len(publicIPs) >= 2) // One master and at least one node
@@ -148,7 +148,7 @@ func makeMachinesFromTerraform(t *testing.T, clusterName string, terraform *terr
 	return ml, bl
 }
 
-func writeYamlManifests(t *testing.T, path string, machines []*clusterv1.Machine, bml []*baremetalspecv1.BareMetalMachine) {
+func writeYamlManifests(t *testing.T, path string, machines []*clusterv1.Machine, bml []*byobv1.BYOBMachine) {
 	var buf bytes.Buffer
 	err := machine.WriteMachines(&buf, machines, bml)
 	assert.NoError(t, err)
@@ -182,7 +182,7 @@ func setKubernetesVersion(l []*clusterv1.Machine, version string) {
 	}
 }
 
-func parseClusterManifest(t *testing.T, file string) (*clusterv1.Cluster, *baremetalspecv1.BareMetalCluster) {
+func parseClusterManifest(t *testing.T, file string) (*clusterv1.Cluster, *byobv1.BYOBCluster) {
 	f, err := os.Open(file)
 	assert.NoError(t, err)
 	cluster, bmCluster, err := specs.ParseCluster(f)
@@ -352,7 +352,7 @@ func writeTmpFile(runner *ssh.Client, inputFilename, outputFilename string) erro
 
 func TestApply(t *testing.T) {
 	assert.NoError(t, clusterv1.AddToScheme(scheme.Scheme))
-	assert.NoError(t, baremetalspecv1.AddToScheme(scheme.Scheme))
+	assert.NoError(t, byobv1.AddToScheme(scheme.Scheme))
 
 	clusterManifestPath := configPath("cluster.yaml")
 	_, c := parseClusterManifest(t, clusterManifestPath)

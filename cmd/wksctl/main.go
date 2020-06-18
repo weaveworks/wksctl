@@ -20,7 +20,7 @@ import (
 	"github.com/weaveworks/wksctl/cmd/wksctl/registrysynccommands"
 	"github.com/weaveworks/wksctl/cmd/wksctl/version"
 	"github.com/weaveworks/wksctl/cmd/wksctl/zshcompletions"
-	baremetalv1 "github.com/weaveworks/wksctl/pkg/baremetal/v1alpha3"
+	byobv1 "github.com/weaveworks/wksctl/pkg/byob/v1alpha3"
 	v "github.com/weaveworks/wksctl/pkg/version"
 )
 
@@ -46,7 +46,7 @@ func configureLogger(cmd *cobra.Command, args []string) {
 
 func main() {
 	clusterv1.AddToScheme(scheme.Scheme)
-	baremetalv1.AddToScheme(scheme.Scheme)
+	byobv1.AddToScheme(scheme.Scheme)
 
 	rootCmd.PersistentFlags().BoolVarP(&options.verbose, "verbose", "v", false, "Enable verbose output")
 

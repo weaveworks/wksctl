@@ -19,10 +19,10 @@ rules:
 - apiGroups:
   - cluster.weave.works
   resources:
-  - baremetalclusters
-  - baremetalclusters/status
-  - baremetalmachines
-  - baremetalmachines/status
+  - byobclusters
+  - byobclusters/status
+  - byobmachines
+  - byobmachines/status
   verbs:
   - get
   - list

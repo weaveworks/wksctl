@@ -7,7 +7,7 @@ import (
 )
 
 // +k8s:deepcopy-gen=false
-type BareMetalProviderSpecCodec struct {
+type BYOBProviderSpecCodec struct {
 	encoder runtime.Encoder
 	decoder runtime.Decoder
 }
@@ -28,10 +28,10 @@ func init() {
 
 func addKnownTypes(scheme *runtime.Scheme) error {
 	scheme.AddKnownTypes(SchemeGroupVersion,
-		&BareMetalMachine{},
-		&BareMetalMachineList{},
-		&BareMetalCluster{},
-		&BareMetalClusterList{},
+		&BYOBMachine{},
+		&BYOBMachineList{},
+		&BYOBCluster{},
+		&BYOBClusterList{},
 	)
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
 	return nil

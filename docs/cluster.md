@@ -2,7 +2,7 @@
 
 Here's an example of the cluster definition. It is spread across two
 objects: a `Cluster` which is defined by Kubernetes ClusterAPI and a
-`BareMetalCluster` defined by Weaveworks.  Here, both objects have the
+`BYOBCluster` defined by Weaveworks.  Here, both objects have the
 same name `example`, and the field `infrastructureRef` points from one
 to the other.
 
@@ -20,11 +20,11 @@ spec:
     serviceDomain: cluster.local
   infrastructureRef:
       apiVersion: cluster.weave.works/v1alpha3
-      kind: BareMetalCluster
+      kind: BYOBCluster
       name: example
 ---
 apiVersion: cluster.weave.works/v1alpha3
-kind: BareMetalCluster
+kind: BYOBCluster
 metadata:
   name: example
 spec:
