@@ -2,6 +2,7 @@ package resource
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -64,7 +65,7 @@ func kubectlWait(r plan.Runner, args kubectlWaitArgs) error {
 	for {
 		cmd := fmt.Sprintf("kubectl get %q %s%s", args.WaitType, waitOn(args), waitNamespace(args))
 		output, err := r.RunCommand(withoutProxy(cmd), nil)
-		if err != nil || output == "No resources found.\n" {
+		if err != nil || strings.Contains(output, "No resources found") {
 			time.Sleep(500 * time.Millisecond)
 		} else {
 			break
