@@ -21,7 +21,7 @@ k8s.gcr.io/kube-controller-manager:v1.16.11
 k8s.gcr.io/kube-scheduler:v1.16.11
 k8s.gcr.io/kube-proxy:v1.16.11
 k8s.gcr.io/pause:3.1
-k8s.gcr.io/etcd:3.3.10
+k8s.gcr.io/etcd:3.3.15-0
 k8s.gcr.io/coredns:1.3.1
 docker.io/weaveworks/weave-npc:2.5.1
 docker.io/weaveworks/weave-kube:2.5.1
