@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"crypto/rsa"
 	"encoding/base64"
-	"encoding/gob"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -49,7 +48,6 @@ import (
 )
 
 const (
-	SeedNodePlanName          = "seed-node-standard-plan"
 	ConfigDestDir             = "/etc/pki/weaveworks/wksctl"
 	PemDestDir                = "/etc/pki/weaveworks/wksctl/pem"
 	authCmapName              = "authn-authz"
@@ -335,15 +333,13 @@ func (o OS) CreateSeedNodeSetupPlan(params SeedNodeParams) (*plan.Plan, error) {
 		return nil, err
 	}
 
-	// Create a config map containing a standard node plan for the seed node so the controller can add it
-	// to the seed node as an annotation. Otherwise, we won't be able to determine if the seed node is changed
-	// in a later update (this removes a dependency on flux)
-	seedNodePlanConfigMapManifest, err := o.createSeedNodePlanConfigMapManifest(params, &cluster.Spec, configMaps, authConfigMap, kubernetesVersion, kubernetesNamespace)
+	// Set plan as an annotation on node, just like controller does
+	seedNodePlan, err := o.seedNodeSetupPlan(params, &cluster.Spec, configMaps, authConfigMap, kubernetesVersion, kubernetesNamespace)
 	if err != nil {
 		return nil, err
 	}
+	b.AddResource("node:plan", &resource.KubectlAnnotateSingleNode{Key: recipe.PlanKey, Value: seedNodePlan.ToJSON()}, plan.DependOn("kubeadm:init"))
 
-	configMapManifests["seed-node-plan"] = seedNodePlanConfigMapManifest
 	addAuthConfigMapIfNecessary(configMapManifests, authConfigManifest)
 
 	// Add config maps to system so controller can use them
@@ -583,7 +579,7 @@ func addClusterAPICRDs(b *plan.Builder) ([]string, error) {
 	return crdIDs, nil
 }
 
-func (o OS) createSeedNodePlanConfigMapManifest(params SeedNodeParams, providerSpec *baremetalspecv1.BareMetalClusterSpec, providerConfigMaps map[string]*v1.ConfigMap, authConfigMap *v1.ConfigMap, kubernetesVersion, kubernetesNamespace string) ([]byte, error) {
+func (o OS) seedNodeSetupPlan(params SeedNodeParams, providerSpec *baremetalspecv1.BareMetalClusterSpec, providerConfigMaps map[string]*v1.ConfigMap, authConfigMap *v1.ConfigMap, kubernetesVersion, kubernetesNamespace string) (*plan.Plan, error) {
 	nodeParams := NodeParams{
 		IsMaster:             true,
 		MasterIP:             params.PrivateIP,
@@ -598,20 +594,7 @@ func (o OS) createSeedNodePlanConfigMapManifest(params SeedNodeParams, providerS
 		AddonNamespaces:      params.AddonNamespaces,
 		ControlPlaneEndpoint: providerSpec.ControlPlaneEndpoint,
 	}
-	var paramBuffer bytes.Buffer
-	err := gob.NewEncoder(&paramBuffer).Encode(nodeParams)
-	if err != nil {
-		return nil, err
-	}
-	if params.Namespace == "" {
-		params.Namespace = kubernetesNamespace
-	}
-
-	seedNodePlanConfigMapManifest, err := planParametersToConfigMapManifest(paramBuffer.Bytes(), params.Namespace)
-	if err != nil {
-		return nil, err
-	}
-	return seedNodePlanConfigMapManifest, nil
+	return o.CreateNodeSetupPlan(nodeParams)
 }
 
 func (o OS) applySeedNodePlan(p *plan.Plan) error {
@@ -627,15 +610,6 @@ func (o OS) applySeedNodePlan(p *plan.Plan) error {
 		return err
 	}
 	return err
-}
-
-func planParametersToConfigMapManifest(plan []byte, ns string) ([]byte, error) {
-	cm := v1.ConfigMap{
-		TypeMeta:   metav1.TypeMeta{Kind: "ConfigMap", APIVersion: "v1"},
-		ObjectMeta: metav1.ObjectMeta{Name: SeedNodePlanName, Namespace: ns},
-		BinaryData: map[string][]byte{"plan": plan},
-	}
-	return yaml.Marshal(cm)
 }
 
 func createConfigFileResourcesFromFiles(providerSpec *baremetalspecv1.BareMetalClusterSpec, configDir, namespace string) (map[string][]byte, map[string]*v1.ConfigMap, []*resource.File, error) {
