@@ -14,6 +14,11 @@ import (
 	"github.com/weaveworks/wksctl/pkg/utilities/object"
 )
 
+const (
+	// PlanKey for storing plans as annotations on Nodes
+	PlanKey string = "wks.weave.works/node-plan"
+)
+
 // BuildBasePlan creates a plan for installing the base building blocks for the node
 func BuildBasePlan(pkgType resource.PkgType) plan.Resource {
 	b := plan.NewBuilder()

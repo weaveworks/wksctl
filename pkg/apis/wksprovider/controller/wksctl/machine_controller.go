@@ -55,7 +55,6 @@ import (
 )
 
 const (
-	planKey             string = "wks.weave.works/node-plan"
 	masterLabel         string = "node-role.kubernetes.io/master"
 	originalMasterLabel string = "wks.weave.works/original-master"
 	controllerName      string = "wks-controller"
@@ -222,7 +221,7 @@ func (a *MachineController) create(ctx context.Context, installer *os.OS, c *bar
 	if err = a.setNodeProviderIDIfNecessary(node); err != nil {
 		return err
 	}
-	if err = a.setNodeAnnotation(node, planKey, nodePlan.ToJSON()); err != nil {
+	if err = a.setNodeAnnotation(node, recipe.PlanKey, nodePlan.ToJSON()); err != nil {
 		return err
 	}
 	// CAPI machine controller requires providerID
@@ -489,7 +488,7 @@ func (a *MachineController) update(ctx context.Context, c *baremetalspecv1.BareM
 		return gerrors.Wrapf(err, "Failed to get node plan for machine %s", machine.Name)
 	}
 	planJSON := nodePlan.ToJSON()
-	currentPlan := node.Annotations[planKey]
+	currentPlan := node.Annotations[recipe.PlanKey]
 	if currentPlan == planJSON {
 		contextLog.Info("Machine and node have matching plans; nothing to do")
 		return nil
@@ -551,19 +550,19 @@ func (a *MachineController) update(ctx context.Context, c *baremetalspecv1.BareM
 					return err
 				}
 			} else if isOriginal {
-				return a.kubeadmUpOrDowngrade(machine, node, installer, version, planKey, planJSON, recipe.OriginalMaster)
+				return a.kubeadmUpOrDowngrade(machine, node, installer, version, planJSON, recipe.OriginalMaster)
 			} else {
-				return a.kubeadmUpOrDowngrade(machine, node, installer, version, planKey, planJSON, recipe.SecondaryMaster)
+				return a.kubeadmUpOrDowngrade(machine, node, installer, version, planJSON, recipe.SecondaryMaster)
 			}
 		}
-		return a.kubeadmUpOrDowngrade(machine, node, installer, version, planKey, planJSON, recipe.Worker)
+		return a.kubeadmUpOrDowngrade(machine, node, installer, version, planJSON, recipe.Worker)
 	}
 
 	if err = a.performActualUpdate(installer, machine, node, nodePlan, c); err != nil {
 		return err
 	}
 
-	if err = a.setNodeAnnotation(node, planKey, planJSON); err != nil {
+	if err = a.setNodeAnnotation(node, recipe.PlanKey, planJSON); err != nil {
 		return err
 	}
 	// CAPI machine controller requires providerID
@@ -577,7 +576,7 @@ func (a *MachineController) update(ctx context.Context, c *baremetalspecv1.BareM
 // kubeadmUpOrDowngrade does upgrade or downgrade a machine.
 // Parameter k8sversion specified here represents the version of both Kubernetes and Kubeadm.
 func (a *MachineController) kubeadmUpOrDowngrade(machine *clusterv1.Machine, node *corev1.Node, installer *os.OS,
-	k8sVersion, planKey, planJSON string, ntype recipe.NodeType) error {
+	k8sVersion, planJSON string, ntype recipe.NodeType) error {
 	b := plan.NewBuilder()
 
 	upgradeRes, err := recipe.BuildUpgradePlan(installer.PkgType, k8sVersion, ntype)
@@ -602,7 +601,7 @@ func (a *MachineController) kubeadmUpOrDowngrade(machine *clusterv1.Machine, nod
 		return err
 	}
 	log.Info("Finished with uncordon...")
-	if err = a.setNodeAnnotation(node, planKey, planJSON); err != nil {
+	if err = a.setNodeAnnotation(node, recipe.PlanKey, planJSON); err != nil {
 		return err
 	}
 	a.recordEvent(machine, corev1.EventTypeNormal, "Update", "updated machine %s", machine.Name)
