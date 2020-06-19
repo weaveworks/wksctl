@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
-	"encoding/gob"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -231,53 +230,6 @@ func (a *MachineController) create(ctx context.Context, installer *os.OS, c *bar
 	return nil
 }
 
-// We set the plan annotation for a seed node at the first create of another mode so we
-// don't miss any updates. The plan is derived from the original seed node plan and stored in a config map
-// for use by the actuator.
-func (a *MachineController) initializeMasterPlanIfNecessary(installer *os.OS) error {
-
-	// we also use this method to mark the first master as the "originalMaster"
-	originalMasterNode, err := a.getOriginalMasterNode()
-	if err != nil {
-		return err
-	}
-
-	if originalMasterNode.Annotations[planKey] == "" {
-		omAddress := getNodePrivateAddress(originalMasterNode)
-		if omAddress == "" {
-			return errors.New("Could not determine master node address")
-		}
-		machine, mspec, err := a.findMachineSpecForAddress(omAddress)
-		if err != nil {
-			return err
-		}
-		installer, closer, err := a.connectTo(machine, c, mspec)
-		if err != nil {
-			return err
-		}
-		defer closer.Close()
-		client := a.clientSet.CoreV1().ConfigMaps(a.controllerNamespace)
-		configMap, err := client.Get(os.SeedNodePlanName, metav1.GetOptions{})
-		if err != nil {
-			return err
-		}
-		seedNodePlanParams := configMap.BinaryData["plan"]
-		var params os.NodeParams
-		err = gob.NewDecoder(bytes.NewReader(seedNodePlanParams)).Decode(&params)
-		if err != nil {
-			return err
-		}
-		seedNodeStandardNodePlan, err := installer.CreateNodeSetupPlan(params)
-		if err != nil {
-			return err
-		}
-		if err = a.setNodeAnnotation(originalMasterNode, planKey, seedNodeStandardNodePlan.ToJSON()); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func (a *MachineController) connectTo(c *baremetalspecv1.BareMetalCluster, m *baremetalspecv1.BareMetalMachine) (*os.OS, io.Closer, error) {
 	sshKey, err := a.sshKey()
 	if err != nil {
@@ -463,10 +415,6 @@ func (a *MachineController) update(ctx context.Context, c *baremetalspecv1.BareM
 	}
 	defer closer.Close()
 
-	// Bootstrap - set plan on seed node if not present before any updates can occur
-	if err := a.initializeMasterPlanIfNecessary(c); err != nil {
-		return err
-	}
 	ids, err := installer.IDs()
 	if err != nil {
 		return gerrors.Wrapf(err, "failed to read machine %s's IDs", machine.Name)
