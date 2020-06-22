@@ -469,7 +469,6 @@ func findDaemonSet(manifest *v1.List) (int, *appsv1.DaemonSet, error) {
 	var item runtime.RawExtension
 	for idx, item = range manifest.Items {
 		err := yaml.Unmarshal(item.Raw, daemonSet)
-		log.Debugf("Looking for Daemonset, found: %v", daemonSet.Kind)
 		if err == nil && daemonSet.Kind == "DaemonSet" {
 			break
 		}

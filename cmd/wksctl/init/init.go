@@ -158,20 +158,14 @@ func updateWeaveNetManifests(contents []byte, options initOptionType) ([]byte, e
 	machinesManifestPath := (path.Join(options.localRepoDirectory, options.machinesManifestPath))
 	sp := specs.NewFromPaths(clusterManifestPath, machinesManifestPath)
 
-	log.Debug("Loaded spec")
-
 	podsCIDRBlocks := sp.Cluster.Spec.ClusterNetwork.Pods.CIDRBlocks
 	if len(podsCIDRBlocks) > 0 && podsCIDRBlocks[0] != "" {
 		// setting the pod CIDR block is currently only supported for the weave-net CNI
-		log.Debug("Updating manifest..")
+		log.Debug("Updating weave-net manifest.")
 		manifests, err := wksos.SetWeaveNetPodCIDRBlock([][]byte{contents}, podsCIDRBlocks[0])
-		for i, m := range manifests {
-			log.Debugf("Manifests! %v: %v", i, strings.Split(string(m), "\n")[:2])
-		}
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to inject ipalloc_range")
 		}
-		log.Debug("Updated weave-net manifest")
 		return manifests[0], nil
 	}
 
