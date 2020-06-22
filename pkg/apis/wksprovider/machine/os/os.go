@@ -308,7 +308,7 @@ func (o OS) CreateSeedNodeSetupPlan(params SeedNodeParams) (*plan.Plan, error) {
 	if len(params.PodsCIDRBlocks) > 0 && params.PodsCIDRBlocks[0] != "" {
 		// setting the pod CIDR block is currently only supported for the weave-net CNI
 		if cni == "weave-net" {
-			manifests, err = setWeaveNetPodCIDRBlock(manifests, params.PodsCIDRBlocks[0], cni)
+			manifests, err = SetWeaveNetPodCIDRBlock(manifests, params.PodsCIDRBlocks[0])
 			if err != nil {
 				return nil, errors.Wrap(err, "failed to inject ipalloc_range")
 			}
@@ -387,7 +387,7 @@ func (o OS) CreateSeedNodeSetupPlan(params SeedNodeParams) (*plan.Plan, error) {
 }
 
 // Sets the pod CIDR block in the weave-net manifest
-func setWeaveNetPodCIDRBlock(manifests [][]byte, podsCIDRBlock string, cni string) ([][]byte, error) {
+func SetWeaveNetPodCIDRBlock(manifests [][]byte, podsCIDRBlock string) ([][]byte, error) {
 	// Weave-Net has a container named weave in its daemonset
 	containerName := "weave"
 	// The pod CIDR block is set via the IPALLOC_RANGE env var
@@ -413,23 +413,13 @@ func setWeaveNetPodCIDRBlock(manifests [][]byte, podsCIDRBlock string, cni strin
 		return nil, errors.Wrap(err, "failed to inject env var to weave container")
 	}
 
-	daemonSetWithCIDRBlocks, err := yaml.Marshal(daemonSet)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to marshal daemonset")
-	}
-
-	// First remove the default daemonset from the manifest list at the index it was found
-	copy(manifestList.Items[idx:], manifestList.Items[idx+1:])
-	manifestList.Items[len(manifestList.Items)-1] = runtime.RawExtension{}
-	manifestList.Items = manifestList.Items[:len(manifestList.Items)-1]
+	manifestList.Items[idx] = runtime.RawExtension{Object: daemonSet}
 
 	manifests[0], err = yaml.Marshal(manifestList)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to marshal weave-net manifest list")
 	}
 
-	// and then marshal it and append it as a new manifest in the array
-	manifests = append(manifests, daemonSetWithCIDRBlocks)
 	return manifests, nil
 }
 
