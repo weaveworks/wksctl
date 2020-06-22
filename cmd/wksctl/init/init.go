@@ -165,6 +165,9 @@ func updateWeaveNetManifests(contents []byte, options initOptionType) ([]byte, e
 		// setting the pod CIDR block is currently only supported for the weave-net CNI
 		log.Debug("Updating manifest..")
 		manifests, err := wksos.SetWeaveNetPodCIDRBlock([][]byte{contents}, podsCIDRBlocks[0])
+		for i, m := range manifests {
+			log.Debugf("Manifests! %v: %v", i, strings.Split(string(m), "\n")[:2])
+		}
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to inject ipalloc_range")
 		}

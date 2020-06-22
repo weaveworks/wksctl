@@ -413,23 +413,13 @@ func SetWeaveNetPodCIDRBlock(manifests [][]byte, podsCIDRBlock string) ([][]byte
 		return nil, errors.Wrap(err, "failed to inject env var to weave container")
 	}
 
-	daemonSetWithCIDRBlocks, err := yaml.Marshal(daemonSet)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to marshal daemonset")
-	}
-
-	// First remove the default daemonset from the manifest list at the index it was found
-	copy(manifestList.Items[idx:], manifestList.Items[idx+1:])
-	manifestList.Items[len(manifestList.Items)-1] = runtime.RawExtension{}
-	manifestList.Items = manifestList.Items[:len(manifestList.Items)-1]
+	manifestList.Items[idx] = runtime.RawExtension{Object: daemonSet}
 
 	manifests[0], err = yaml.Marshal(manifestList)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to marshal weave-net manifest list")
 	}
 
-	// and then marshal it and append it as a new manifest in the array
-	manifests = append(manifests, daemonSetWithCIDRBlocks)
 	return manifests, nil
 }
 
