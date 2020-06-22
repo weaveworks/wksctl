@@ -48,7 +48,7 @@ var (
 	Cmd = &cobra.Command{
 		Use:          "init",
 		Short:        "Update stored kubernetes manifests to match the local cluster environment",
-		Long:         "'wksctl init' configures existing kubernetes 'flux.yaml' and 'wks-controller.yaml' manifests in a repository with information about the local GitOps repository, the preferred weave system namespace, and current container image tags. The files can be anywhere in the repository. If either file is absent, 'wksctl init' will return an error.",
+		Long:         "'wksctl init' configures existing kubernetes 'flux.yaml', 'wks-controller.yaml' and 'weave-net.yaml' manifests in a repository with information about the local GitOps repository, the preferred weave system namespace, and current container image tags. The files can be anywhere in the repository. If either file is absent, 'wksctl init' will return an error.",
 		Example:      "wksctl init --namespace=wksctl --git-url=git@github.com:haskellcurry/lambda.git --git-branch=development --git-path=src",
 		RunE:         initRun,
 		SilenceUsage: true,
