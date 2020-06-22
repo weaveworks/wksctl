@@ -1,16 +1,20 @@
 package init
 
 import (
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"strings"
 
+	"github.com/pkg/errors"
+
 	"github.com/pelletier/go-toml"
 	"github.com/spf13/cobra"
+	wksos "github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/os"
+	"github.com/weaveworks/wksctl/pkg/specs"
 	"github.com/weaveworks/wksctl/pkg/utilities/manifest"
 	"github.com/weaveworks/wksctl/pkg/version"
 )
@@ -19,15 +23,17 @@ import (
 // updated git information for flux manifests.
 
 type initOptionType struct {
-	dependencyPath     string
-	footlooseIP        string
-	footlooseBackend   string
-	gitURL             string
-	gitBranch          string
-	gitPath            string
-	localRepoDirectory string
-	namespace          string
-	version            string
+	dependencyPath       string
+	footlooseIP          string
+	footlooseBackend     string
+	gitURL               string
+	gitBranch            string
+	gitPath              string
+	localRepoDirectory   string
+	namespace            string
+	version              string
+	clusterManifestPath  string
+	machinesManifestPath string
 }
 
 type manifestUpdate struct {
@@ -38,13 +44,12 @@ type manifestUpdate struct {
 var (
 	// Cmd represents the init command
 	Cmd = &cobra.Command{
-		Use:           "init",
-		Short:         "Update stored kubernetes manifests to match the local cluster environment",
-		Long:          "'wksctl init' configures existing kubernetes 'flux.yaml' and 'wks-controller.yaml' manifests in a repository with information about the local GitOps repository, the preferred weave system namespace, and current container image tags. The files can be anywhere in the repository. If either file is absent, 'wksctl init' will return an error.",
-		Example:       "wksctl init --namespace=wksctl --git-url=git@github.com:haskellcurry/lambda.git --git-branch=development --git-path=src",
-		RunE:          initRun,
-		SilenceErrors: true,
-		SilenceUsage:  true,
+		Use:          "init",
+		Short:        "Update stored kubernetes manifests to match the local cluster environment",
+		Long:         "'wksctl init' configures existing kubernetes 'flux.yaml' and 'wks-controller.yaml' manifests in a repository with information about the local GitOps repository, the preferred weave system namespace, and current container image tags. The files can be anywhere in the repository. If either file is absent, 'wksctl init' will return an error.",
+		Example:      "wksctl init --namespace=wksctl --git-url=git@github.com:haskellcurry/lambda.git --git-branch=development --git-path=src",
+		RunE:         initRun,
+		SilenceUsage: true,
 	}
 
 	initOptions initOptionType
@@ -60,6 +65,7 @@ var (
 	gitPathPattern                  = multiLineRegexp(`(--git-path)=\S+`)
 
 	updates = []manifestUpdate{
+		{selector: equal("weave-net.yaml"), updater: updateWeaveNetManifests},
 		{selector: equal("wks-controller.yaml"), updater: updateControllerManifests},
 		{selector: and(prefix("flux"), extension("yaml")), updater: updateFluxManifests}}
 
@@ -86,6 +92,8 @@ func init() {
 		&initOptions.namespace, "namespace", manifest.DefaultNamespace, "namespace portion of kubeconfig path")
 	Cmd.Flags().StringVar(
 		&initOptions.version, "controller-version", version.Version, "version of wks-controller to use")
+	Cmd.Flags().StringVar(&initOptions.clusterManifestPath, "cluster", "cluster.yaml", "Location of cluster manifest")
+	Cmd.Flags().StringVar(&initOptions.machinesManifestPath, "machines", "machines.yaml", "Location of machines manifest")
 	Cmd.Flags().StringVar(
 		&initOptions.dependencyPath, "dependency-file", "./dependencies.toml", "path to file containing version information for all dependencies")
 	Cmd.MarkPersistentFlagRequired("git-url")
@@ -142,6 +150,24 @@ func updateControllerManifests(contents []byte, options initOptionType) ([]byte,
 			[]byte(fmt.Sprintf("$0$1  env:$1  - name: FOOTLOOSE_SERVER_ADDR$1    value: %s$1  - name: FOOTLOOSE_BACKEND$1    value: %s", options.footlooseIP, options.footlooseBackend))), nil
 	}
 	return withVersion, nil
+}
+
+func updateWeaveNetManifests(contents []byte, options initOptionType) ([]byte, error) {
+	clusterManifestPath := (path.Join(options.localRepoDirectory, options.clusterManifestPath))
+	machinesManifestPath := (path.Join(options.localRepoDirectory, options.machinesManifestPath))
+	sp := specs.NewFromPaths(clusterManifestPath, machinesManifestPath)
+
+	podsCIDRBlocks := sp.Cluster.Spec.ClusterNetwork.Pods.CIDRBlocks
+	if len(podsCIDRBlocks) > 0 && podsCIDRBlocks[0] != "" {
+		// setting the pod CIDR block is currently only supported for the weave-net CNI
+		manifests, err := wksos.SetWeaveNetPodCIDRBlock([][]byte{contents}, podsCIDRBlocks[0])
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to inject ipalloc_range")
+		}
+		return manifests[0], nil
+	}
+
+	return contents, nil
 }
 
 func updateFluxManifests(contents []byte, options initOptionType) ([]byte, error) {
