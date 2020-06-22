@@ -12,6 +12,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/pelletier/go-toml"
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	wksos "github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/os"
 	"github.com/weaveworks/wksctl/pkg/specs"
@@ -157,16 +158,21 @@ func updateWeaveNetManifests(contents []byte, options initOptionType) ([]byte, e
 	machinesManifestPath := (path.Join(options.localRepoDirectory, options.machinesManifestPath))
 	sp := specs.NewFromPaths(clusterManifestPath, machinesManifestPath)
 
+	log.Debug("Loaded spec")
+
 	podsCIDRBlocks := sp.Cluster.Spec.ClusterNetwork.Pods.CIDRBlocks
 	if len(podsCIDRBlocks) > 0 && podsCIDRBlocks[0] != "" {
 		// setting the pod CIDR block is currently only supported for the weave-net CNI
+		log.Debug("Updating manifest..")
 		manifests, err := wksos.SetWeaveNetPodCIDRBlock([][]byte{contents}, podsCIDRBlocks[0])
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to inject ipalloc_range")
 		}
+		log.Debug("Updated weave-net manifest")
 		return manifests[0], nil
 	}
 
+	log.Debug("No change to weave-net manifest")
 	return contents, nil
 }
 
@@ -181,7 +187,7 @@ func updateFluxManifests(contents []byte, options initOptionType) ([]byte, error
 
 func updateManifests(options initOptionType) error {
 	matches := 0
-	filepath.Walk(options.localRepoDirectory,
+	err := filepath.Walk(options.localRepoDirectory,
 		func(path string, info os.FileInfo, err error) error {
 			if err != nil {
 				return err
@@ -192,6 +198,7 @@ func updateManifests(options initOptionType) error {
 			fname := []byte(info.Name())
 			for _, u := range updates {
 				if u.selector(fname) {
+					log.Debugf("Matched %s", fname)
 					matches++
 					contents, err := ioutil.ReadFile(path)
 					if err != nil {
@@ -207,10 +214,10 @@ func updateManifests(options initOptionType) error {
 			}
 			return nil
 		})
-	if matches < len(updates) {
+	if matches < 2 {
 		return errors.New("Both 'flux.yaml' and 'wks-controller.yaml' must be present in the repository")
 	}
-	return nil
+	return err
 }
 
 func initRun(cmd *cobra.Command, args []string) error {
