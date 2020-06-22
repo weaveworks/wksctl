@@ -38,6 +38,7 @@ type initOptionType struct {
 }
 
 type manifestUpdate struct {
+	name     string
 	selector func([]byte) bool
 	updater  func([]byte, initOptionType) ([]byte, error)
 }
@@ -66,9 +67,9 @@ var (
 	gitPathPattern                  = multiLineRegexp(`(--git-path)=\S+`)
 
 	updates = []manifestUpdate{
-		{selector: equal("weave-net.yaml"), updater: updateWeaveNetManifests},
-		{selector: equal("wks-controller.yaml"), updater: updateControllerManifests},
-		{selector: and(prefix("flux"), extension("yaml")), updater: updateFluxManifests}}
+		{name: "weave-net", selector: equal("weave-net.yaml"), updater: updateWeaveNetManifests},
+		{name: "wks-controller", selector: equal("wks-controller.yaml"), updater: updateControllerManifests},
+		{name: "flux", selector: and(prefix("flux"), extension("yaml")), updater: updateFluxManifests}}
 
 	dependencies = &toml.Tree{}
 )
@@ -183,7 +184,7 @@ func updateFluxManifests(contents []byte, options initOptionType) ([]byte, error
 }
 
 func updateManifests(options initOptionType) error {
-	matches := 0
+	found := map[string]bool{}
 	err := filepath.Walk(options.localRepoDirectory,
 		func(path string, info os.FileInfo, err error) error {
 			if err != nil {
@@ -196,7 +197,7 @@ func updateManifests(options initOptionType) error {
 			for _, u := range updates {
 				if u.selector(fname) {
 					log.Debugf("Matched %s", fname)
-					matches++
+					found[u.name] = true
 					contents, err := ioutil.ReadFile(path)
 					if err != nil {
 						return err
@@ -211,7 +212,7 @@ func updateManifests(options initOptionType) error {
 			}
 			return nil
 		})
-	if matches < 2 {
+	if !found["flux"] || !found["wks-controller"] {
 		return errors.New("Both 'flux.yaml' and 'wks-controller.yaml' must be present in the repository")
 	}
 	return err
