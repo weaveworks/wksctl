@@ -69,7 +69,7 @@ function print_vars() {
 }
 
 function verify_dependencies() {
-    local deps=(python terraform ansible-playbook gcloud)
+    local deps=(python terraform gcloud)
     for dep in "${deps[@]}"; do
         if [ ! "$(which "$dep")" ]; then
             echo >&2 "$dep is not installed or not in PATH."
@@ -145,7 +145,6 @@ function create_image() {
         local begin_img=$(date +%s)
         local num_hosts=1
         terraform apply -input=false -auto-approve -var "app=$APP" -var "gcp_image=centos-cloud/centos-7" -var "name=$NAME" -var "num_hosts=$num_hosts" "$PROVISIONING_DIR/gcp"
-        configure_with_ansible "$(terraform output username)" "$(terraform output public_ips)," "$(terraform output private_key_path)" $num_hosts
         local zone=$(terraform output zone)
         local name=$(terraform output instances_names)
         gcloud -q compute instances delete "$name" --keep-disks boot --zone "$zone"
@@ -257,14 +256,6 @@ function provision() {
     greenly echo "> Provisioning took $(date -u -d @$((end_prov - begin_prov)) +"%T")."
 }
 
-function configure_with_ansible() {
-#    ansible-playbook -u "$1" -i "$2" --private-key="$3" --forks="${4:-$NUM_HOSTS}" \
-#        --ssh-extra-args="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null" \
-#        --extra-vars "docker_version=$DOCKER_VERSION docker_install_role=$PLAYBOOK_DOCKER_INSTALL_ROLE" \
-#        "$TOOLS_DIR/config_management/$PLAYBOOK"
-    true
-}
-
 # shellcheck disable=SC2155
 function configure() {
     echo
@@ -273,17 +264,7 @@ function configure() {
     else
         greenly echo "> Configuring test host(s)..."
         local begin_conf=$(date +%s)
-        local inventory_file=$(mktemp /tmp/ansible_inventory_XXXXX)
-        echo "[all]" >"$inventory_file"
-        # shellcheck disable=SC2001
-        echo "$2" | sed "s/\$/:$3/" >>"$inventory_file"
-
-        # Configure the provisioned machines using Ansible, allowing up to 3 retries upon failure (e.g. APT connectivity issues, etc.):
-        for i in $(seq 3); do
-            configure_with_ansible "$1" "$inventory_file" "$4" && break || echo >&2 "#$i: Ansible failed. Retrying now..."
-        done
-
-        echo
+        # Nothing to do here at present
         local end_conf=$(date +%s)
         greenly echo "> Configuration took $(date -u -d @$((end_conf - begin_conf)) +"%T")."
     fi

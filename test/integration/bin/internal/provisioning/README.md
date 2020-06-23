@@ -4,11 +4,7 @@
 
 This project allows you to get hold of some machine either locally or on one of the below cloud providers:
 
-* Amazon Web Services
-* Digital Ocean
 * Google Cloud Platform
-
-You can then use these machines as is or run various Ansible playbooks from `../config_management` to set up Weave Net, Kubernetes, etc.
 
 ## Set up
 
@@ -51,4 +47,3 @@ Indeed, the functions defined in `setup.sh` are also exported as aliases, so you
 Other aliases are also defined, in order to make your life easier:
 
 * `tf_ssh`: to ease SSH-ing into the virtual machines, reading the username and IP address to use from Terraform, as well as setting default SSH options.
-* `tf_ansi`: to ease applying an Ansible playbook to a set of virtual machines, dynamically creating the inventory, as well as setting default SSH options.

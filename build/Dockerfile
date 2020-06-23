@@ -1,9 +1,9 @@
-FROM weaveworks/build-golang:1.12.1-stretch
+FROM weaveworks/build-golang:1.13.5-stretch
 
 RUN apt-get update && \
     apt-get install -y \
       sudo \
-      python-pip python-dev libffi-dev libssl-dev awscli \
+      libffi-dev awscli \
       && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
@@ -14,10 +14,6 @@ RUN curl -fsSLo terraform.zip https://releases.hashicorp.com/terraform/0.11.10/t
     chmod +x terraform && \
     mv terraform /usr/bin && \
     rm -f terraform.zip
-
-# Install Ansible
-RUN pip install -U setuptools cffi && \
-    pip install ansible
 
 # Install Google Cloud SDK - borrowed from https://hub.docker.com/r/google/cloud-sdk/~/dockerfile/
 ENV CLOUD_SDK_VERSION 206.0.0
@@ -32,16 +28,19 @@ RUN curl -O https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cl
     gcloud config set metrics/environment github_docker_image && \
     gcloud --version
 
-# Install Docker
-RUN curl -fsSL get.docker.com | VERSION=19.03.8 /bin/sh
+# Install Docker (client only)
+ENV DOCKERVERSION=19.03.8
+RUN curl -fsSLo docker.tgz https://download.docker.com/linux/static/stable/x86_64/docker-${DOCKERVERSION}.tgz && \
+    echo "7f4115dc6a3c19c917f8b9664d7b51c904def1c984e082c4600097433323cf6f  docker.tgz" | sha256sum -c && \
+    tar xzvf docker.tgz --strip 1 -C /usr/local/bin docker/docker && \
+    rm docker.tgz;
 
-# Install gometalinter
-ENV GOMETALINTER_VERSION 2.0.11
-ENV ARCH amd64
-RUN curl -fsSLo gometalinter.tar.gz --compressed "https://github.com/alecthomas/gometalinter/releases/download/v$GOMETALINTER_VERSION/gometalinter-$GOMETALINTER_VERSION-linux-$ARCH.tar.gz" && \
-    echo "97d8bd0a4d024740964c7fc2ae41276cf5f839ccf0749528ca900942f656d201 gometalinter.tar.gz" | sha256sum -c && \
-    tar xf gometalinter.tar.gz -C /usr/bin --strip-components=1 --no-same-owner && \
-    rm gometalinter.tar.gz
+# Install golangci-lint
+ENV GOLANGCILINTVERSION=1.17.1
+RUN curl -fsSLo golangci-lint.tgz https://github.com/golangci/golangci-lint/releases/download/v1.17.1/golangci-lint-${GOLANGCILINTVERSION}-linux-amd64.tar.gz && \
+    echo "62693d3351858206af0bfe975f7f79a8ac9124502e8de7906f377c231f37f7d3  golangci-lint.tgz" | sha256sum -c && \
+    tar xzvf golangci-lint.tgz --strip 1 -C /usr/local/bin golangci-lint-${GOLANGCILINTVERSION}-linux-amd64/golangci-lint && \
+    rm golangci-lint.tgz;
 
 ARG revision
 LABEL maintainer="Weaveworks <help@weave.works>" \

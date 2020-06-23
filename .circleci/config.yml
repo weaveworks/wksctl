@@ -3,10 +3,12 @@ version: 2
 # https://circleci.com/blog/circleci-hacks-reuse-yaml-in-your-circleci-config-with-yaml/
 defaults: &defaults
   docker:
-    - image: docker.io/weaveworks/wksctl-build:switch-away-from-quay-53c3c712-WIP
+    - image: docker.io/weaveworks/wksctl-build:update-build-image-cb52a6ea
       environment:
         GOPATH: /go/
         SRCDIR: /src/github.com/weaveworks/wksctl
+        KUBECTL_URL: https://dl.k8s.io/v1.10.5/kubernetes-client-linux-amd64.tar.gz
+        KUBECTL_CHECKSUM: da9d557989a0b9671a610f21642052febb8f70c3cf144c98a8a4f7ecab6bafe2
   working_directory: /src/github.com/weaveworks/wksctl
 
 workflows:
@@ -69,14 +71,7 @@ jobs:
               make push
             fi
   unit-tests:
-    docker:
-      - image: docker.io/weaveworks/wksctl-build:switch-away-from-quay-53c3c712-WIP
-        environment:
-          GOPATH: /go
-          SRCDIR: /src/github.com/weaveworks/wksctl
-          KUBECTL_URL: https://dl.k8s.io/v1.10.5/kubernetes-client-linux-amd64.tar.gz
-          KUBECTL_CHECKSUM: da9d557989a0b9671a610f21642052febb8f70c3cf144c98a8a4f7ecab6bafe2
-    working_directory: /src/github.com/weaveworks/wksctl
+    <<: *defaults
     steps:
       - checkout
       - run:
@@ -103,8 +98,8 @@ jobs:
     machine:
       docker_layer_caching: true
     environment:
-      GOURL: https://dl.google.com/go/go1.12.7.linux-amd64.tar.gz
-      GOCHECKSUM: 66d83bfb5a9ede000e33c6579a91a29e6b101829ad41fffb5c5bb6c900e109d9
+      GOURL: https://dl.google.com/go/go1.13.5.linux-amd64.tar.gz
+      GOCHECKSUM: 512103d7ad296467814a6e3f635631bd35574cab3369a97a323c9a585ccaa569
       GOROOT: /home/circleci/goroot
       GOPATH: /home/circleci/go
       SRCDIR: /home/circleci/src/github.com/weaveworks/wksctl
@@ -127,13 +122,11 @@ jobs:
     machine:
       docker_layer_caching: true
     environment:
-      GOURL: https://dl.google.com/go/go1.12.7.linux-amd64.tar.gz
-      GOCHECKSUM: 66d83bfb5a9ede000e33c6579a91a29e6b101829ad41fffb5c5bb6c900e109d9
+      GOURL: https://dl.google.com/go/go1.13.5.linux-amd64.tar.gz
+      GOCHECKSUM: 512103d7ad296467814a6e3f635631bd35574cab3369a97a323c9a585ccaa569
       GOROOT: /home/circleci/goroot
       GOPATH: /home/circleci/go
       SRCDIR: /home/circleci/src/github.com/weaveworks/wksctl
-      HUGO_URL: https://github.com/gohugoio/hugo/releases/download/v0.55.6/hugo_0.55.6_Linux-64bit.tar.gz
-      HUGO_CHECKSUM: 39d3119cdb9ba5d6f1f1b43693e707937ce851791a2ea8d28003f49927c428f4
       FOOTLOOSE_URL: https://github.com/weaveworks/footloose/releases/download/0.5.0/footloose-0.5.0-linux-x86_64
       FOOTLOOSE_CHECKSUM: 0e4e49e81940c5876eafa26607154acd788d9979e9f4a4215f17532a3ea5429a
       KUBECTL_URL: https://dl.k8s.io/v1.10.5/kubernetes-client-linux-amd64.tar.gz
@@ -146,14 +139,6 @@ jobs:
           command: |
             (cd ~ && curl -L $GOURL -o go.tar.gz && echo "$GOCHECKSUM go.tar.gz" | sha256sum -c)
             mkdir -p $GOROOT && tar xf ~/go.tar.gz -C $GOROOT --strip-components 1
-      - run:
-          name: Install hugo
-          command: |
-            curl -L $HUGO_URL -o hugo.tar.gz
-            echo "$HUGO_CHECKSUM hugo.tar.gz" | sha256sum -c
-            tar xzf hugo.tar.gz hugo
-            chmod +x hugo
-            sudo mv hugo /usr/local/bin
       - run:
           name: Install footloose
           command: |
@@ -188,18 +173,8 @@ jobs:
   # https://console.cloud.google.com/compute/instances?project=wks-tests
   #
   integration-tests-gcp-centos:
-    docker:
-      - image: docker.io/weaveworks/wksctl-build:switch-away-from-quay-53c3c712-WIP
-        environment:
-          GOPATH: /go/
-          SRCDIR: /src/github.com/weaveworks/wksctl
-          KUBECTL_URL: https://dl.k8s.io/v1.10.5/kubernetes-client-linux-amd64.tar.gz
-          KUBECTL_CHECKSUM: da9d557989a0b9671a610f21642052febb8f70c3cf144c98a8a4f7ecab6bafe2
-          CREATE_IMAGE: 1
-          USE_IMAGE: 1
-          IMAGE_NAME: centos-cloud/centos-7
-          WKP_DEBUG: true
-    working_directory: /src/github.com/weaveworks/wksctl
+
+    <<: *defaults
     steps:
       - checkout
       - setup_remote_docker
@@ -218,23 +193,15 @@ jobs:
           name: Centos integration tests
           command: |
             if [ -n "$SECRET_KEY" ]; then
+              export IMAGE_NAME=centos-cloud/centos-7
+              export WKP_DEBUG=true
               $SRCDIR/test/integration/bin/up.sh
               $SRCDIR/test/integration/bin/test.sh
               $SRCDIR/test/integration/bin/down.sh
             fi
       - run: "true"
   integration-tests-gcp-ubuntu:
-    docker:
-      - image: docker.io/weaveworks/wksctl-build:switch-away-from-quay-53c3c712-WIP
-        environment:
-          GOPATH: /go/
-          SRCDIR: /src/github.com/weaveworks/wksctl
-          KUBECTL_URL: https://dl.k8s.io/v1.10.5/kubernetes-client-linux-amd64.tar.gz
-          KUBECTL_CHECKSUM: da9d557989a0b9671a610f21642052febb8f70c3cf144c98a8a4f7ecab6bafe2
-          CREATE_IMAGE: 0
-          USE_IMAGE: 0
-          IMAGE_NAME: ubuntu-os-cloud/ubuntu-1804-bionic-v20190530
-    working_directory: /src/github.com/weaveworks/wksctl
+    <<: *defaults
     steps:
       - checkout
       - setup_remote_docker
@@ -254,24 +221,16 @@ jobs:
           name: Ubuntu integration tests
           command: |
             if [ -n "$SECRET_KEY" ]; then
+              export CREATE_IMAGE=0
+              export USE_IMAGE=0
+              export IMAGE_NAME=ubuntu-os-cloud/ubuntu-1804-bionic-v20190530
               $SRCDIR/test/integration/bin/up.sh
               $SRCDIR/test/integration/bin/test.sh
               $SRCDIR/test/integration/bin/down.sh
             fi
       - run: "true"
   integration-tests-gcp-rhel:
-    docker:
-      - image: docker.io/weaveworks/wksctl-build:switch-away-from-quay-53c3c712-WIP
-        environment:
-          GOPATH: /go/
-          SRCDIR: /src/github.com/weaveworks/wksctl
-          KUBECTL_URL: https://dl.k8s.io/v1.10.5/kubernetes-client-linux-amd64.tar.gz
-          KUBECTL_CHECKSUM: da9d557989a0b9671a610f21642052febb8f70c3cf144c98a8a4f7ecab6bafe2
-          CREATE_IMAGE: 1
-          USE_IMAGE: 1
-          IMAGE_NAME: rhel-cloud/rhel-7
-          WKP_DEBUG: false
-    working_directory: /src/github.com/weaveworks/wksctl
+    <<: *defaults
     steps:
       - checkout
       - setup_remote_docker
@@ -291,6 +250,8 @@ jobs:
           name: rhel integration tests
           command: |
             if [ -n "$SECRET_KEY" ]; then
+              export IMAGE_NAME=rhel-cloud/rhel-7
+              export WKP_DEBUG=false
               $SRCDIR/test/integration/bin/up.sh
               $SRCDIR/test/integration/bin/test.sh
               $SRCDIR/test/integration/bin/down.sh
