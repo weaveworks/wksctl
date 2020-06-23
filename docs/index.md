@@ -32,6 +32,7 @@ Its features include:
 - [WKS on GCE](wks-on-gce.md)
 - [FAQ](faq.md)
 - [Development](development.md)
+- [Releasing](releasing.md)
 
 
 ## Getting Help
