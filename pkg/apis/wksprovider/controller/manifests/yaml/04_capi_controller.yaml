@@ -1,0 +1,33 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: capi-controller
+  namespace: system
+  labels:
+    name: capi-controller
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: capi-controller
+  template:
+    metadata:
+      labels:
+        name: capi-controller
+    spec:
+      tolerations:
+      # Allow scheduling on master nodes; required during bootstrapping.
+      - effect: NoSchedule
+        key: node-role.kubernetes.io/master
+        operator: Exists
+      # Mark this as a critical addon:
+      - key: CriticalAddonsOnly
+        operator: Exists
+      containers:
+      - name: controller
+        image: us.gcr.io/k8s-artifacts-prod/cluster-api/cluster-api-controller:v0.3.5
+        resources:
+          requests:
+            cpu: 100m
+            memory: 20Mi

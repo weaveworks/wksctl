@@ -7,11 +7,16 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/controller/manifests"
-	baremetalspecv1 "github.com/weaveworks/wksctl/pkg/baremetalproviderspec/v1alpha1"
+	baremetalspecv1 "github.com/weaveworks/wksctl/pkg/baremetal/v1alpha3"
 	"github.com/weaveworks/wksctl/pkg/plan"
 	"github.com/weaveworks/wksctl/pkg/plan/resource"
 	"github.com/weaveworks/wksctl/pkg/utilities/envcfg"
 	"github.com/weaveworks/wksctl/pkg/utilities/object"
+)
+
+const (
+	// PlanKey for storing plans as annotations on Nodes
+	PlanKey string = "wks.weave.works/node-plan"
 )
 
 // BuildBasePlan creates a plan for installing the base building blocks for the node

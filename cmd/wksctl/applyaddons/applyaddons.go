@@ -11,11 +11,9 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/weaveworks/launcher/pkg/kubectl"
 	"github.com/weaveworks/wksctl/pkg/addons"
-	"github.com/weaveworks/wksctl/pkg/kubernetes/config"
 	"github.com/weaveworks/wksctl/pkg/specs"
 	"github.com/weaveworks/wksctl/pkg/utilities/manifest"
 	"github.com/weaveworks/wksctl/pkg/utilities/path"
-	clusterv1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 )
 
 var Cmd = &cobra.Command{
@@ -40,17 +38,6 @@ func init() {
 		&opts.artifactDirectory, "artifact-directory", "", "Location of WKS artifacts ")
 	Cmd.Flags().StringVar(
 		&applyAddonsOptions.namespace, "namespace", manifest.DefaultNamespace, "namespace portion of kubeconfig path")
-}
-
-func applyAddons(cluster *clusterv1.Cluster, machines []*clusterv1.Machine, basePath string) error {
-	opts := &applyAddonsOptions
-	sp := specs.New(cluster, machines)
-	kubeconfig, err := config.NewKubeConfig(opts.artifactDirectory, machines)
-	if err != nil {
-		log.Fatal("Error generating kubeconf", err)
-	}
-
-	return applyAddonsUsingConfig(sp, basePath, kubeconfig)
 }
 
 func applyAddonsUsingConfig(sp *specs.Specs, basePath, kubeconfig string) error {

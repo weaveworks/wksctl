@@ -1,5 +1,9 @@
 # Weave Kubernetes System Control - `wksctl`
 
+**Please note that the code has recently updated from ClusterAPI v1alpha1 to v1alpha3 and as a result Everything Has Changed**
+While this note is in the README you may find inconsistencies in the code, and between the code, examples and documentation.
+Sorry about that.  Feel free to still open issues and/or ask questions [as below](#getting-help).
+
 `wksctl` allows simple creation of a Kubernetes cluster given a **set of IP addresses** and an **SSH key**. It can be run in a standalone environment but is best used via a [GitOps approach](https://www.weave.works/technologies/gitops/) in which cluster and machine descriptions are stored in Git and the state of the cluster tracks changes to the descriptions.
 
 Its features include:

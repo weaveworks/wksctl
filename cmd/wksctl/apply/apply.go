@@ -147,9 +147,12 @@ func (a *Applier) initiateCluster(clusterManifestPath, machinesManifestPath stri
 	}
 
 	// TODO(damien): Transform the controller image into an addon.
-	controllerImage, err := addons.UpdateImage(a.Params.controllerImage, sp.ClusterSpec.ImageRepository)
-	if err != nil {
-		return errors.Wrap(err, "failed to apply the cluster's image repository to the WKS controller's image")
+	controllerImage := a.Params.controllerImage
+	if controllerImage != "" {
+		controllerImage, err = addons.UpdateImage(a.Params.controllerImage, sp.ClusterSpec.ImageRepository)
+		if err != nil {
+			return errors.Wrap(err, "failed to apply the cluster's image repository to the WKS controller's image")
+		}
 	}
 
 	if err := installer.SetupSeedNode(wksos.SeedNodeParams{
@@ -180,7 +183,7 @@ func (a *Applier) initiateCluster(clusterManifestPath, machinesManifestPath stri
 		SealedSecretCertPath: a.Params.sealedSecretCertPath,
 		ConfigDirectory:      configDir,
 		ImageRepository:      sp.ClusterSpec.ImageRepository,
-		ExternalLoadBalancer: sp.ClusterSpec.APIServer.ExternalLoadBalancer,
+		ControlPlaneEndpoint: sp.ClusterSpec.ControlPlaneEndpoint,
 		AdditionalSANs:       sp.ClusterSpec.APIServer.AdditionalSANs,
 		Namespace:            ns,
 		AddonNamespaces:      addonNamespaces,

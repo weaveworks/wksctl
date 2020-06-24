@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"crypto/rsa"
 	"encoding/base64"
-	"encoding/gob"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -17,19 +16,21 @@ import (
 	"time"
 
 	ssv1alpha1 "github.com/bitnami-labs/sealed-secrets/pkg/apis/sealed-secrets/v1alpha1"
+	"github.com/bitnami-labs/sealed-secrets/pkg/crypto"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/weaveworks/wksctl/pkg/addons"
 	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/controller/manifests"
 	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/config"
 	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/crds"
-	baremetalspecv1 "github.com/weaveworks/wksctl/pkg/baremetalproviderspec/v1alpha1"
+	baremetalspecv1 "github.com/weaveworks/wksctl/pkg/baremetal/v1alpha3"
 	"github.com/weaveworks/wksctl/pkg/cluster/machine"
 	"github.com/weaveworks/wksctl/pkg/plan"
 	"github.com/weaveworks/wksctl/pkg/plan/recipe"
 	"github.com/weaveworks/wksctl/pkg/plan/resource"
 	"github.com/weaveworks/wksctl/pkg/plan/runners/ssh"
 	"github.com/weaveworks/wksctl/pkg/plan/runners/sudo"
+	"github.com/weaveworks/wksctl/pkg/specs"
 	"github.com/weaveworks/wksctl/pkg/utilities/envcfg"
 	"github.com/weaveworks/wksctl/pkg/utilities/manifest"
 	"github.com/weaveworks/wksctl/pkg/utilities/object"
@@ -41,14 +42,12 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
-	certUtil "k8s.io/client-go/util/cert"
+	"k8s.io/client-go/util/keyutil"
 	kubeadmapi "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm/v1beta1"
-	clusterv1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 	"sigs.k8s.io/yaml"
 )
 
 const (
-	SeedNodePlanName          = "seed-node-standard-plan"
 	ConfigDestDir             = "/etc/pki/weaveworks/wksctl"
 	PemDestDir                = "/etc/pki/weaveworks/wksctl/pem"
 	authCmapName              = "authn-authz"
@@ -177,7 +176,7 @@ type SeedNodeParams struct {
 	ConfigDirectory      string
 	Namespace            string
 	ImageRepository      string
-	ExternalLoadBalancer string
+	ControlPlaneEndpoint string
 	AdditionalSANs       []string
 	AddonNamespaces      map[string]string
 }
@@ -225,16 +224,16 @@ func (o OS) CreateSeedNodeSetupPlan(params SeedNodeParams) (*plan.Plan, error) {
 	if err != nil {
 		return nil, err
 	}
-	kubernetesVersion, err := machine.GetKubernetesVersionFromManifest(params.MachinesManifestPath)
+	kubernetesVersion, kubernetesNamespace, err := machine.GetKubernetesVersionFromManifest(params.MachinesManifestPath)
 	if err != nil {
 		return nil, err
 	}
-	providerSpec, err := getClusterProviderSpec(params.ClusterManifestPath)
+	cluster, err := parseCluster(params.ClusterManifestPath)
 	if err != nil {
 		return nil, err
 	}
 	// Get configuration file resources from config map manifests referenced by the cluster spec
-	configMapManifests, configMaps, configFileResources, err := createConfigFileResourcesFromFiles(providerSpec, params.ConfigDirectory, params.Namespace)
+	configMapManifests, configMaps, configFileResources, err := createConfigFileResourcesFromFiles(&cluster.Spec, params.ConfigDirectory, params.Namespace)
 	if err != nil {
 		return nil, err
 	}
@@ -247,40 +246,40 @@ func (o OS) CreateSeedNodeSetupPlan(params SeedNodeParams) (*plan.Plan, error) {
 	configRes := recipe.BuildConfigPlan(configFileResources)
 	b.AddResource("install:config", configRes, plan.DependOn("install:base"))
 
-	pemSecretResources, authConfigMap, authConfigManifest, err := processPemFilesIfAny(b, providerSpec, params.ConfigDirectory, params.Namespace, params.SealedSecretKeyPath, params.SealedSecretCertPath)
+	pemSecretResources, authConfigMap, authConfigManifest, err := processPemFilesIfAny(b, &cluster.Spec, params.ConfigDirectory, params.Namespace, params.SealedSecretKeyPath, params.SealedSecretCertPath)
 	if err != nil {
 		return nil, err
 	}
 
-	criRes := recipe.BuildCRIPlan(&providerSpec.CRI, cfg, o.PkgType)
+	criRes := recipe.BuildCRIPlan(&cluster.Spec.CRI, cfg, o.PkgType)
 	b.AddResource("install:cri", criRes, plan.DependOn("install:config"))
 
 	k8sRes := recipe.BuildK8SPlan(kubernetesVersion, params.KubeletConfig.NodeIP, cfg.SELinuxInstalled, cfg.SetSELinuxPermissive, cfg.DisableSwap, cfg.LockYUMPkgs, o.PkgType, params.KubeletConfig.CloudProvider, params.KubeletConfig.ExtraArguments)
 	b.AddResource("install:k8s", k8sRes, plan.DependOn("install:cri"))
 
-	apiServerArgs := getAPIServerArgs(providerSpec, pemSecretResources)
+	apiServerArgs := getAPIServerArgs(&cluster.Spec, pemSecretResources)
 
-	controlPlaneEndpointIP := params.ExternalLoadBalancer
-	if controlPlaneEndpointIP == "" {
-		controlPlaneEndpointIP = params.PrivateIP
+	// Backwards-compatibility: fall back if not specified
+	controlPlaneEndpoint := params.ControlPlaneEndpoint
+	if controlPlaneEndpoint == "" {
+		// TODO: dynamically inject the API server's port.
+		controlPlaneEndpoint = params.PrivateIP + ":6443"
 	}
 
 	kubeadmInitResource :=
 		&resource.KubeadmInit{
-			PublicIP:       params.PublicIP,
-			PrivateIP:      params.PrivateIP,
-			KubeletConfig:  &params.KubeletConfig,
-			ConntrackMax:   cfg.ConntrackMax,
-			UseIPTables:    cfg.UseIPTables,
-			SSHKeyPath:     params.SSHKeyPath,
-			BootstrapToken: params.BootstrapToken,
-			// TODO: dynamically inject the API server's port.
-			ControlPlaneEndpoint:  fmt.Sprintf("%s:6443", controlPlaneEndpointIP),
+			PublicIP:              params.PublicIP,
+			PrivateIP:             params.PrivateIP,
+			KubeletConfig:         &params.KubeletConfig,
+			ConntrackMax:          cfg.ConntrackMax,
+			UseIPTables:           cfg.UseIPTables,
+			SSHKeyPath:            params.SSHKeyPath,
+			BootstrapToken:        params.BootstrapToken,
+			ControlPlaneEndpoint:  controlPlaneEndpoint,
 			IgnorePreflightErrors: cfg.IgnorePreflightErrors,
 			KubernetesVersion:     kubernetesVersion,
 			CloudProvider:         params.KubeletConfig.CloudProvider,
 			ImageRepository:       params.ImageRepository,
-			ExternalLoadBalancer:  params.ExternalLoadBalancer,
 			AdditionalSANs:        params.AdditionalSANs,
 			Namespace:             object.String(params.Namespace),
 			NodeName:              cfg.HostnameOverride,
@@ -334,15 +333,13 @@ func (o OS) CreateSeedNodeSetupPlan(params SeedNodeParams) (*plan.Plan, error) {
 		return nil, err
 	}
 
-	// Create a config map containing a standard node plan for the seed node so the controller can add it
-	// to the seed node as an annotation. Otherwise, we won't be able to determine if the seed node is changed
-	// in a later update (this removes a dependency on flux)
-	seedNodePlanConfigMapManifest, err := o.createSeedNodePlanConfigMapManifest(params, providerSpec, configMaps, authConfigMap, kubernetesVersion)
+	// Set plan as an annotation on node, just like controller does
+	seedNodePlan, err := o.seedNodeSetupPlan(params, &cluster.Spec, configMaps, authConfigMap, kubernetesVersion, kubernetesNamespace)
 	if err != nil {
 		return nil, err
 	}
+	b.AddResource("node:plan", &resource.KubectlAnnotateSingleNode{Key: recipe.PlanKey, Value: seedNodePlan.ToJSON()}, plan.DependOn("kubeadm:init"))
 
-	configMapManifests["seed-node-plan"] = seedNodePlanConfigMapManifest
 	addAuthConfigMapIfNecessary(configMapManifests, authConfigManifest)
 
 	// Add config maps to system so controller can use them
@@ -361,12 +358,22 @@ func (o OS) CreateSeedNodeSetupPlan(params SeedNodeParams) (*plan.Plan, error) {
 	mManRsc := &resource.KubectlApply{Manifest: []byte(machinesManifest), Filename: object.String("machinesmanifest"), Namespace: object.String(params.Namespace)}
 	b.AddResource("kubectl:apply:machines", mManRsc, plan.DependOn(kubectlApplyDeps[0], kubectlApplyDeps[1:]...))
 
+	dep := addSealedSecretWaitIfNecessary(b, params.SealedSecretKeyPath, params.SealedSecretCertPath)
+
+	{
+		capiCtlrManifest, err := capiControllerManifest(params.Controller, params.Namespace, params.ConfigDirectory)
+		if err != nil {
+			return nil, err
+		}
+		ctlrRsc := &resource.KubectlApply{Manifest: capiCtlrManifest, Filename: object.String("capi_controller.yaml")}
+		b.AddResource("install:capi", ctlrRsc, plan.DependOn("kubectl:apply:cluster", dep))
+	}
+
 	wksCtlrManifest, err := wksControllerManifest(params.Controller, params.Namespace, params.ConfigDirectory)
 	if err != nil {
 		return nil, err
 	}
 
-	dep := addSealedSecretWaitIfNecessary(b, params.SealedSecretKeyPath, params.SealedSecretCertPath)
 	ctlrRsc := &resource.KubectlApply{Manifest: wksCtlrManifest, Filename: object.String("wks_controller.yaml")}
 	b.AddResource("install:wks", ctlrRsc, plan.DependOn("kubectl:apply:cluster", dep))
 
@@ -535,7 +542,7 @@ func storeIfNotEmpty(vals map[string]string, key, value string) {
 	}
 }
 
-func getAPIServerArgs(providerSpec *baremetalspecv1.BareMetalClusterProviderSpec, pemSecretResources map[string]*secretResourceSpec) map[string]string {
+func getAPIServerArgs(providerSpec *baremetalspecv1.BareMetalClusterSpec, pemSecretResources map[string]*secretResourceSpec) map[string]string {
 	result := map[string]string{}
 	authnResourceSpec := pemSecretResources["authentication"]
 	if authnResourceSpec != nil {
@@ -572,7 +579,7 @@ func addClusterAPICRDs(b *plan.Builder) ([]string, error) {
 	return crdIDs, nil
 }
 
-func (o OS) createSeedNodePlanConfigMapManifest(params SeedNodeParams, providerSpec *baremetalspecv1.BareMetalClusterProviderSpec, providerConfigMaps map[string]*v1.ConfigMap, authConfigMap *v1.ConfigMap, kubernetesVersion string) ([]byte, error) {
+func (o OS) seedNodeSetupPlan(params SeedNodeParams, providerSpec *baremetalspecv1.BareMetalClusterSpec, providerConfigMaps map[string]*v1.ConfigMap, authConfigMap *v1.ConfigMap, kubernetesVersion, kubernetesNamespace string) (*plan.Plan, error) {
 	nodeParams := NodeParams{
 		IsMaster:             true,
 		MasterIP:             params.PrivateIP,
@@ -585,25 +592,9 @@ func (o OS) createSeedNodePlanConfigMapManifest(params SeedNodeParams, providerS
 		AuthConfigMap:        authConfigMap,
 		Namespace:            params.Namespace,
 		AddonNamespaces:      params.AddonNamespaces,
-		ExternalLoadBalancer: providerSpec.APIServer.ExternalLoadBalancer,
+		ControlPlaneEndpoint: providerSpec.ControlPlaneEndpoint,
 	}
-	var paramBuffer bytes.Buffer
-	err := gob.NewEncoder(&paramBuffer).Encode(nodeParams)
-	if err != nil {
-		return nil, err
-	}
-	if params.Namespace == "" {
-		params.Namespace, err = machine.GetKubernetesNamespaceFromMachines()
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	seedNodePlanConfigMapManifest, err := planParametersToConfigMapManifest(paramBuffer.Bytes(), params.Namespace)
-	if err != nil {
-		return nil, err
-	}
-	return seedNodePlanConfigMapManifest, nil
+	return o.CreateNodeSetupPlan(nodeParams)
 }
 
 func (o OS) applySeedNodePlan(p *plan.Plan) error {
@@ -618,35 +609,10 @@ func (o OS) applySeedNodePlan(p *plan.Plan) error {
 		log.Errorf("Apply of Plan failed:\n%s\n", err)
 		return err
 	}
-	return nil
+	return err
 }
 
-func getClusterProviderSpec(manifestPath string) (*baremetalspecv1.BareMetalClusterProviderSpec, error) {
-	cluster, err := parseCluster(manifestPath)
-	if err != nil {
-		return nil, err
-	}
-	codec, err := baremetalspecv1.NewCodec()
-	if err != nil {
-		return nil, err
-	}
-	providerSpec, err := codec.ClusterProviderFromProviderSpec(cluster.Spec.ProviderSpec)
-	if err != nil {
-		return nil, err
-	}
-	return providerSpec, nil
-}
-
-func planParametersToConfigMapManifest(plan []byte, ns string) ([]byte, error) {
-	cm := v1.ConfigMap{
-		TypeMeta:   metav1.TypeMeta{Kind: "ConfigMap", APIVersion: "v1"},
-		ObjectMeta: metav1.ObjectMeta{Name: SeedNodePlanName, Namespace: ns},
-		BinaryData: map[string][]byte{"plan": plan},
-	}
-	return yaml.Marshal(cm)
-}
-
-func createConfigFileResourcesFromFiles(providerSpec *baremetalspecv1.BareMetalClusterProviderSpec, configDir, namespace string) (map[string][]byte, map[string]*v1.ConfigMap, []*resource.File, error) {
+func createConfigFileResourcesFromFiles(providerSpec *baremetalspecv1.BareMetalClusterSpec, configDir, namespace string) (map[string][]byte, map[string]*v1.ConfigMap, []*resource.File, error) {
 	fileSpecs := providerSpec.OS.Files
 	configMapManifests, err := getConfigMapManifests(fileSpecs, configDir, namespace)
 	if err != nil {
@@ -740,7 +706,7 @@ type secretResourceSpec struct {
 // directory, decrypts it using the GitHub deploy key, creates file
 // resources for .pem files stored in the secret, and creates a SealedSecret resource
 // for them that can be used by the machine actuator
-func processPemFilesIfAny(builder *plan.Builder, providerSpec *baremetalspecv1.BareMetalClusterProviderSpec, configDir string, ns, privateKeyPath, certPath string) (map[string]*secretResourceSpec, *v1.ConfigMap, []byte, error) {
+func processPemFilesIfAny(builder *plan.Builder, providerSpec *baremetalspecv1.BareMetalClusterSpec, configDir string, ns, privateKeyPath, certPath string) (map[string]*secretResourceSpec, *v1.ConfigMap, []byte, error) {
 	if err := checkPemValues(providerSpec, privateKeyPath, certPath); err != nil {
 		return nil, nil, nil, err
 	}
@@ -793,7 +759,7 @@ func getPrivateKey(privateKeyPath string) (*rsa.PrivateKey, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "Could not read private key")
 	}
-	privateKeyData, err := certUtil.ParsePrivateKeyPEM(privateKeyBytes)
+	privateKeyData, err := keyutil.ParsePrivateKeyPEM(privateKeyBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -804,7 +770,7 @@ func getPrivateKey(privateKeyPath string) (*rsa.PrivateKey, error) {
 	return privateKey, nil
 }
 
-func checkPemValues(providerSpec *baremetalspecv1.BareMetalClusterProviderSpec, privateKeyPath, certPath string) error {
+func checkPemValues(providerSpec *baremetalspecv1.BareMetalClusterSpec, privateKeyPath, certPath string) error {
 	if privateKeyPath == "" || certPath == "" {
 		if providerSpec.Authentication != nil || providerSpec.Authorization != nil {
 			return errors.New("Encryption keys not specified; cannot process authentication and authorization specifications.")
@@ -859,9 +825,14 @@ func processSecret(b *plan.Builder, key *rsa.PrivateKey, configDir, secretFileNa
 	if err != nil {
 		return nil, "", nil, err
 	}
+	fingerprint, err := crypto.PublicKeyFingerprint(&key.PublicKey)
+	if err != nil {
+		return nil, "", nil, err
+	}
+	keys := map[string]*rsa.PrivateKey{fingerprint: key}
 	switch s := object.(type) {
 	case *ssv1alpha1.SealedSecret:
-		secret, err := s.Unseal(scheme.Codecs, key)
+		secret, err := s.Unseal(scheme.Codecs, keys)
 		if err != nil {
 			return nil, "", nil, errors.Wrap(err, "Could not unseal auth secret")
 		}
@@ -1041,6 +1012,26 @@ func createFluxSecretFromGitData(gitData GitParams, params SeedNodeParams) ([]by
 	return replaceGitFields(fluxSecretTemplate, gitParams)
 }
 
+func capiControllerManifest(controller ControllerParams, namespace, configDir string) ([]byte, error) {
+	var file io.ReadCloser
+	filepath, err := findManifest(configDir, "capi-controller.yaml")
+	if err != nil {
+		file, err = manifests.Manifests.Open("04_capi_controller.yaml")
+	} else {
+		file, err = os.Open(filepath)
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+	manifestbytes, err := ioutil.ReadAll(file)
+	if err != nil {
+		return nil, err
+	}
+	content, err := manifest.WithNamespace(string(manifestbytes), namespace)
+	return []byte(content), err
+}
+
 func wksControllerManifest(controller ControllerParams, namespace, configDir string) ([]byte, error) {
 	var manifestbytes []byte
 
@@ -1118,7 +1109,7 @@ type NodeParams struct {
 	ProviderConfigMaps       map[string]*v1.ConfigMap
 	AuthConfigMap            *v1.ConfigMap
 	Namespace                string
-	ExternalLoadBalancer     string // used instead of MasterIP if existed
+	ControlPlaneEndpoint     string // used instead of MasterIP if existed
 	AddonNamespaces          map[string]string
 }
 
@@ -1194,7 +1185,6 @@ func (o OS) CreateNodeSetupPlan(params NodeParams) (*plan.Plan, error) {
 		DiscoveryTokenCaCertHash: params.DiscoveryTokenCaCertHash,
 		CertificateKey:           params.CertificateKey,
 		IgnorePreflightErrors:    cfg.IgnorePreflightErrors,
-		ExternalLoadBalancer:     params.ExternalLoadBalancer,
 		KubernetesVersion:        params.KubernetesVersion,
 	}
 	b.AddResource("kubeadm:join", kadmJoinRsrc, plan.DependOn("kubeadm:prejoin"))
@@ -1270,23 +1260,13 @@ func fetchOSID(sshClient *ssh.Client) (string, error) {
 }
 
 // parseCluster converts the manifest file into a Cluster
-func parseCluster(clusterManifestPath string) (*clusterv1.Cluster, error) {
+func parseCluster(clusterManifestPath string) (bmc *baremetalspecv1.BareMetalCluster, err error) {
 	f, err := os.Open(clusterManifestPath)
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
-	bytes, err := ioutil.ReadAll(f)
-	if err != nil {
-		return nil, err
-	}
-
-	cluster := &clusterv1.Cluster{}
-	err = yaml.Unmarshal(bytes, cluster)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to parse cluster manifest")
-	}
-	return cluster, nil
+	_, b, err := specs.ParseCluster(f)
+	return b, err
 }
 
 // createPlan generates a plan from a plan builder
@@ -1306,23 +1286,15 @@ func parseAddons(ClusterManifestPath, namespace string, addonNamespaces map[stri
 	if err != nil {
 		return nil, err
 	}
-	codec, err := baremetalspecv1.NewCodec()
-	if err != nil {
-		log.Fatal("Failed to create codec: ", err)
-	}
 
-	clusterSpec, err := codec.ClusterProviderFromProviderSpec(cluster.Spec.ProviderSpec)
-	if err != nil {
-		log.Fatal("Failed to parse cluster manifest: ", err)
-	}
 	ret := make(map[string][][]byte)
-	for _, addonDesc := range clusterSpec.Addons {
+	for _, addonDesc := range cluster.Spec.Addons {
 		log.WithField("addon", addonDesc.Name).Debug("building addon")
 		addonNs := namespace
 		if ns, ok := addonNamespaces[addonDesc.Name]; ok {
 			addonNs = ns
 		}
-		retManifests, err := buildAddon(addonDesc, clusterSpec.ImageRepository, ClusterManifestPath, addonNs)
+		retManifests, err := buildAddon(addonDesc, cluster.Spec.ImageRepository, ClusterManifestPath, addonNs)
 		if err != nil {
 			return nil, err
 		}

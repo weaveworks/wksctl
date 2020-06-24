@@ -8,15 +8,12 @@ import (
 	yaml "github.com/ghodss/yaml"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
-	"github.com/weaveworks/wksctl/pkg/cluster/machine"
 	"github.com/weaveworks/wksctl/pkg/plan/runners/ssh"
 	"github.com/weaveworks/wksctl/pkg/plan/runners/sudo"
 	"github.com/weaveworks/wksctl/pkg/specs"
-	"github.com/weaveworks/wksctl/pkg/utilities/path"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	clientcmdv1 "k8s.io/client-go/tools/clientcmd/api/v1"
-	clusterv1 "sigs.k8s.io/cluster-api/pkg/apis/cluster/v1alpha1"
 )
 
 // DefaultPath defines the default path
@@ -24,20 +21,6 @@ var DefaultPath = clientcmd.RecommendedHomeFile
 var DefaultClusterName = "kubernetes"
 var DefaultClusterAdminName = "kubernetes-admin"
 var DefaultContextName = fmt.Sprintf("%s@%s", DefaultClusterAdminName, DefaultClusterName)
-
-// NewKubeConfig generates a Kubernetes configuration (e.g. for kubectl to use)
-// from the provided machines, and places it in the provided directory.
-func NewKubeConfig(artifactDirectory string, machines []*clusterv1.Machine) (string, error) {
-	master := machine.FirstMaster(machines)
-	if master == nil {
-		return "", errors.New("at least one master node is required to create a Kubernetes configuration file")
-	}
-	config, err := machine.Config(master)
-	if err != nil {
-		return "", err
-	}
-	return path.WKSResourcePath(artifactDirectory, config.Address), nil
-}
 
 // Params groups the various settings to transform Kubernetes configurations.
 type Params struct {
@@ -100,8 +83,8 @@ func GetRemoteKubeconfig(sp *specs.Specs, sshKeyPath string, verbose, skipTLSVer
 	}
 
 	endpoint := sp.GetMasterPublicAddress()
-	if sp.ClusterSpec.APIServer.ExternalLoadBalancer != "" {
-		endpoint = sp.ClusterSpec.APIServer.ExternalLoadBalancer
+	if sp.ClusterSpec.ControlPlaneEndpoint != "" {
+		endpoint = sp.ClusterSpec.ControlPlaneEndpoint
 	}
 
 	return Sanitize(configStr, Params{
