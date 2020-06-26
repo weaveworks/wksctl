@@ -81,7 +81,7 @@ MANIFESTS=$(shell find pkg/apis/wksprovider/controller/manifests/yaml -name '*.y
 pkg/apis/wksprovider/controller/manifests/manifests_vfsdata.go: $(MANIFESTS)
 	go generate ./pkg/apis/wksprovider/controller/manifests
 
-CRDS=$(shell find pkg/apis/cluster-api/config/crds -name '*.yaml' -print)
+CRDS=$(shell find config/crd -name '*.yaml' -print)
 pkg/apis/wksprovider/machine/os/crds_vfsdata.go: $(CRDS)
 	go generate ./pkg/apis/wksprovider/machine/crds
 
