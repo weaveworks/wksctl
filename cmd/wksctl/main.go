@@ -20,7 +20,7 @@ import (
 	"github.com/weaveworks/wksctl/cmd/wksctl/registrysynccommands"
 	"github.com/weaveworks/wksctl/cmd/wksctl/version"
 	"github.com/weaveworks/wksctl/cmd/wksctl/zshcompletions"
-	baremetalv1 "github.com/weaveworks/wksctl/pkg/baremetal/v1alpha3"
+	baremetalv1 "github.com/weaveworks/wksctl/pkg/apis/baremetal/v1alpha3"
 	v "github.com/weaveworks/wksctl/pkg/version"
 )
 

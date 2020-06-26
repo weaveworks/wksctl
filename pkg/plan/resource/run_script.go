@@ -1,8 +1,8 @@
 package resource
 
 import (
-	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/scripts"
 	"github.com/weaveworks/wksctl/pkg/plan"
+	"github.com/weaveworks/wksctl/pkg/wksprovider/machine/scripts"
 )
 
 // RunScript is a resource running the script available at the provided path.

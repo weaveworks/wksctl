@@ -7,7 +7,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/thanhpk/randstr"
-	baremetalspecv1 "github.com/weaveworks/wksctl/pkg/baremetal/v1alpha3"
+	baremetalspecv1 "github.com/weaveworks/wksctl/pkg/apis/baremetal/v1alpha3"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"
 	"sigs.k8s.io/yaml"
 )

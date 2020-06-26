@@ -5,7 +5,7 @@ import (
 	"errors"
 
 	log "github.com/sirupsen/logrus"
-	baremetalspecv1 "github.com/weaveworks/wksctl/pkg/baremetal/v1alpha3"
+	baremetalspecv1 "github.com/weaveworks/wksctl/pkg/apis/baremetal/v1alpha3"
 	corev1 "k8s.io/api/core/v1"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"

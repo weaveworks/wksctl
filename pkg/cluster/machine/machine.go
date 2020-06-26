@@ -9,7 +9,7 @@ import (
 	"github.com/blang/semver"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
-	baremetalspecv1 "github.com/weaveworks/wksctl/pkg/baremetal/v1alpha3"
+	baremetalspecv1 "github.com/weaveworks/wksctl/pkg/apis/baremetal/v1alpha3"
 	"github.com/weaveworks/wksctl/pkg/kubernetes"
 	"github.com/weaveworks/wksctl/pkg/utilities/manifest"
 	"k8s.io/apimachinery/pkg/util/validation/field"

@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	baremetalspecv1 "github.com/weaveworks/wksctl/pkg/baremetal/v1alpha3"
+	baremetalspecv1 "github.com/weaveworks/wksctl/pkg/apis/baremetal/v1alpha3"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/client-go/kubernetes/scheme"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"

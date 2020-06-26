@@ -8,8 +8,8 @@ import (
 	"strings"
 
 	log "github.com/sirupsen/logrus"
-	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/scripts"
 	"github.com/weaveworks/wksctl/pkg/plan"
+	"github.com/weaveworks/wksctl/pkg/wksprovider/machine/scripts"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"

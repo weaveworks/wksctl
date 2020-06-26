@@ -6,13 +6,13 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/config"
-	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/os"
 	"github.com/weaveworks/wksctl/pkg/manifests"
 	"github.com/weaveworks/wksctl/pkg/plan/runners/ssh"
 	"github.com/weaveworks/wksctl/pkg/specs"
 	"github.com/weaveworks/wksctl/pkg/utilities/manifest"
 	"github.com/weaveworks/wksctl/pkg/version"
+	"github.com/weaveworks/wksctl/pkg/wksprovider/machine/config"
+	"github.com/weaveworks/wksctl/pkg/wksprovider/machine/os"
 )
 
 // Cmd represents the plan view command

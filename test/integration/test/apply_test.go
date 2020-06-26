@@ -19,7 +19,7 @@ import (
 	"github.com/weaveworks/wksctl/pkg/plan/runners/ssh"
 	"github.com/weaveworks/wksctl/pkg/specs"
 
-	baremetalspecv1 "github.com/weaveworks/wksctl/pkg/baremetal/v1alpha3"
+	baremetalspecv1 "github.com/weaveworks/wksctl/pkg/apis/baremetal/v1alpha3"
 	spawn "github.com/weaveworks/wksctl/test/integration/spawn"
 
 	"github.com/stretchr/testify/assert"

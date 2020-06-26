@@ -6,7 +6,7 @@ import (
 	"log"
 
 	"github.com/shurcooL/vfsgen"
-	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/controller/manifests"
+	"github.com/weaveworks/wksctl/pkg/wksprovider/controller/manifests"
 )
 
 func main() {

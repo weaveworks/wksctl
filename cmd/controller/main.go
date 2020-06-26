@@ -7,9 +7,9 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	wks "github.com/weaveworks/wksctl/pkg/apis/wksprovider/controller/wksctl"
-	baremetalv1 "github.com/weaveworks/wksctl/pkg/baremetal/v1alpha3"
+	baremetalv1 "github.com/weaveworks/wksctl/pkg/apis/baremetal/v1alpha3"
 	machineutil "github.com/weaveworks/wksctl/pkg/cluster/machine"
+	wks "github.com/weaveworks/wksctl/pkg/wksprovider/controller/wksctl"
 	"k8s.io/client-go/kubernetes"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"
 	"sigs.k8s.io/controller-runtime/pkg/client"

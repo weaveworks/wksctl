@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/config"
-	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/config/kubeadm"
+	"github.com/weaveworks/wksctl/pkg/wksprovider/machine/config"
+	"github.com/weaveworks/wksctl/pkg/wksprovider/machine/config/kubeadm"
 	kubeadmapi "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm/v1beta1"
 	"sigs.k8s.io/yaml"
 )

@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	bmv1alpha3 "github.com/weaveworks/wksctl/pkg/baremetal/v1alpha3"
+	bmv1alpha3 "github.com/weaveworks/wksctl/pkg/apis/baremetal/v1alpha3"
 	"gopkg.in/oleiade/reflections.v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

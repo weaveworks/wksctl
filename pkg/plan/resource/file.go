@@ -9,8 +9,8 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/scripts"
 	"github.com/weaveworks/wksctl/pkg/plan"
+	"github.com/weaveworks/wksctl/pkg/wksprovider/machine/scripts"
 )
 
 // XXX: Expose file permission (if needed?)

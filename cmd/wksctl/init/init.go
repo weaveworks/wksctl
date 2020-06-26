@@ -14,10 +14,10 @@ import (
 	"github.com/pelletier/go-toml"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	wksos "github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/os"
 	"github.com/weaveworks/wksctl/pkg/specs"
 	"github.com/weaveworks/wksctl/pkg/utilities/manifest"
 	"github.com/weaveworks/wksctl/pkg/version"
+	wksos "github.com/weaveworks/wksctl/pkg/wksprovider/machine/os"
 )
 
 // A command that initializes a user's cloned git repository with a correct image tag for wks-controller and

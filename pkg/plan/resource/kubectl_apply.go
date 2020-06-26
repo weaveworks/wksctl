@@ -8,9 +8,9 @@ import (
 
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
-	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/scripts"
 	"github.com/weaveworks/wksctl/pkg/plan"
 	"github.com/weaveworks/wksctl/pkg/utilities/manifest"
+	"github.com/weaveworks/wksctl/pkg/wksprovider/machine/scripts"
 )
 
 // KubectlApply is a resource applying the provided manifest.

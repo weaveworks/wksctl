@@ -9,7 +9,7 @@ import (
 
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
-	"github.com/weaveworks/wksctl/pkg/baremetal/v1alpha3"
+	"github.com/weaveworks/wksctl/pkg/apis/baremetal/v1alpha3"
 	"github.com/weaveworks/wksctl/pkg/plan"
 	sshutil "github.com/weaveworks/wksctl/pkg/utilities/ssh"
 	"golang.org/x/crypto/ssh"

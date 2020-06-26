@@ -73,19 +73,19 @@ ADDONS_SOURCES=$(shell find addons/ -print)
 pkg/addons/assets/assets_vfsdata.go: $(ADDONS_SOURCES)
 	go generate ./pkg/addons/assets
 
-SCRIPTS=$(shell find pkg/apis/wksprovider/machine/scripts/all -name '*.sh' -print)
-pkg/apis/wksprovider/machine/scripts/scripts_vfsdata.go: $(SCRIPTS)
-	go generate ./pkg/apis/wksprovider/machine/scripts
+SCRIPTS=$(shell find pkg/wksprovider/machine/scripts/all -name '*.sh' -print)
+pkg/wksprovider/machine/scripts/scripts_vfsdata.go: $(SCRIPTS)
+	go generate ./pkg/wksprovider/machine/scripts
 
-MANIFESTS=$(shell find pkg/apis/wksprovider/controller/manifests/yaml -name '*.yaml' -print)
-pkg/apis/wksprovider/controller/manifests/manifests_vfsdata.go: $(MANIFESTS)
-	go generate ./pkg/apis/wksprovider/controller/manifests
+MANIFESTS=$(shell find pkg/wksprovider/controller/manifests/yaml -name '*.yaml' -print)
+pkg/wksprovider/controller/manifests/manifests_vfsdata.go: $(MANIFESTS)
+	go generate ./pkg/wksprovider/controller/manifests
 
 CRDS=$(shell find pkg/apis/cluster-api/config/crds -name '*.yaml' -print)
-pkg/apis/wksprovider/machine/os/crds_vfsdata.go: $(CRDS)
-	go generate ./pkg/apis/wksprovider/machine/crds
+pkg/wksprovider/machine/os/crds_vfsdata.go: $(CRDS)
+	go generate ./pkg/wksprovider/machine/crds
 
-generated: pkg/addons/assets/assets_vfsdata.go pkg/apis/wksprovider/controller/manifests/manifests_vfsdata.go pkg/apis/wksprovider/machine/scripts/scripts_vfsdata.go pkg/apis/wksprovider/machine/os/crds_vfsdata.go
+generated: pkg/addons/assets/assets_vfsdata.go pkg/wksprovider/controller/manifests/manifests_vfsdata.go pkg/wksprovider/machine/scripts/scripts_vfsdata.go pkg/wksprovider/machine/os/crds_vfsdata.go
 
 cmd/wksctl/wksctl: $(DEPS) generated
 cmd/wksctl/wksctl: cmd/wksctl/*.go
@@ -136,7 +136,7 @@ unit-tests: generated
 mkfile_path := $(abspath $(lastword $(MAKEFILE_LIST)))
 mkfile_dir := $(dir $(mkfile_path))
 
-container-tests: pkg/apis/wksprovider/machine/scripts/scripts_vfsdata.go pkg/apis/wksprovider/controller/manifests/manifests_vfsdata.go
+container-tests: pkg/wksprovider/machine/scripts/scripts_vfsdata.go pkg/wksprovider/controller/manifests/manifests_vfsdata.go
 	go test -count=1 ./test/container/...
 
 integration-tests-container: cmd/wksctl/wksctl cmd/controller/.uptodate
