@@ -393,6 +393,11 @@ func (p *Plan) ToHumanReadableJSON() string {
 	return string(json)
 }
 
+// ToState translates a Plan into a State
+func (p *Plan) ToState() State {
+	return displayableState(p.toState())
+}
+
 // ToDOT translates a Plan into DOT output
 func (p *Plan) ToDOT() string {
 	var dot bytes.Buffer

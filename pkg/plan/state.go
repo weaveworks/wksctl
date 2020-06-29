@@ -7,6 +7,8 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+
+	"github.com/chanwit/plandiff"
 )
 
 // State is a collection of (key, value) pairs describing unequivocally a step
@@ -322,4 +324,11 @@ func (s State) Merge(a State) {
 		// Otherwise, source overrides destination
 		s[k] = v
 	}
+}
+
+// Diff returns human-readable diffs from one State to another.
+func (s State) Diff(t State) (string, error) {
+	strA, _ := json.MarshalIndent(s, "", " ")
+	strB, _ := json.MarshalIndent(t, "", " ")
+	return plandiff.GetUnifiedDiff(string(strA), string(strB))
 }
