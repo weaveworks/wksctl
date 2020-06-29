@@ -441,6 +441,9 @@ func TestApply(t *testing.T) {
 		testNodes(t, numMasters(machines), numWorkers(machines))
 	})
 
+	t.Log("Waiting 1 minute for nodes to settle")
+	time.Sleep(1 * time.Minute)
+
 	//Test we have installed the specified version.
 	t.Run("KubernetesVersion", func(t *testing.T) {
 		testApplyKubernetesVersion(t, "1.16.11")
