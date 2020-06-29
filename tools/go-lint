@@ -4,7 +4,7 @@ set -e
 
 if [ ! -x "$(command -v golangci-lint)" ]
 then
-    go get github.com/golangci/golangci-lint/cmd/golangci-lint@v1.17.1
+    go get github.com/golangci/golangci-lint/cmd/golangci-lint@v1.27.0
 fi
 
 
