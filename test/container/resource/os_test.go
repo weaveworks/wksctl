@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	uuid_regexp      = `[A-F0-9]{6}-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{12}`
+	uuid_regexp      = `[a-fA-F0-9]{6}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}`
 	machineid_regexp = `[a-f0-9]{32}`
 )
 
