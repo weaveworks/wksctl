@@ -323,9 +323,3 @@ func (s State) Merge(a State) {
 		s[k] = v
 	}
 }
-
-// Marshal returns a JSON representation of the state.
-func (s State) Marshal() string {
-	str, _ := json.MarshalIndent(s, "", " ")
-	return string(str)
-}
