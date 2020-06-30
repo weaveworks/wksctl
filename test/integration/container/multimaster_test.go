@@ -69,6 +69,8 @@ spec:
         value: "true"
       - name: container-runtime
         value: docker
+      - name: eviction-hard
+        value: "memory.available<100Mi,nodefs.available<100Mi,imagefs.available<100Mi"
       apiServer:
         extraArguments:
         - name: alsologtostderr
