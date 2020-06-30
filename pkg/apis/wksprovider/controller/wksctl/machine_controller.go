@@ -253,7 +253,7 @@ func (a *MachineController) connectTo(c *baremetalspecv1.BareMetalCluster, m *ba
 }
 
 func (a *MachineController) sshKey() ([]byte, error) {
-	secret, err := a.clientSet.CoreV1().Secrets(a.controllerNamespace).Get(controllerSecret, metav1.GetOptions{})
+	secret, err := a.clientSet.CoreV1().Secrets(a.controllerNamespace).Get(context.TODO(), controllerSecret, metav1.GetOptions{})
 	if err != nil {
 		return nil, gerrors.Wrap(err, "failed to get WKS' secret")
 	}
@@ -275,7 +275,7 @@ type kubeadmJoinSecrets struct {
 }
 
 func (a *MachineController) kubeadmJoinSecrets() (*kubeadmJoinSecrets, error) {
-	secret, err := a.clientSet.CoreV1().Secrets(a.controllerNamespace).Get(controllerSecret, metav1.GetOptions{})
+	secret, err := a.clientSet.CoreV1().Secrets(a.controllerNamespace).Get(context.TODO(), controllerSecret, metav1.GetOptions{})
 	if err != nil {
 		return nil, gerrors.Wrap(err, "failed to get WKS' secret")
 	}
@@ -291,7 +291,7 @@ func (a *MachineController) updateKubeadmJoinSecrets(ID string) error {
 	enc := make([]byte, len)
 	base64.StdEncoding.Encode(enc, []byte(ID))
 	patch := []byte(fmt.Sprintf("{\"data\":{\"%s\":\"%s\"}}", bootstrapTokenID, enc))
-	_, err := a.clientSet.CoreV1().Secrets(a.controllerNamespace).Patch(controllerSecret, types.StrategicMergePatchType, patch)
+	_, err := a.clientSet.CoreV1().Secrets(a.controllerNamespace).Patch(context.TODO(), controllerSecret, types.StrategicMergePatchType, patch, metav1.PatchOptions{})
 	if err != nil {
 		log.Debugf("failed to patch wks secret %s %v", patch, err)
 	}
@@ -301,7 +301,7 @@ func (a *MachineController) updateKubeadmJoinSecrets(ID string) error {
 func (a *MachineController) token(ID string) (string, error) {
 	ns := "kube-system"
 	name := fmt.Sprintf("%s%s", bootstrapapi.BootstrapTokenSecretPrefix, ID)
-	secret, err := a.clientSet.CoreV1().Secrets(ns).Get(name, metav1.GetOptions{})
+	secret, err := a.clientSet.CoreV1().Secrets(ns).Get(context.TODO(), name, metav1.GetOptions{})
 	if err != nil {
 		// The secret may have been removed if it expired so we will generate a new one
 		log.Debugf("failed to find original bootstrap token %s/%s, generating a new one", ns, name)
@@ -350,7 +350,7 @@ func (a *MachineController) installNewBootstrapToken(ns string) (*corev1.Secret,
 	if err != nil {
 		return nil, gerrors.Errorf("failed to create new bootstrap token %s/%s", ns, secret.ObjectMeta.Name)
 	}
-	s, err := a.clientSet.CoreV1().Secrets(ns).Create(secret)
+	s, err := a.clientSet.CoreV1().Secrets(ns).Create(context.TODO(), secret, metav1.CreateOptions{})
 	if err != nil {
 		return nil, gerrors.Errorf("failed to install new bootstrap token %s/%s", ns, secret.ObjectMeta.Name)
 	}
@@ -398,7 +398,7 @@ func (a *MachineController) delete(ctx context.Context, c *baremetalspecv1.BareM
 	}); err != nil {
 		return err
 	}
-	if err = a.clientSet.CoreV1().Nodes().Delete(node.Name, &metav1.DeleteOptions{}); err != nil {
+	if err = a.clientSet.CoreV1().Nodes().Delete(context.TODO(), node.Name, metav1.DeleteOptions{}); err != nil {
 		return err
 	}
 	a.recordEvent(machine, corev1.EventTypeNormal, "Delete", "deleted machine %s", machine.Name)
@@ -640,7 +640,7 @@ func (a *MachineController) getNodePlan(provider *baremetalspecv1.BareMetalClust
 
 func (a *MachineController) getAuthConfigMap() (*v1.ConfigMap, error) {
 	client := a.clientSet.CoreV1().ConfigMaps(a.controllerNamespace)
-	maps, err := client.List(metav1.ListOptions{})
+	maps, err := client.List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -659,7 +659,7 @@ func (a *MachineController) getProviderConfigMaps(provider *baremetalspecv1.Bare
 	for _, fileSpec := range fileSpecs {
 		mapName := fileSpec.Source.ConfigMap
 		if _, seen := configMaps[mapName]; !seen {
-			configMap, err := client.Get(mapName, metav1.GetOptions{})
+			configMap, err := client.Get(context.TODO(), mapName, metav1.GetOptions{})
 			if err != nil {
 				return nil, err
 			}
@@ -775,13 +775,13 @@ func (a *MachineController) uncordon(node *corev1.Node) error {
 	contextLog := log.WithFields(log.Fields{"node": node.Name})
 	client := a.clientSet.CoreV1().Nodes()
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		result, getErr := client.Get(node.Name, metav1.GetOptions{})
+		result, getErr := client.Get(context.TODO(), node.Name, metav1.GetOptions{})
 		if getErr != nil {
 			contextLog.Errorf("failed to read node info, can't reschedule: %v", getErr)
 			return getErr
 		}
 		result.Spec.Unschedulable = false
-		_, updateErr := client.Update(result)
+		_, updateErr := client.Update(context.TODO(), result, metav1.UpdateOptions{})
 		if updateErr != nil {
 			contextLog.Errorf("failed to reschedule node: %v", updateErr)
 			return updateErr
@@ -839,13 +839,13 @@ func (a *MachineController) modifyNode(node *corev1.Node, updater func(node *cor
 	contextLog := log.WithFields(log.Fields{"node": node.Name})
 	client := a.clientSet.CoreV1().Nodes()
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		result, getErr := client.Get(node.Name, metav1.GetOptions{})
+		result, getErr := client.Get(context.TODO(), node.Name, metav1.GetOptions{})
 		if getErr != nil {
 			contextLog.Errorf("failed to read node info, assuming unsafe to update: %v", getErr)
 			return getErr
 		}
 		updater(result)
-		_, updateErr := client.Update(result)
+		_, updateErr := client.Update(context.TODO(), result, metav1.UpdateOptions{})
 		if updateErr != nil {
 			contextLog.Errorf("failed attempt to update node annotation: %v", updateErr)
 			return updateErr
@@ -897,7 +897,7 @@ func hasTaint(node *corev1.Node, value string) bool {
 }
 
 func (a *MachineController) findNodeByID(machineID, systemUUID string) (*corev1.Node, error) {
-	nodes, err := a.clientSet.CoreV1().Nodes().List(metav1.ListOptions{})
+	nodes, err := a.clientSet.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return nil, gerrors.Wrap(err, "failed to list nodes")
 	}
@@ -925,7 +925,7 @@ func (a *MachineController) getMasterNode() (*corev1.Node, error) {
 }
 
 func (a *MachineController) getMasterNodes() ([]*corev1.Node, error) {
-	nodes, err := a.clientSet.CoreV1().Nodes().List(metav1.ListOptions{})
+	nodes, err := a.clientSet.CoreV1().Nodes().List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return nil, gerrors.Wrap(err, "failed to list nodes")
 	}
@@ -965,7 +965,7 @@ func (a *MachineController) isControllerNode(node *corev1.Node) (bool, error) {
 }
 
 func (a *MachineController) getControllerNodeName() (string, error) {
-	pods, err := a.clientSet.CoreV1().Pods(a.controllerNamespace).List(metav1.ListOptions{})
+	pods, err := a.clientSet.CoreV1().Pods(a.controllerNamespace).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		return "", err
 	}

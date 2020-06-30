@@ -17,9 +17,11 @@ limitations under the License.
 package drain
 
 import (
+	"context"
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
@@ -106,9 +108,9 @@ func (c *CordonHelper) PatchOrReplace(clientset kubernetes.Interface) (error, er
 
 	patchBytes, patchErr := strategicpatch.CreateTwoWayMergePatch(oldData, newData, c.node)
 	if patchErr == nil {
-		_, err = client.Patch(c.node.Name, types.StrategicMergePatchType, patchBytes)
+		_, err = client.Patch(context.TODO(), c.node.Name, types.StrategicMergePatchType, patchBytes, metav1.PatchOptions{})
 	} else {
-		_, err = client.Update(c.node)
+		_, err = client.Update(context.TODO(), c.node, metav1.UpdateOptions{})
 	}
 	return err, patchErr
 }

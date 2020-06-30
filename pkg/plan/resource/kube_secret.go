@@ -1,6 +1,7 @@
 package resource
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"path/filepath"
@@ -57,7 +58,7 @@ func NewKubeSecretResource(secretName, destinationDirectory, ns string, fileName
 		log.Fatalf("failed to create Kubernetes client set: %v", err)
 	}
 	client := clientSet.CoreV1().Secrets(ns)
-	secret, err := client.Get(secretName, metav1.GetOptions{})
+	secret, err := client.Get(context.TODO(), secretName, metav1.GetOptions{})
 	if err != nil {
 		// No secret present
 		return nil, nil
