@@ -90,8 +90,6 @@ func Parse(r io.ReadCloser) (ml []*clusterv1.Machine, bl []*baremetalspecv1.Bare
 	return ml, bl, nil
 }
 
-type machineValidationFunc func(int, *clusterv1.Machine) field.ErrorList
-
 // Validate validates the provided machines.
 func Validate(machines []*clusterv1.Machine, bl []*baremetalspecv1.BareMetalMachine) field.ErrorList {
 	if len(machines) == 0 { // Some other validations crash on empty list
@@ -175,7 +173,7 @@ func validateVersions(machines []*clusterv1.Machine) field.ErrorList {
 				errors = append(errors, field.Invalid(
 					machinePath(i, "spec", "version"),
 					m.Spec.Version,
-					fmt.Sprintf("inconsistent kubernetes version, expected nil")))
+					"inconsistent kubernetes version, expected nil"))
 			}
 		} else {
 			if m.Spec.Version == nil {

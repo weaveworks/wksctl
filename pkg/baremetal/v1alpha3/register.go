@@ -6,12 +6,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-// +k8s:deepcopy-gen=false
-type BareMetalProviderSpecCodec struct {
-	encoder runtime.Encoder
-	decoder runtime.Decoder
-}
-
 const GroupName = "cluster.weave.works"
 
 var SchemeGroupVersion = schema.GroupVersion{Group: GroupName, Version: "v1alpha3"}

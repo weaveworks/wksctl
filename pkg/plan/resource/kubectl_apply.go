@@ -146,7 +146,8 @@ func kubectlApply(r plan.Runner, args kubectlApplyArgs, fname string) error {
 	if err != nil {
 		return errors.Wrap(err, "writeTempFile")
 	}
-	defer r.RunCommand(fmt.Sprintf("rm -vf %q", path), nil)
+	//nolint:errcheck
+	defer r.RunCommand(fmt.Sprintf("rm -vf %q", path), nil) // TODO: Deferred error checking
 
 	// Run kubectl apply.
 	if err := kubectlRemoteApply(path, r); err != nil {
@@ -169,7 +170,7 @@ func kubectlRemoteApply(remoteURL string, runner plan.Runner) error {
 	cmd := fmt.Sprintf("kubectl apply -f %q", remoteURL)
 
 	if stdouterr, err := runner.RunCommand(withoutProxy(cmd), nil); err != nil {
-		log.WithField("stdouterr", stdouterr).WithField("URL", remoteURL).Debug(fmt.Sprintf("failed to apply Kubernetes manifest"))
+		log.WithField("stdouterr", stdouterr).WithField("URL", remoteURL).Debug("failed to apply Kubernetes manifest")
 		return errors.Wrapf(err, "failed to apply manifest %s; output %s", remoteURL, stdouterr)
 	}
 	return nil

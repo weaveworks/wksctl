@@ -4,7 +4,7 @@
 /test/resource/tests
 /test/integration/test/kubectl
 
-# Ignore generated binaries
+# Ignore generated binaries:
 /cmd/controller/controller
 /cmd/mock-authz-server/server
 /cmd/mock-https-authz-server/server
@@ -29,5 +29,5 @@ terraform.tfstate.backup
 .terraform.tfstate.lock.info
 tf.json
 
-# Docs
+# Docs:
 site

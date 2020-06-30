@@ -45,8 +45,12 @@ func configureLogger(cmd *cobra.Command, args []string) {
 }
 
 func main() {
-	clusterv1.AddToScheme(scheme.Scheme)
-	baremetalv1.AddToScheme(scheme.Scheme)
+	if err := clusterv1.AddToScheme(scheme.Scheme); err != nil {
+		log.Fatal(err)
+	}
+	if err := baremetalv1.AddToScheme(scheme.Scheme); err != nil {
+		log.Fatal(err)
+	}
 
 	rootCmd.PersistentFlags().BoolVarP(&options.verbose, "verbose", "v", false, "Enable verbose output")
 

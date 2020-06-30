@@ -6,7 +6,6 @@ import (
 	"os"
 	"reflect"
 	"strings"
-	"sync"
 
 	"github.com/pkg/errors"
 	bmv1alpha3 "github.com/weaveworks/wksctl/pkg/baremetal/v1alpha3"
@@ -20,8 +19,6 @@ import (
 	clusterv1alpha3 "sigs.k8s.io/cluster-api/api/v1alpha3"
 	"sigs.k8s.io/yaml"
 )
-
-var mutex *sync.Mutex = &sync.Mutex{}
 
 // cluster-api types
 const (
@@ -119,16 +116,19 @@ func updateNamespace(obj *runtime.Object, namespace string) error {
 				if err != nil {
 					return errors.Wrap(err, "Unable to decode item's raw field")
 				}
-				updateNamespace(&o, namespace)
+				if err = updateNamespace(&o, namespace); err != nil {
+					return err
+				}
 				items[i] = o
 			} else {
-				updateNamespace(&item, namespace)
+				if err = updateNamespace(&item, namespace); err != nil {
+					return err
+				}
 				items[i] = item
 			}
 		}
-		err = meta.SetList(*obj, items)
-		if err != nil {
-			errors.Wrap(err, "Unable to set items on List resource")
+		if err = meta.SetList(*obj, items); err != nil {
+			return errors.Wrap(err, "Unable to set items on List resource")
 		}
 	}
 	return nil

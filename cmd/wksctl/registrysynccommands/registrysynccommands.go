@@ -7,10 +7,8 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/weaveworks/wksctl/pkg/addons"
-	"github.com/weaveworks/wksctl/pkg/cluster/machine"
 	"github.com/weaveworks/wksctl/pkg/kubernetes"
 	"github.com/weaveworks/wksctl/pkg/registry"
-	v "github.com/weaveworks/wksctl/pkg/utilities/version"
 )
 
 var Cmd = &cobra.Command{
@@ -70,18 +68,4 @@ func registrySyncRun(cmd *cobra.Command, args []string) {
 	for _, command := range commands {
 		fmt.Println(command)
 	}
-}
-
-func kubernetesVersionsRange() string {
-	if registrySyncOptions.machinesManifestPath != "" {
-		version, _, err := machine.GetKubernetesVersionFromManifest(registrySyncOptions.machinesManifestPath)
-		if err != nil {
-			log.Fatalf("Failed to extract Kubernetes version from machines manifest: %s", err)
-		}
-		return fmt.Sprintf("=%s", version)
-	}
-	if registrySyncOptions.versionsRange != "" {
-		return registrySyncOptions.versionsRange
-	}
-	return v.AnyRange
 }

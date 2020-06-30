@@ -26,7 +26,6 @@ import (
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/kubernetes/scheme"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"
 )
@@ -332,25 +331,6 @@ func testNodes(t *testing.T, numMasters, numWorkers int) {
 	assert.Equal(t, numWorkers, nodesNumWorkers(nodes))
 }
 
-// DOES NOT CURRENTLY WORK - NODES DO NOT POSSESS THESE LABELS
-func testLabels(t *testing.T, numMasters, numWorkers int) {
-	test := kube.NewTest(t)
-	defer test.Close()
-
-	masterNodes := test.ListNodes(metav1.ListOptions{
-		LabelSelector: labels.Set(map[string]string{
-			"set": setLabel(master),
-		}).AsSelector().String(),
-	})
-	workerNodes := test.ListNodes(metav1.ListOptions{
-		LabelSelector: labels.Set(map[string]string{
-			"set": setLabel(node),
-		}).AsSelector().String(),
-	})
-	assert.Equal(t, numMasters, len(masterNodes.Items))
-	assert.Equal(t, numWorkers, len(workerNodes.Items))
-}
-
 func apply(exe *spawn.Executor, extra ...string) (*spawn.Entry, error) {
 	args := []string{"apply"}
 	args = append(args, extra...)
@@ -359,12 +339,6 @@ func apply(exe *spawn.Executor, extra ...string) (*spawn.Entry, error) {
 
 func kubeconfig(exe *spawn.Executor, extra ...string) (*spawn.Entry, error) {
 	args := []string{"kubeconfig"}
-	args = append(args, extra...)
-	return exe.RunV(cmd, args...)
-}
-
-func krb5Kubeconfig(exe *spawn.Executor, extra ...string) (*spawn.Entry, error) {
-	args := []string{"krb5-kubeconfig"}
 	args = append(args, extra...)
 	return exe.RunV(cmd, args...)
 }

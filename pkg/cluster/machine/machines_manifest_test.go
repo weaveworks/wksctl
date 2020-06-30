@@ -43,7 +43,7 @@ func TestUpdateWithGeneratedNamesWithGenerateNameFieldsShouldGenerateThese(t *te
 	assert.Contains(t, updatedManifest, "name:")
 	for _, line := range strings.Split(updatedManifest, "\n") {
 		if strings.HasPrefix(strings.TrimSpace(line), "name:") {
-			assert.Regexp(t, regexp.MustCompile("^\\s+name: (master|node)-[0-9A-Za-z]{5}-[0-9A-Za-z]{5}$"), line)
+			assert.Regexp(t, regexp.MustCompile(`^\s+name: (master|node)-[0-9A-Za-z]{5}-[0-9A-Za-z]{5}$`), line)
 		}
 	}
 	fmt.Print(updatedManifest)
@@ -87,9 +87,9 @@ func TestUpdateWithGeneratedNamesWithCustomNameAndGenerateNameFieldsShouldOnlyCh
 	assert.Contains(t, updatedManifest, "name: very-custom-worker-node")
 	for _, line := range strings.Split(updatedManifest, "\n") {
 		if strings.HasPrefix(strings.TrimSpace(line), "name: master-") {
-			assert.Regexp(t, regexp.MustCompile("^\\s+name: master-[0-9A-Za-z]{5}-[0-9A-Za-z]{5}$"), line)
+			assert.Regexp(t, regexp.MustCompile(`^\s+name: master-[0-9A-Za-z]{5}-[0-9A-Za-z]{5}$`), line)
 		} else if strings.HasPrefix(strings.TrimSpace(line), "name: node-") {
-			assert.Regexp(t, regexp.MustCompile("^\\s+name: node-[0-9A-Za-z]{5}-[0-9A-Za-z]{5}$"), line)
+			assert.Regexp(t, regexp.MustCompile(`^\s+name: node-[0-9A-Za-z]{5}-[0-9A-Za-z]{5}$`), line)
 		}
 	}
 	r = ioutil.NopCloser(strings.NewReader(updatedManifest))
