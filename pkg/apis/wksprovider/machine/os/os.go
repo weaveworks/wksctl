@@ -719,6 +719,7 @@ func processPemFilesIfAny(builder *plan.Builder, providerSpec *baremetalspecv1.B
 	}
 	var authenticationSecretFileName, authorizationSecretFileName, authenticationSecretName, authorizationSecretName string
 	var authenticationSecretManifest, authorizationSecretManifest, authenticationConfig, authorizationConfig []byte
+	secretResources := map[string]*secretResourceSpec{}
 	if providerSpec.Authentication != nil {
 		authenticationSecretFileName = providerSpec.Authentication.SecretFile
 		authenticationSecretManifest, authenticationSecretName, authenticationConfig, err = processSecret(
@@ -726,6 +727,9 @@ func processPemFilesIfAny(builder *plan.Builder, providerSpec *baremetalspecv1.B
 		if err != nil {
 			return nil, nil, nil, err
 		}
+		secretResources["authentication"] = &secretResourceSpec{
+			secretName: authenticationSecretName,
+			resource:   &resource.KubectlApply{Namespace: object.String(ns), Manifest: authenticationSecretManifest, Filename: object.String(authenticationSecretName)}}
 	}
 	if providerSpec.Authorization != nil {
 		authorizationSecretFileName = providerSpec.Authorization.SecretFile
@@ -734,6 +738,9 @@ func processPemFilesIfAny(builder *plan.Builder, providerSpec *baremetalspecv1.B
 		if err != nil {
 			return nil, nil, nil, err
 		}
+		secretResources["authorization"] = &secretResourceSpec{
+			secretName: authorizationSecretName,
+			resource:   &resource.KubectlApply{Namespace: object.String(ns), Manifest: authorizationSecretManifest, Filename: object.String(authorizationSecretName)}}
 	}
 	filePlan, err := b.Plan()
 	if err != nil {
@@ -746,7 +753,6 @@ func processPemFilesIfAny(builder *plan.Builder, providerSpec *baremetalspecv1.B
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	secretResources := createPemSecretResources(authenticationSecretManifest, authorizationSecretManifest, authenticationSecretName, authorizationSecretName, ns)
 	return secretResources, authConfigMap, authConfigMapManifest, nil
 }
 
@@ -777,21 +783,6 @@ func checkPemValues(providerSpec *baremetalspecv1.BareMetalClusterSpec, privateK
 		return errors.New("A secret must be specified to configure an authentication or authorization specification.")
 	}
 	return nil
-}
-
-func createPemSecretResources(authenticationManifest, authorizationManifest []byte, authenticationSecretName, authorizationSecretName, namespace string) map[string]*secretResourceSpec {
-	result := map[string]*secretResourceSpec{}
-	if authenticationSecretName != "" {
-		result["authentication"] = &secretResourceSpec{
-			secretName: authenticationSecretName,
-			resource:   &resource.KubectlApply{Namespace: object.String(namespace), Manifest: authenticationManifest, Filename: object.String(authenticationSecretName)}}
-	}
-	if authorizationSecretName != "" {
-		result["authorization"] = &secretResourceSpec{
-			secretName: authorizationSecretName,
-			resource:   &resource.KubectlApply{Namespace: object.String(namespace), Manifest: authorizationManifest, Filename: object.String(authorizationSecretName)}}
-	}
-	return result
 }
 
 func createAuthConfigMapManifest(authnSecretName, authzSecretName string, authnConfig, authzConfig []byte) (*v1.ConfigMap, []byte, error) {
