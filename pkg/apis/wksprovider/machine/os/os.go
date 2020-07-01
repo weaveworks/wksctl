@@ -575,7 +575,7 @@ func addClusterAPICRDs(b *plan.Builder) ([]string, error) {
 }
 
 func (o OS) seedNodeSetupPlan(params SeedNodeParams, providerSpec *baremetalspecv1.BareMetalClusterSpec, providerConfigMaps map[string]*v1.ConfigMap, authConfigMap *v1.ConfigMap, secretResources map[string]*secretResourceSpec, kubernetesVersion, kubernetesNamespace string) (*plan.Plan, error) {
-	secrets := map[string]map[string][]byte{}
+	secrets := map[string]resource.SecretData{}
 	for k, v := range secretResources {
 		secrets[k] = v.decrypted
 	}
@@ -699,7 +699,7 @@ func getConfigFileContents(fileNameComponent ...string) ([]byte, error) {
 
 type secretResourceSpec struct {
 	secretName string
-	decrypted  map[string][]byte
+	decrypted  resource.SecretData
 	resource   plan.Resource
 }
 
@@ -1111,7 +1111,7 @@ type NodeParams struct {
 	ConfigFileSpecs          []baremetalspecv1.FileSpec
 	ProviderConfigMaps       map[string]*v1.ConfigMap
 	AuthConfigMap            *v1.ConfigMap
-	Secrets                  map[string]map[string][]byte // type of auth -> names/values as-in v1.Secret
+	Secrets                  map[string]resource.SecretData // kind of auth -> names/values as-in v1.Secret
 	Namespace                string
 	ControlPlaneEndpoint     string // used instead of MasterIP if existed
 	AddonNamespaces          map[string]string
@@ -1198,7 +1198,7 @@ func (o OS) CreateNodeSetupPlan(params NodeParams) (*plan.Plan, error) {
 	return createPlan(b)
 }
 
-func addAuthConfigResources(b *plan.Builder, authConfigMap *v1.ConfigMap, secretData map[string][]byte, authType string) error {
+func addAuthConfigResources(b *plan.Builder, authConfigMap *v1.ConfigMap, secretData resource.SecretData, authType string) error {
 	secretName := authConfigMap.Data[authType+"-secret-name"]
 	if secretName != "" {
 		authPemRsrc, err := resource.NewKubeSecretResource(secretName, secretData, filepath.Join(PemDestDir, secretName),

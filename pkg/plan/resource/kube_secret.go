@@ -22,10 +22,13 @@ type KubeSecret struct {
 	// DestinationDirectory is the location in which to write stored file data
 	DestinationDirectory string `structs:"destinationDirectory"`
 	// SecretData holds the actual secret contents -- not serialized
-	SecretData map[string][]byte `structs:"-" plan:"hide"`
+	SecretData SecretData `structs:"-" plan:"hide"`
 	// FileNameTransform transforms a secret key into the file name for its contents
 	FileNameTransform func(string) string
 }
+
+// SecretData maps names to values as in Kubernetes v1.Secret
+type SecretData map[string][]byte
 
 var (
 	_ plan.Resource = plan.RegisterResource(&KubeSecret{})
@@ -41,7 +44,7 @@ func flattenMap(m map[string][]byte) []byte {
 }
 
 // NewKubeSecretResource creates a new object from secret data
-func NewKubeSecretResource(secretName string, secretData map[string][]byte, destinationDirectory string, fileNameTransform func(string) string) (*KubeSecret, error) {
+func NewKubeSecretResource(secretName string, secretData SecretData, destinationDirectory string, fileNameTransform func(string) string) (*KubeSecret, error) {
 	return &KubeSecret{
 		SecretName:           secretName,
 		Checksum:             sha256.Sum256(flattenMap(secretData)),

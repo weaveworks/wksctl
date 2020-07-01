@@ -22,6 +22,7 @@ import (
 	"github.com/weaveworks/wksctl/pkg/kubernetes/drain"
 	"github.com/weaveworks/wksctl/pkg/plan"
 	"github.com/weaveworks/wksctl/pkg/plan/recipe"
+	"github.com/weaveworks/wksctl/pkg/plan/resource"
 	"github.com/weaveworks/wksctl/pkg/plan/runners/ssh"
 	"github.com/weaveworks/wksctl/pkg/specs"
 	bootstraputils "github.com/weaveworks/wksctl/pkg/utilities/kubeadm"
@@ -600,7 +601,7 @@ func (a *MachineController) getNodePlan(provider *baremetalspecv1.BareMetalClust
 	if err != nil {
 		return nil, err
 	}
-	var authSecrets map[string]map[string][]byte
+	var authSecrets map[string]resource.SecretData
 	if authConfigMap != nil {
 		authSecrets, err = a.getAuthSecrets(authConfigMap)
 		if err != nil {
@@ -648,8 +649,8 @@ func (a *MachineController) getAuthConfigMap() (*v1.ConfigMap, error) {
 	return nil, nil
 }
 
-func (a *MachineController) getAuthSecrets(authConfigMap *v1.ConfigMap) (map[string]map[string][]byte, error) {
-	authSecrets := map[string]map[string][]byte{}
+func (a *MachineController) getAuthSecrets(authConfigMap *v1.ConfigMap) (map[string]resource.SecretData, error) {
+	authSecrets := map[string]resource.SecretData{}
 	for _, authType := range []string{"authentication", "authorization"} {
 		secretName := authConfigMap.Data[authType+"-secret-name"]
 		client := a.clientSet.CoreV1().Secrets(a.controllerNamespace)
