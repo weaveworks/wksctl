@@ -45,9 +45,8 @@ require (
 	k8s.io/apimachinery v0.18.2
 	k8s.io/client-go v11.0.0+incompatible
 	k8s.io/cluster-bootstrap v0.17.2
-	k8s.io/kube-openapi v0.0.0-20200403204345-e1beb1bd0f35 // indirect
-	k8s.io/kube-proxy v0.0.0
-	k8s.io/kubernetes v1.18.1
+	k8s.io/kube-proxy v0.18.5
+	k8s.io/kubernetes v1.18.5
 	k8s.io/utils v0.0.0-20200414100711-2df71ebbae66
 	sigs.k8s.io/cluster-api v0.3.3
 	sigs.k8s.io/controller-runtime v0.5.2

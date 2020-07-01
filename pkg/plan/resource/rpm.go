@@ -15,9 +15,10 @@ import (
 type RPM struct {
 	Name string `structs:"name"`
 	// Version is optional
-	Version         string `structs:"version,omitempty"`
-	Release         string `structs:"release,omitempty"`
-	DisableExcludes string `structs:"disableExcludes,omitempty"`
+	Version             string `structs:"version,omitempty"`
+	Release             string `structs:"release,omitempty"`
+	IgnoreOtherVersions bool   `structs:"ignoreOtherVersions,omitempty"`
+	DisableExcludes     string `structs:"disableExcludes,omitempty"`
 }
 
 type rpmState plan.State
@@ -144,17 +145,17 @@ func (p *RPM) Apply(r plan.Runner, diff plan.Diff) (bool, error) {
 	return err == nil, err
 }
 
-func (p *RPM) shouldUndo(current plan.State) bool {
-	// If package isn't installed, nothing to do!
-	return !current.IsEmpty()
+// Separate the action out so that it can be mocked
+var undoAction = func(p *RPM, r plan.Runner, current plan.State, pkgDescription string) error {
+	_, err := r.RunCommand(fmt.Sprintf("yum -y remove %s || true", pkgDescription), nil)
+	return err
 }
 
 // Undo implements plan.Resource
 func (p *RPM) Undo(r plan.Runner, current plan.State) error {
-	if !p.shouldUndo(current) {
-		return nil
+	pkgDescription := p.Name
+	if p.IgnoreOtherVersions {
+		pkgDescription = p.label()
 	}
-
-	_, err := r.RunCommand(fmt.Sprintf("yum -y remove %s", p.label()), nil)
-	return err
+	return undoAction(p, r, current, pkgDescription)
 }
