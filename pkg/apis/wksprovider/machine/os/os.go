@@ -1185,23 +1185,15 @@ func (o OS) CreateNodeSetupPlan(params NodeParams) (*plan.Plan, error) {
 	return createPlan(b)
 }
 
-func addAuthConfigResources(b *plan.Builder, authConfigMap *v1.ConfigMap, authType, ns string) error {
+func addAuthConfigResources(b *plan.Builder, authConfigMap *v1.ConfigMap, secretData map[string][]byte, authType string) error {
 	secretName := authConfigMap.Data[authType+"-secret-name"]
 	if secretName != "" {
-		var authPemRsrc plan.Resource
-		for {
-			res, err := resource.NewKubeSecretResource(secretName, filepath.Join(PemDestDir, secretName), ns,
-				func(s string) string {
-					return s + ".pem"
-				})
-			if err != nil {
-				return err
-			}
-			if res != nil {
-				authPemRsrc = res
-				break
-			}
-			time.Sleep(500 * time.Millisecond)
+		authPemRsrc, err := resource.NewKubeSecretResource(secretName, secretData, filepath.Join(PemDestDir, secretName),
+			func(s string) string {
+				return s + ".pem"
+			})
+		if err != nil {
+			return err
 		}
 		b.AddResource("install:"+authType+"-pem-files", authPemRsrc, plan.DependOn("install:base"))
 		b.AddResource("install:"+authType+"-config", &resource.File{Content: authConfigMap.Data[authType+"-config"], Destination: filepath.Join(ConfigDestDir, secretName+".yaml")})

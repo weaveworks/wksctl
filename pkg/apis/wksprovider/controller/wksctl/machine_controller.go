@@ -600,6 +600,13 @@ func (a *MachineController) getNodePlan(provider *baremetalspecv1.BareMetalClust
 	if err != nil {
 		return nil, err
 	}
+	var authSecrets map[string]map[string][]byte
+	if authConfigMap != nil {
+		authSecrets, err = a.getAuthSecrets(authConfigMap)
+		if err != nil {
+			return nil, err
+		}
+	}
 	plan, err := installer.CreateNodeSetupPlan(os.NodeParams{
 		IsMaster:                 machine.Labels["set"] == "master",
 		MasterIP:                 masterIP,
@@ -617,6 +624,7 @@ func (a *MachineController) getNodePlan(provider *baremetalspecv1.BareMetalClust
 		ConfigFileSpecs:      provider.Spec.OS.Files,
 		ProviderConfigMaps:   configMaps,
 		AuthConfigMap:        authConfigMap,
+		Secrets:              authSecrets,
 		Namespace:            namespace,
 		ControlPlaneEndpoint: provider.Spec.ControlPlaneEndpoint,
 	})
@@ -638,6 +646,25 @@ func (a *MachineController) getAuthConfigMap() (*v1.ConfigMap, error) {
 		}
 	}
 	return nil, nil
+}
+
+func (a *MachineController) getAuthSecrets(authConfigMap *v1.ConfigMap) (map[string]map[string][]byte, error) {
+	authSecrets := map[string]map[string][]byte{}
+	for _, authType := range []string{"authentication", "authorization"} {
+		secretName := authConfigMap.Data[authType+"-secret-name"]
+		client := a.clientSet.CoreV1().Secrets(a.controllerNamespace)
+		secret, err := client.Get(secretName, metav1.GetOptions{})
+		// TODO: retry several times like the old code did (?)
+		// TODO: check whether it is a not-found response
+		if err != nil {
+			// No secret present
+			continue
+		}
+		if secret.Data != nil {
+			authSecrets[authType] = secret.Data
+		}
+	}
+	return authSecrets, nil
 }
 
 func (a *MachineController) getProviderConfigMaps(provider *baremetalspecv1.BareMetalCluster) (map[string]*v1.ConfigMap, error) {
