@@ -13,7 +13,6 @@ import (
 	"regexp"
 	"strings"
 	"text/template"
-	"time"
 
 	ssv1alpha1 "github.com/bitnami-labs/sealed-secrets/pkg/apis/sealed-secrets/v1alpha1"
 	"github.com/bitnami-labs/sealed-secrets/pkg/crypto"
@@ -332,7 +331,7 @@ func (o OS) CreateSeedNodeSetupPlan(params SeedNodeParams) (*plan.Plan, error) {
 	}
 
 	// Set plan as an annotation on node, just like controller does
-	seedNodePlan, err := o.seedNodeSetupPlan(params, &cluster.Spec, configMaps, authConfigMap, kubernetesVersion, kubernetesNamespace)
+	seedNodePlan, err := o.seedNodeSetupPlan(params, &cluster.Spec, configMaps, authConfigMap, pemSecretResources, kubernetesVersion, kubernetesNamespace)
 	if err != nil {
 		return nil, err
 	}
@@ -575,7 +574,11 @@ func addClusterAPICRDs(b *plan.Builder) ([]string, error) {
 	return crdIDs, nil
 }
 
-func (o OS) seedNodeSetupPlan(params SeedNodeParams, providerSpec *baremetalspecv1.BareMetalClusterSpec, providerConfigMaps map[string]*v1.ConfigMap, authConfigMap *v1.ConfigMap, kubernetesVersion, kubernetesNamespace string) (*plan.Plan, error) {
+func (o OS) seedNodeSetupPlan(params SeedNodeParams, providerSpec *baremetalspecv1.BareMetalClusterSpec, providerConfigMaps map[string]*v1.ConfigMap, authConfigMap *v1.ConfigMap, secretResources map[string]*secretResourceSpec, kubernetesVersion, kubernetesNamespace string) (*plan.Plan, error) {
+	secrets := map[string]resource.SecretData{}
+	for k, v := range secretResources {
+		secrets[k] = v.decrypted
+	}
 	nodeParams := NodeParams{
 		IsMaster:             true,
 		MasterIP:             params.PrivateIP,
@@ -586,6 +589,7 @@ func (o OS) seedNodeSetupPlan(params SeedNodeParams, providerSpec *baremetalspec
 		ConfigFileSpecs:      providerSpec.OS.Files,
 		ProviderConfigMaps:   providerConfigMaps,
 		AuthConfigMap:        authConfigMap,
+		Secrets:              secrets,
 		Namespace:            params.Namespace,
 		AddonNamespaces:      params.AddonNamespaces,
 		ControlPlaneEndpoint: providerSpec.ControlPlaneEndpoint,
@@ -695,6 +699,7 @@ func getConfigFileContents(fileNameComponent ...string) ([]byte, error) {
 
 type secretResourceSpec struct {
 	secretName string
+	decrypted  resource.SecretData
 	resource   plan.Resource
 }
 
@@ -719,21 +724,31 @@ func processPemFilesIfAny(builder *plan.Builder, providerSpec *baremetalspecv1.B
 	}
 	var authenticationSecretFileName, authorizationSecretFileName, authenticationSecretName, authorizationSecretName string
 	var authenticationSecretManifest, authorizationSecretManifest, authenticationConfig, authorizationConfig []byte
+	var decrypted map[string][]byte
+	secretResources := map[string]*secretResourceSpec{}
 	if providerSpec.Authentication != nil {
 		authenticationSecretFileName = providerSpec.Authentication.SecretFile
-		authenticationSecretManifest, authenticationSecretName, authenticationConfig, err = processSecret(
+		authenticationSecretManifest, decrypted, authenticationSecretName, authenticationConfig, err = processSecret(
 			b, privateKey, configDir, authenticationSecretFileName, providerSpec.Authentication.URL)
 		if err != nil {
 			return nil, nil, nil, err
 		}
+		secretResources["authentication"] = &secretResourceSpec{
+			secretName: authenticationSecretName,
+			decrypted:  decrypted,
+			resource:   &resource.KubectlApply{Namespace: object.String(ns), Manifest: authenticationSecretManifest, Filename: object.String(authenticationSecretName)}}
 	}
 	if providerSpec.Authorization != nil {
 		authorizationSecretFileName = providerSpec.Authorization.SecretFile
-		authorizationSecretManifest, authorizationSecretName, authorizationConfig, err = processSecret(
+		authorizationSecretManifest, decrypted, authorizationSecretName, authorizationConfig, err = processSecret(
 			b, privateKey, configDir, authorizationSecretFileName, providerSpec.Authorization.URL)
 		if err != nil {
 			return nil, nil, nil, err
 		}
+		secretResources["authorization"] = &secretResourceSpec{
+			secretName: authorizationSecretName,
+			decrypted:  decrypted,
+			resource:   &resource.KubectlApply{Namespace: object.String(ns), Manifest: authorizationSecretManifest, Filename: object.String(authorizationSecretName)}}
 	}
 	filePlan, err := b.Plan()
 	if err != nil {
@@ -746,7 +761,6 @@ func processPemFilesIfAny(builder *plan.Builder, providerSpec *baremetalspecv1.B
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	secretResources := createPemSecretResources(authenticationSecretManifest, authorizationSecretManifest, authenticationSecretName, authorizationSecretName, ns)
 	return secretResources, authConfigMap, authConfigMapManifest, nil
 }
 
@@ -779,21 +793,6 @@ func checkPemValues(providerSpec *baremetalspecv1.BareMetalClusterSpec, privateK
 	return nil
 }
 
-func createPemSecretResources(authenticationManifest, authorizationManifest []byte, authenticationSecretName, authorizationSecretName, namespace string) map[string]*secretResourceSpec {
-	result := map[string]*secretResourceSpec{}
-	if authenticationSecretName != "" {
-		result["authentication"] = &secretResourceSpec{
-			secretName: authenticationSecretName,
-			resource:   &resource.KubectlApply{Namespace: object.String(namespace), Manifest: authenticationManifest, Filename: object.String(authenticationSecretName)}}
-	}
-	if authorizationSecretName != "" {
-		result["authorization"] = &secretResourceSpec{
-			secretName: authorizationSecretName,
-			resource:   &resource.KubectlApply{Namespace: object.String(namespace), Manifest: authorizationManifest, Filename: object.String(authorizationSecretName)}}
-	}
-	return result
-}
-
 func createAuthConfigMapManifest(authnSecretName, authzSecretName string, authnConfig, authzConfig []byte) (*v1.ConfigMap, []byte, error) {
 	data := map[string]string{}
 	storeIfNotEmpty(data, "authentication-secret-name", authnSecretName)
@@ -812,35 +811,39 @@ func createAuthConfigMapManifest(authnSecretName, authzSecretName string, authnC
 	return &cm, manifest, nil
 }
 
-func processSecret(b *plan.Builder, key *rsa.PrivateKey, configDir, secretFileName, URL string) ([]byte, string, []byte, error) {
+// Decrypts secret, adds plan resources to install files found inside, plus a kubeconfig file pointing to them.
+// returns the sealed file contents, decrypted contents, secret name, kubeconfig, error if any
+func processSecret(b *plan.Builder, key *rsa.PrivateKey, configDir, secretFileName, URL string) ([]byte, map[string][]byte, string, []byte, error) {
 	contents, err := getConfigFileContents(configDir, secretFileName)
 	if err != nil {
-		return nil, "", nil, err
+		return nil, nil, "", nil, err
 	}
 	object, err := runtime.Decode(scheme.Codecs.UniversalDecoder(ssv1alpha1.SchemeGroupVersion), contents)
 	if err != nil {
-		return nil, "", nil, err
+		return nil, nil, "", nil, err
 	}
 	fingerprint, err := crypto.PublicKeyFingerprint(&key.PublicKey)
 	if err != nil {
-		return nil, "", nil, err
+		return nil, nil, "", nil, err
 	}
 	keys := map[string]*rsa.PrivateKey{fingerprint: key}
 	switch s := object.(type) {
 	case *ssv1alpha1.SealedSecret:
 		secret, err := s.Unseal(scheme.Codecs, keys)
 		if err != nil {
-			return nil, "", nil, errors.Wrap(err, "Could not unseal auth secret")
+			return nil, nil, "", nil, errors.Wrap(err, "Could not unseal auth secret")
 		}
+		decrypted := map[string][]byte{}
 		secretName := secret.Name
 		for _, key := range pemKeys {
 			fileContents, ok := secret.Data[key]
 			if !ok {
-				return nil, "", nil, fmt.Errorf("Missing auth config value for: %q in secret %q", key, secretName)
+				return nil, nil, "", nil, fmt.Errorf("Missing auth config value for: %q in secret %q", key, secretName)
 			}
 			resName := secretName + "-" + key
 			fileName := filepath.Join(PemDestDir, secretName, key+".pem")
 			b.AddResource("install:"+resName, &resource.File{Content: string(fileContents), Destination: fileName}, plan.DependOn("set-perms:pem-dir"))
+			decrypted[key] = fileContents
 		}
 		contextName := secretName + "-webhook"
 		userName := secretName + "-api-server"
@@ -869,14 +872,14 @@ func processSecret(b *plan.Builder, key *rsa.PrivateKey, configDir, secretFileNa
 		}
 		authConfig, err := clientcmd.Write(*config)
 		if err != nil {
-			return nil, "", nil, err
+			return nil, nil, "", nil, err
 		}
 		configResource := &resource.File{Content: string(authConfig), Destination: filepath.Join(ConfigDestDir, secretName+".yaml")}
 		b.AddResource("install:"+secretName, configResource, plan.DependOn("set-perms:pem-dir"))
 
-		return contents, secretName, authConfig, nil
+		return contents, decrypted, secretName, authConfig, nil
 	default:
-		return nil, "", nil, fmt.Errorf("File %q does not contain a sealed secret", secretFileName)
+		return nil, nil, "", nil, fmt.Errorf("File %q does not contain a sealed secret", secretFileName)
 	}
 }
 
@@ -1108,6 +1111,7 @@ type NodeParams struct {
 	ConfigFileSpecs          []baremetalspecv1.FileSpec
 	ProviderConfigMaps       map[string]*v1.ConfigMap
 	AuthConfigMap            *v1.ConfigMap
+	Secrets                  map[string]resource.SecretData // kind of auth -> names/values as-in v1.Secret
 	Namespace                string
 	ControlPlaneEndpoint     string // used instead of MasterIP if existed
 	AddonNamespaces          map[string]string
@@ -1160,7 +1164,7 @@ func (o OS) CreateNodeSetupPlan(params NodeParams) (*plan.Plan, error) {
 	authConfigMap := params.AuthConfigMap
 	if authConfigMap != nil && params.IsMaster {
 		for _, authType := range []string{"authentication", "authorization"} {
-			if err := addAuthConfigResources(b, authConfigMap, authType, params.Namespace); err != nil {
+			if err := addAuthConfigResources(b, authConfigMap, params.Secrets[authType], authType); err != nil {
 				return nil, err
 			}
 		}
@@ -1194,23 +1198,15 @@ func (o OS) CreateNodeSetupPlan(params NodeParams) (*plan.Plan, error) {
 	return createPlan(b)
 }
 
-func addAuthConfigResources(b *plan.Builder, authConfigMap *v1.ConfigMap, authType, ns string) error {
+func addAuthConfigResources(b *plan.Builder, authConfigMap *v1.ConfigMap, secretData resource.SecretData, authType string) error {
 	secretName := authConfigMap.Data[authType+"-secret-name"]
 	if secretName != "" {
-		var authPemRsrc plan.Resource
-		for {
-			res, err := resource.NewKubeSecretResource(secretName, filepath.Join(PemDestDir, secretName), ns,
-				func(s string) string {
-					return s + ".pem"
-				})
-			if err != nil {
-				return err
-			}
-			if res != nil {
-				authPemRsrc = res
-				break
-			}
-			time.Sleep(500 * time.Millisecond)
+		authPemRsrc, err := resource.NewKubeSecretResource(secretName, secretData, filepath.Join(PemDestDir, secretName),
+			func(s string) string {
+				return s + ".pem"
+			})
+		if err != nil {
+			return err
 		}
 		b.AddResource("install:"+authType+"-pem-files", authPemRsrc, plan.DependOn("install:base"))
 		b.AddResource("install:"+authType+"-config", &resource.File{Content: authConfigMap.Data[authType+"-config"], Destination: filepath.Join(ConfigDestDir, secretName+".yaml")})

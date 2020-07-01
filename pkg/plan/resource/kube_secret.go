@@ -7,18 +7,11 @@ import (
 	"sort"
 	"strings"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/scripts"
 	"github.com/weaveworks/wksctl/pkg/plan"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 )
 
-// KubeSecret is a resource that reads a value out of a secret and writes it to the filesystem. It
-// can only be created when running in code deployed within the cluster because we want to store the
-// hash of the secret data in the Resource before the Plan is run so we can compare it against a later
-// version of the Plan when the secret is updated.
+// KubeSecret writes secrets to the filesystem where they can be picked up by daemons
 type KubeSecret struct {
 	base
 
@@ -29,10 +22,13 @@ type KubeSecret struct {
 	// DestinationDirectory is the location in which to write stored file data
 	DestinationDirectory string `structs:"destinationDirectory"`
 	// SecretData holds the actual secret contents -- not serialized
-	SecretData map[string][]byte `structs:"-" plan:"hide"`
+	SecretData SecretData `structs:"-" plan:"hide"`
 	// FileNameTransform transforms a secret key into the file name for its contents
 	FileNameTransform func(string) string
 }
+
+// SecretData maps names to values as in Kubernetes v1.Secret
+type SecretData map[string][]byte
 
 var (
 	_ plan.Resource = plan.RegisterResource(&KubeSecret{})
@@ -47,26 +43,13 @@ func flattenMap(m map[string][]byte) []byte {
 	return []byte(strings.Join(items, ","))
 }
 
-func NewKubeSecretResource(secretName, destinationDirectory, ns string, fileNameTransform func(string) string) (*KubeSecret, error) {
-	config, err := rest.InClusterConfig()
-	if err != nil {
-		return nil, err
-	}
-	clientSet, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		log.Fatalf("failed to create Kubernetes client set: %v", err)
-	}
-	client := clientSet.CoreV1().Secrets(ns)
-	secret, err := client.Get(secretName, metav1.GetOptions{})
-	if err != nil {
-		// No secret present
-		return nil, nil
-	}
+// NewKubeSecretResource creates a new object from secret data
+func NewKubeSecretResource(secretName string, secretData SecretData, destinationDirectory string, fileNameTransform func(string) string) (*KubeSecret, error) {
 	return &KubeSecret{
 		SecretName:           secretName,
-		Checksum:             sha256.Sum256(flattenMap(secret.Data)),
+		Checksum:             sha256.Sum256(flattenMap(secretData)),
 		DestinationDirectory: destinationDirectory,
-		SecretData:           secret.Data,
+		SecretData:           secretData,
 		FileNameTransform:    fileNameTransform,
 	}, nil
 }

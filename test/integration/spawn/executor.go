@@ -173,9 +173,6 @@ func (e *Executor) RunCmd(cmd *exec.Cmd) (*Entry, error) {
 		}
 	}
 
-	<-syncChan
-	<-syncChan
-
 	err = cmd.Wait()
 	exitCode, err := exitCode(err)
 	entry.exitCode = exitCode
