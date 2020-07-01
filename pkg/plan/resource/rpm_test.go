@@ -128,7 +128,8 @@ func TestUndo(t *testing.T) {
 		return nil
 	}
 	res := &RPM{Name: "make", Version: "3.82", Release: "23.el7"}
-	res.Undo(&sudo.Runner{}, plan.EmptyState)
+	err := res.Undo(&sudo.Runner{}, plan.EmptyState)
+	assert.NoError(t, err)
 	assert.True(t, undid)
 
 	// Test that we can choose to remove ANY version
@@ -137,11 +138,13 @@ func TestUndo(t *testing.T) {
 		description = pkgDesc
 		return nil
 	}
-	res.Undo(&sudo.Runner{}, plan.EmptyState)
+	err = res.Undo(&sudo.Runner{}, plan.EmptyState)
+	assert.NoError(t, err)
 	assert.Equal(t, description, "make")
 
 	// Test that we can choose to remove only the matching version
 	res = &RPM{Name: "make", Version: "3.82", Release: "23.el7", IgnoreOtherVersions: true}
-	res.Undo(&sudo.Runner{}, plan.EmptyState)
+	err = res.Undo(&sudo.Runner{}, plan.EmptyState)
+	assert.NoError(t, err)
 	assert.Equal(t, description, "make-3.82-23.el7")
 }

@@ -12,6 +12,7 @@ require (
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-logr/zapr v0.1.1 // indirect
 	github.com/golang/protobuf v1.4.0 // indirect
+	github.com/golangci/golangci-lint v1.27.0 // indirect
 	github.com/google/go-jsonnet v0.11.2
 	github.com/googleapis/gnostic v0.4.1 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.1 // indirect
@@ -26,7 +27,7 @@ require (
 	github.com/sirupsen/logrus v1.4.2
 	github.com/spf13/cobra v0.0.6
 	github.com/spf13/pflag v1.0.5
-	github.com/stretchr/testify v1.4.0
+	github.com/stretchr/testify v1.5.1
 	github.com/thanhpk/randstr v0.0.0-20190104161604-ac5b2d62bffb
 	github.com/weaveworks/footloose v0.0.0-20190903132036-efbcbb7a6390
 	github.com/weaveworks/go-checkpoint v0.0.0-20170503165305-ebbb8b0518ab
