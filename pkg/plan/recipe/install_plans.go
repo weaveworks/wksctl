@@ -312,9 +312,14 @@ func BuildK8SPlan(kubernetesVersion string, kubeletNodeIP string, seLinuxInstall
 		}
 	}
 	b.AddResource(
+		"systemd:daemon-reload",
+		&resource.Run{Script: object.String("systemctl daemon-reload")},
+		plan.DependOn("install:kubelet"),
+	)
+	b.AddResource(
 		"service-init:kubelet",
 		&resource.Service{Name: "kubelet", Status: "active", Enabled: true},
-		plan.DependOn("install:kubelet", kubeletDeps...))
+		plan.DependOn("systemd:daemon-reload", kubeletDeps...))
 	p, err := b.Plan()
 	if err != nil {
 		log.Fatalf("%v", err)
