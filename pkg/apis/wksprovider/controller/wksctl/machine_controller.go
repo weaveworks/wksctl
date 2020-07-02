@@ -654,7 +654,7 @@ func (a *MachineController) getAuthSecrets(authConfigMap *v1.ConfigMap) (map[str
 	for _, authType := range []string{"authentication", "authorization"} {
 		secretName := authConfigMap.Data[authType+"-secret-name"]
 		client := a.clientSet.CoreV1().Secrets(a.controllerNamespace)
-		secret, err := client.Get(secretName, metav1.GetOptions{})
+		secret, err := client.Get(context.TODO(), secretName, metav1.GetOptions{})
 		// TODO: retry several times like the old code did (?)
 		// TODO: check whether it is a not-found response
 		if err != nil {
