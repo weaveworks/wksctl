@@ -17,7 +17,6 @@ require (
 	github.com/googleapis/gnostic v0.4.1 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.1 // indirect
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
-	github.com/imdario/mergo v0.3.9 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
 	github.com/oleiade/reflections v1.0.0 // indirect
@@ -38,9 +37,7 @@ require (
 	github.com/whilp/git-urls v0.0.0-20191001220047-6db9661140c0
 	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
 	golang.org/x/net v0.0.0-20200324143707-d3edc9973b7e // indirect
-	golang.org/x/sync v0.0.0-20200317015054-43a5402ce75a // indirect
 	golang.org/x/sys v0.0.0-20200413165638-669c56c373c4 // indirect
-	golang.org/x/time v0.0.0-20200416051211-89c76fbcd5d1 // indirect
 	golang.org/x/tools v0.0.0-20200502202811-ed308ab3e770 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.1.0 // indirect
 	google.golang.org/appengine v1.6.5 // indirect
@@ -61,6 +58,7 @@ require (
 
 replace (
 	github.com/appscode/jsonpatch => gomodules.xyz/jsonpatch/v2 v2.0.0+incompatible
+	github.com/dlespiau/kube-test-harness => github.com/luxas/kube-test-harness v0.0.1
 	github.com/googleapis/gnostic => github.com/googleapis/gnostic v0.3.0
 	k8s.io/api => k8s.io/api v0.18.5
 	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.18.5
