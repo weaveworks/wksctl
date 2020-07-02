@@ -27,14 +27,7 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&BareMetalCluster{},
 		&BareMetalClusterList{},
 	)
+	// TODO: Do we really need this?
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
 	return nil
-}
-
-func NewScheme() (*runtime.Scheme, error) {
-	scheme := runtime.NewScheme()
-	if err := AddToScheme(scheme); err != nil {
-		return nil, err
-	}
-	return scheme, nil
 }
