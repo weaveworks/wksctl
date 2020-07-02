@@ -254,9 +254,9 @@ func testCIDRBlocks(t *testing.T, kubeconfig string) {
 	podIP, err := cmd.CombinedOutput()
 	log.Printf("wks-controller has IP: %s\n", string(podIP))
 	assert.NoError(t, err)
-	isValid, err := assertIPisWithinRange(string(podIP), "192.168.0.0/16")
+	isValid, err := assertIPisWithinRange(string(podIP), "192.168.128.0/17")
 	assert.NoError(t, err)
-	log.Printf("Pod IP %s is inside 192.168.0.0/16 range? %v\n", podIP, isValid)
+	log.Printf("Pod IP %s is inside 192.168.127.0/17 range? %v\n", podIP, isValid)
 	assert.True(t, isValid)
 
 	cmdItems = []string{kubectl,
@@ -440,6 +440,9 @@ func TestApply(t *testing.T) {
 	t.Run("Nodes", func(t *testing.T) {
 		testNodes(t, numMasters(machines), numWorkers(machines))
 	})
+
+	t.Log("Waiting 1 minute for nodes to settle")
+	time.Sleep(1 * time.Minute)
 
 	//Test we have installed the specified version.
 	t.Run("KubernetesVersion", func(t *testing.T) {

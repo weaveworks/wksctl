@@ -381,7 +381,21 @@ type resourceType struct {
 
 // ToJSON translates a Plan into JSON using State as an intermediate target
 func (p *Plan) ToJSON() string {
-	return displayableState(p.toState()).Marshal()
+	s := displayableState(p.toState())
+	json, _ := json.Marshal(s)
+	return string(json)
+}
+
+// ToHumanReadableJSON translates a Plan into JSON using State as an intermediate target
+func (p *Plan) ToHumanReadableJSON() string {
+	s := displayableState(p.toState())
+	json, _ := json.MarshalIndent(s, "", " ")
+	return string(json)
+}
+
+// ToState translates a Plan into a State
+func (p *Plan) ToState() State {
+	return displayableState(p.toState())
 }
 
 // ToDOT translates a Plan into DOT output

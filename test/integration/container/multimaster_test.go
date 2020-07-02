@@ -28,7 +28,7 @@ spec:
     services:
       cidrBlocks: [10.96.0.0/12]
     pods:
-      cidrBlocks: [192.168.0.0/16]
+      cidrBlocks: [192.168.128.0/17]
     serviceDomain: cluster.local
   infrastructureRef:
     apiVersion: "cluster.weave.works/v1alpha3"
@@ -69,6 +69,8 @@ spec:
         value: "true"
       - name: container-runtime
         value: docker
+      - name: eviction-hard
+        value: "memory.available<100Mi,nodefs.available<100Mi,imagefs.available<100Mi"
       apiServer:
         extraArguments:
         - name: alsologtostderr

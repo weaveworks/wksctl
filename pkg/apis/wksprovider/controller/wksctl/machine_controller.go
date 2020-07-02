@@ -8,9 +8,9 @@ import (
 	"io"
 	"math/rand"
 	goos "os"
+	"strings"
 	"time"
 
-	"github.com/chanwit/plandiff"
 	gerrors "github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/weaveworks/footloose/pkg/cluster"
@@ -424,14 +424,22 @@ func (a *MachineController) update(ctx context.Context, c *baremetalspecv1.BareM
 	if err != nil {
 		return gerrors.Wrapf(err, "Failed to get node plan for machine %s", machine.Name)
 	}
-	planJSON := nodePlan.ToJSON()
-	currentPlan := node.Annotations[recipe.PlanKey]
-	if currentPlan == planJSON {
+	planState := nodePlan.ToState()
+	currentPlan, found := node.Annotations[recipe.PlanKey]
+	if !found {
+		contextLog.Info("No plan annotation on Node; unable to update")
+		return nil
+	}
+	currentState, err := plan.NewStateFromJSON(strings.NewReader(currentPlan))
+	if err != nil {
+		return gerrors.Wrapf(err, "Failed to parse node plan for machine %s", machine.Name)
+	}
+	if !currentState.Equal(planState) {
 		contextLog.Info("Machine and node have matching plans; nothing to do")
 		return nil
 	}
 
-	if diffedPlan, err := plandiff.GetUnifiedDiff(currentPlan, planJSON); err == nil {
+	if diffedPlan, err := currentState.Diff(planState); err == nil {
 		contextLog.Info("........................ DIFF PLAN ........................")
 		fmt.Print(diffedPlan)
 	} else {
@@ -445,6 +453,7 @@ func (a *MachineController) update(ctx context.Context, c *baremetalspecv1.BareM
 			return err
 		}
 	}
+	planJSON := nodePlan.ToJSON()
 	upOrDowngrade := isUpOrDowngrade(machine, node)
 	contextLog.Infof("Is master: %t, is up or downgrade: %t", isMaster, upOrDowngrade)
 	if upOrDowngrade {
