@@ -1,6 +1,7 @@
 package plan
 
 import (
+	"fmt"
 	"log"
 	"strings"
 	"testing"
@@ -128,4 +129,32 @@ func TestMerge(t *testing.T) {
 		assert.Equal(t, test.expected, test.a)
 	}
 
+}
+
+func TestEqual(t *testing.T) {
+	tests := []struct {
+		json1    string
+		json2    string
+		expected bool
+	}{
+		{`{}`, `{}`, true},
+		{`{ }`, `{ "foo": 2 }`, false},
+		// Data types
+		{`{ "foo": 2 }`, `{  "foo": "2" }`, false},
+		{`{ "foo": "2" }`, `{  "foo": "2" }`, true},
+		// Check whitespace differences don't matter
+		{`{ "foo": 2 }`, `{  "foo": 2 }`, true},
+		{`{ "foo": 2 }`, `{ 
+			"foo": 2 }`, true},
+		// Check ordering doesn't matter
+		{`{ "foo": 1, "bar": 2 }`, `{"bar": 2, "foo": 1 }`, true},
+	}
+
+	for i, test := range tests {
+		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
+			state1 := p(test.json1)
+			state2 := p(test.json2)
+			assert.Equal(t, test.expected, state1.Equal(state2), fmt.Sprintf("%q == %q", test.json1, test.json2))
+		})
+	}
 }
