@@ -16,25 +16,25 @@ const clusterMissingClusterDefinition = `
 apiVersion: "cluster.weave.works/v1alpha3"
 kind: "ExistingInfraCluster"
 metadata:
- name: example
+  name: example
 spec:
- user: "vagrant"
+  user: "vagrant"
 `
 
 const clusterMissingExistingInfraClusterDefinition = `
 apiVersion: "cluster.x-k8s.io/v1alpha3"
 kind: Cluster
 metadata:
- name: example
+  name: example
 spec:
- clusterNetwork:
-   services:
-     cidrBlocks: ["10.96.0.0/12"]
-   pods:
-     cidrBlocks: ["192.168.0.0/16"]
-   infrastructureRef:
-     kind: ExistingInfraCluster
-     name: example
+  clusterNetwork:
+    services:
+      cidrBlocks: ["10.96.0.0/12"]
+    pods:
+      cidrBlocks: ["192.168.0.0/16"]
+  infrastructureRef:
+    kind: ExistingInfraCluster
+    name: example
 `
 
 func mergeObjects(a string, b string) string {
@@ -48,8 +48,6 @@ func parseConfig(s string) (err error) {
 }
 
 func TestParseCluster(t *testing.T) {
-	assert.NoError(t, clusterv1.AddToScheme(scheme.Scheme))
-	assert.NoError(t, existinginfrav1.AddToScheme(scheme.Scheme))
 	assert.NoError(t, parseConfig(mergeObjects(clusterMissingExistingInfraClusterDefinition, clusterMissingClusterDefinition)))
 
 	// Verify that the objects individually don't result in a successful parse

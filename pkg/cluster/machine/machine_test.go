@@ -13,7 +13,6 @@ import (
 	"github.com/weaveworks/wksctl/pkg/utilities/manifest"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-	"k8s.io/client-go/kubernetes/scheme"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"
 )
 
@@ -76,7 +75,8 @@ const machinesValid = `
   metadata:
     name: master-0
   spec:
-    address: "172.17.8.101"
+    private:
+      address: "172.17.8.101"
 ---
   apiVersion: "cluster.x-k8s.io/v1alpha3"
   kind: Machine
@@ -95,11 +95,8 @@ const machinesValid = `
   metadata:
     name: node-0
   spec:
-    address: "172.17.8.102"
-    authenticationWebhook:
-      cacheTTL: 2m0s
-      server:
-        url: http://127.0.0.1:5000/authenticate
+    private:
+      address: "172.17.8.102"
 `
 
 // A machine doesn't have a matching Kubernetes version.
@@ -121,7 +118,8 @@ const machinesInconsistentKubeVersion = `
   metadata:
     name: master-0
   spec:
-    address: "172.17.8.101"
+    private:
+      address: "172.17.8.101"
 ---
   apiVersion: "cluster.x-k8s.io/v1alpha3"
   kind: Machine
@@ -140,7 +138,8 @@ const machinesInconsistentKubeVersion = `
   metadata:
     name: node-0
   spec:
-    address: "172.17.8.102"
+    private:
+      address: "172.17.8.102"
 `
 
 // Unsupported Kubernetes version.
@@ -161,7 +160,8 @@ const machinesUnsupportedKubernetesVersion = `  apiVersion: "cluster.x-k8s.io/v1
   metadata:
     name: master-0
   spec:
-    address: "172.17.8.101"
+    private:
+      address: "172.17.8.101"
 ---
   apiVersion: "cluster.x-k8s.io/v1alpha3"
   kind: Machine
@@ -180,7 +180,8 @@ const machinesUnsupportedKubernetesVersion = `  apiVersion: "cluster.x-k8s.io/v1
   metadata:
     name: node-0
   spec:
-    address: "172.17.8.102"
+    private:
+      address: "172.17.8.102"
 `
 
 const machinesNoGodNoMaster = `
@@ -201,7 +202,8 @@ const machinesNoGodNoMaster = `
   metadata:
     name: node-0
   spec:
-    address: "172.17.8.102"
+    private:
+      address: "172.17.8.102"
 `
 
 func machinesFromString(t *testing.T, s string) ([]*clusterv1.Machine, []*existinginfrav1.ExistingInfraMachine) {
@@ -221,9 +223,6 @@ func fieldsInError(errors field.ErrorList) []string {
 }
 
 func TestValidateMachines(t *testing.T) {
-	assert.NoError(t, clusterv1.AddToScheme(scheme.Scheme))
-	assert.NoError(t, existinginfrav1.AddToScheme(scheme.Scheme))
-
 	tests := []struct {
 		input  string
 		errors []string
@@ -264,15 +263,16 @@ const machinesWithoutVersions = `
       set: master
   spec:
     infrastructureRef:
-        kind: ExistingInfraMachine
-        name: master-0
+      kind: ExistingInfraMachine
+      name: master-0
 ---
   apiVersion: "cluster.weave.works/v1alpha3"
   kind: "ExistingInfraMachine"
   metadata:
     name: master-0
   spec:
-    address: "172.17.8.101"
+    private:
+      address: "172.17.8.101"
 ---
   apiVersion: "cluster.x-k8s.io/v1alpha3"
   kind: Machine
@@ -290,11 +290,8 @@ const machinesWithoutVersions = `
   metadata:
     name: node-0
   spec:
-    address: "172.17.8.102"
-    authenticationWebhook:
-      cacheTTL: 2m0s
-      server:
-        url: http://127.0.0.1:5000/authenticate
+    private:
+      address: "172.17.8.102"
 `
 
 // Ensure we populate the Kubernetes version if not provided.
