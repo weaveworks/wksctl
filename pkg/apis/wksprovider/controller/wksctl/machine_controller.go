@@ -1,19 +1,13 @@
 package wks
 
 import (
-	"bytes"
 	"context"
 	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"math/rand"
-	"net/http"
-	"net/url"
 	goos "os"
-	"path/filepath"
-	"regexp"
 	"time"
 
 	"github.com/chanwit/plandiff"
@@ -28,6 +22,7 @@ import (
 	"github.com/weaveworks/wksctl/pkg/kubernetes/drain"
 	"github.com/weaveworks/wksctl/pkg/plan"
 	"github.com/weaveworks/wksctl/pkg/plan/recipe"
+	"github.com/weaveworks/wksctl/pkg/plan/resource"
 	"github.com/weaveworks/wksctl/pkg/plan/runners/ssh"
 	"github.com/weaveworks/wksctl/pkg/specs"
 	bootstraputils "github.com/weaveworks/wksctl/pkg/utilities/kubeadm"
@@ -59,14 +54,12 @@ const (
 	controllerName      string = "wks-controller"
 	controllerSecret    string = "wks-controller-secrets"
 	bootstrapTokenID    string = "bootstrapTokenID"
-	clusterName         string = "wks-firekube"
 )
 
 var (
 	footlooseAddr    = "<unknown>"
 	footlooseBackend = "docker"
 	machineIPs       = map[string]string{}
-	hostAddrRegexp   = regexp.MustCompile(`(?m)controlPlaneEndpoint[:]\s*([^:\s]+)`)
 )
 
 // STOPGAP: copy of machine def from footloose; the footloose version has private fields
@@ -175,15 +168,11 @@ func (r *MachineController) Reconcile(req ctrl.Request) (_ ctrl.Result, reterr e
 		return ctrl.Result{}, err
 	}
 
-	{
-		err := r.update(ctx, bmc, machine, bmm)
-		if err != nil {
-			contextLog.Errorf("failed to update machine: %v", err)
-		}
-		return ctrl.Result{}, err
+	err = r.update(ctx, bmc, machine, bmm)
+	if err != nil {
+		contextLog.Errorf("failed to update machine: %v", err)
 	}
-
-	return ctrl.Result{}, nil
+	return ctrl.Result{}, err
 }
 
 func (a *MachineController) create(ctx context.Context, installer *os.OS, c *baremetalspecv1.BareMetalCluster, machine *clusterv1.Machine, bmm *baremetalspecv1.BareMetalMachine) error {
@@ -612,6 +601,13 @@ func (a *MachineController) getNodePlan(provider *baremetalspecv1.BareMetalClust
 	if err != nil {
 		return nil, err
 	}
+	var authSecrets map[string]resource.SecretData
+	if authConfigMap != nil {
+		authSecrets, err = a.getAuthSecrets(authConfigMap)
+		if err != nil {
+			return nil, err
+		}
+	}
 	plan, err := installer.CreateNodeSetupPlan(os.NodeParams{
 		IsMaster:                 machine.Labels["set"] == "master",
 		MasterIP:                 masterIP,
@@ -629,6 +625,7 @@ func (a *MachineController) getNodePlan(provider *baremetalspecv1.BareMetalClust
 		ConfigFileSpecs:      provider.Spec.OS.Files,
 		ProviderConfigMaps:   configMaps,
 		AuthConfigMap:        authConfigMap,
+		Secrets:              authSecrets,
 		Namespace:            namespace,
 		ControlPlaneEndpoint: provider.Spec.ControlPlaneEndpoint,
 	})
@@ -650,6 +647,25 @@ func (a *MachineController) getAuthConfigMap() (*v1.ConfigMap, error) {
 		}
 	}
 	return nil, nil
+}
+
+func (a *MachineController) getAuthSecrets(authConfigMap *v1.ConfigMap) (map[string]resource.SecretData, error) {
+	authSecrets := map[string]resource.SecretData{}
+	for _, authType := range []string{"authentication", "authorization"} {
+		secretName := authConfigMap.Data[authType+"-secret-name"]
+		client := a.clientSet.CoreV1().Secrets(a.controllerNamespace)
+		secret, err := client.Get(secretName, metav1.GetOptions{})
+		// TODO: retry several times like the old code did (?)
+		// TODO: check whether it is a not-found response
+		if err != nil {
+			// No secret present
+			continue
+		}
+		if secret.Data != nil {
+			authSecrets[authType] = secret.Data
+		}
+	}
+	return authSecrets, nil
 }
 
 func (a *MachineController) getProviderConfigMaps(provider *baremetalspecv1.BareMetalCluster) (map[string]*v1.ConfigMap, error) {
@@ -755,14 +771,6 @@ func (a *MachineController) isOriginalMaster(node *corev1.Node) (bool, error) {
 	return masterNode.Name == node.Name, nil
 }
 
-func extractEndpointAddress(urlstr string) (string, error) {
-	u, err := url.Parse(urlstr)
-	if err != nil {
-		return "", err
-	}
-	return u.Hostname(), nil
-}
-
 func machineVersion(machine *clusterv1.Machine) string {
 	return "v" + machineutil.GetKubernetesVersion(machine)
 }
@@ -825,6 +833,8 @@ func (a *MachineController) setNodeLabel(node *corev1.Node, label, value string)
 	return nil
 }
 
+//nolint:unused
+// TODO: Remove if really unused
 func (a *MachineController) removeNodeLabel(node *corev1.Node, label string) error {
 	err := a.modifyNode(node, func(node *corev1.Node) {
 		delete(node.Labels, label)
@@ -909,8 +919,12 @@ func (a *MachineController) findNodeByID(machineID, systemUUID string) (*corev1.
 	return nil, apierrs.NewNotFound(schema.GroupResource{Group: "", Resource: "nodes"}, "")
 }
 
+//nolint:unused
+// TODO: Needed for getMasterNode()
 var staticRand = rand.New(rand.NewSource(time.Now().Unix()))
 
+//nolint:unused
+// TODO: Remove if really unused
 func (a *MachineController) getMasterNode() (*corev1.Node, error) {
 	masters, err := a.getMasterNodes()
 	if err != nil {
@@ -977,74 +991,10 @@ func (a *MachineController) getControllerNodeName() (string, error) {
 	return "", err
 }
 
+//nolint:unused
+// TODO: Remove if really unused
 func (a *MachineController) updateMachine(machine *baremetalspecv1.BareMetalMachine, ip string) {
 	machineIPs[getMachineID(machine)] = ip
-}
-
-func getMachineName(uri string) string {
-	return filepath.Base(uri)
-}
-
-func getFootlooseMachineIP(uri string) (string, error) {
-	machineName := getMachineName(uri)
-	req := &http.Request{
-		Method: "GET",
-		URL: &url.URL{
-			Opaque: fmt.Sprintf("/api/clusters/%s/machines/%s", clusterName, machineName),
-			Scheme: "http",
-			Host:   footlooseAddr,
-		},
-		Close: true,
-	}
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("Error retrieving footloose machine: %v\n", err)
-	}
-	defer resp.Body.Close()
-	var m FootlooseMachine
-	if err := json.NewDecoder(resp.Body).Decode(&m); err != nil {
-		return "", err
-	}
-	nets := m.RuntimeNetworks
-	for _, net := range nets {
-		if net.Name == "bridge" {
-			return net.IP, nil
-		}
-	}
-	return "", fmt.Errorf("Could not find bridge network for machine: %s", machineName)
-}
-
-func invokeFootlooseCreate(machine *clusterv1.Machine) (string, error) {
-	params := map[string]interface{}{
-		"name":       machine.Name,
-		"image":      "quay.io/footloose/centos7:0.6.1",
-		"privileged": true,
-		"backend":    footlooseBackend,
-	}
-	postdata, err := json.Marshal(params)
-	if err != nil {
-		return "", err
-	}
-	resp, err := http.Post(fmt.Sprintf("http://%s/api/clusters/%s/machines", footlooseAddr, clusterName),
-		"application/json", bytes.NewReader(postdata))
-	if err != nil {
-		return "", fmt.Errorf("Error creating footloose machine: %v\n", err)
-	} else {
-		defer resp.Body.Close()
-	}
-	m := map[string]interface{}{}
-	if err := json.NewDecoder(resp.Body).Decode(&m); err != nil {
-		return "", err
-	}
-	uri, ok := m["uri"]
-	if !ok {
-		uri = []byte(fmt.Sprintf("http://%s/api/clusters/%s/machines/%s", footlooseAddr, clusterName, machine.Name))
-	}
-	ustr, ok := uri.(string)
-	if !ok {
-		return "", fmt.Errorf("Invalid uri for: %s", machine.Name)
-	}
-	return getFootlooseMachineIP(ustr)
 }
 
 func isMaster(node *corev1.Node) bool {

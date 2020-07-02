@@ -28,9 +28,13 @@ and follow instructions for your OS to configure/install the completion file.
 			if err != nil {
 				log.Fatal(err)
 			}
-			cmd.Root().GenZshCompletion(outfile)
+			if err = cmd.Root().GenZshCompletion(outfile); err != nil {
+				log.Fatal(err)
+			}
 		} else {
-			cmd.Root().GenZshCompletion(os.Stdout)
+			if err := cmd.Root().GenZshCompletion(os.Stdout); err != nil {
+				log.Fatal(err)
+			}
 		}
 	}}
 

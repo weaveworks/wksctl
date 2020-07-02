@@ -61,7 +61,7 @@ func init() {
 
 	// Hide controller-image flag as it is a helper/debug flag.
 	Cmd.Flags().StringVar(&globalParams.controllerImage, "controller-image", "", "Controller image override")
-	Cmd.Flags().MarkHidden("controller-image")
+	_ = Cmd.Flags().MarkHidden("controller-image")
 }
 
 type Applier struct {

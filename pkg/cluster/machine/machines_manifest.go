@@ -62,7 +62,10 @@ func WriteMachines(w io.Writer, machines []*clusterv1.Machine, bml []*baremetals
 		if err != nil {
 			return err
 		}
-		w.Write([]byte("---\n"))
+		_, err = w.Write([]byte("---\n"))
+		if err != nil {
+			return err
+		}
 		_, err = w.Write(manifestBytes)
 		if err != nil {
 			return err
@@ -73,7 +76,10 @@ func WriteMachines(w io.Writer, machines []*clusterv1.Machine, bml []*baremetals
 		if err != nil {
 			return err
 		}
-		w.Write([]byte("---\n"))
+		_, err = w.Write([]byte("---\n"))
+		if err != nil {
+			return err
+		}
 		_, err = w.Write(manifestBytes)
 		if err != nil {
 			return err

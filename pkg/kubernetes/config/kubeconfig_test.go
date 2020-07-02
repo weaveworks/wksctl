@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/weaveworks/wksctl/pkg/kubernetes/config"
 	clientcmd "k8s.io/client-go/tools/clientcmd"
 )
@@ -121,9 +122,10 @@ func TestInvalidExistingConfig(t *testing.T) {
 	testDataDir := "./testdata/"
 	testDataPath := "./testdata/test_kubeconfig"
 	defer os.RemoveAll(testDataDir)
-	os.Mkdir(testDataDir, 0777)
+	err := os.Mkdir(testDataDir, 0777)
+	require.NoError(t, err)
 
-	err := ioutil.WriteFile(testDataPath, []byte(invalidConfigWithSSHBanner), 0777)
+	err = ioutil.WriteFile(testDataPath, []byte(invalidConfigWithSSHBanner), 0777)
 	assert.NoError(t, err)
 
 	validConfig, err := clientcmd.Load([]byte(validConfig))

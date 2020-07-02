@@ -129,7 +129,8 @@ func (ki *KubeadmInit) Apply(runner plan.Runner, diff plan.Diff) (bool, error) {
 		return false, errors.Wrap(err, "failed to upload kubeadm's configuration")
 	}
 	log.WithField("yaml", string(config)).Debug("uploaded kubeadm's configuration")
-	defer removeFile(remotePath, runner)
+	//nolint:errcheck
+	defer removeFile(remotePath, runner) // TODO: Deferred error checking
 
 	var stdOutErr string
 	p := buildKubeadmInitPlan(
@@ -255,7 +256,7 @@ func buildKubeadmInitPlan(path string, ignorePreflightErrors string, useIPTables
 
 	// If we're at 1.17.0 or greater, we need to upgrade the kubeadm config before running "kubeadm init"
 	upgradeKubeadmConfig := false
-	if lt, err := version.LessThan(k8sVersion, "1.17.0"); err == nil && lt == false {
+	if lt, err := version.LessThan(k8sVersion, "1.17.0"); err == nil && !lt {
 		upgradeKubeadmConfig = true
 	}
 

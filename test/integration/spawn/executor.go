@@ -16,7 +16,6 @@ type stream int
 const (
 	stdout stream = 1 << 0
 	stderr stream = 1 << 1
-	all    stream = stderr | stdout
 )
 
 func (s stream) String() string {
@@ -144,15 +143,13 @@ func (e *Executor) RunCmd(cmd *exec.Cmd) (*Entry, error) {
 		return nil, err
 	}
 
-	syncChan := make(chan bool)
+	syncChan := make(chan error)
 	go func() {
-		e.handStream(entry, stdout, stdoutPipe)
-		syncChan <- true
+		syncChan <- e.handStream(entry, stdout, stdoutPipe)
 	}()
 
 	go func() {
-		e.handStream(entry, stderr, stderrPipe)
-		syncChan <- true
+		syncChan <- e.handStream(entry, stderr, stderrPipe)
 	}()
 
 	if e.showBreadcrumbs {
@@ -164,8 +161,17 @@ func (e *Executor) RunCmd(cmd *exec.Cmd) (*Entry, error) {
 	}
 
 	// Make sure copying is finished
-	<-syncChan
-	<-syncChan
+	var results [2]error
+	for i := range results {
+		results[i] = <-syncChan
+	}
+
+	// Check for errors
+	for _, err = range results {
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	err = cmd.Wait()
 	exitCode, err := exitCode(err)

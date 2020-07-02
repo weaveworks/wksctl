@@ -169,11 +169,6 @@ func BuildCRIPlan(criSpec *baremetalspecv1.ContainerRuntime, cfg *envcfg.EnvSpec
 	return &p
 }
 
-var swapContents = `[Service]
-# Disable swap to please kubeadm. See: https://github.com/kubernetes/kubeadm/issues/610
-ExecStartPre=-/sbin/swapoff -a
-`
-
 // BuildK8SPlan creates a plan for running kubernetes on a node
 func BuildK8SPlan(kubernetesVersion string, kubeletNodeIP string, seLinuxInstalled, setSELinuxPermissive, disableSwap, lockYUMPkgs bool, pkgType resource.PkgType, cloudProvider string, extraArgs map[string]string) plan.Resource {
 	b := plan.NewBuilder()
@@ -317,9 +312,14 @@ func BuildK8SPlan(kubernetesVersion string, kubeletNodeIP string, seLinuxInstall
 		}
 	}
 	b.AddResource(
+		"systemd:daemon-reload",
+		&resource.Run{Script: object.String("systemctl daemon-reload")},
+		plan.DependOn("install:kubelet"),
+	)
+	b.AddResource(
 		"service-init:kubelet",
 		&resource.Service{Name: "kubelet", Status: "active", Enabled: true},
-		plan.DependOn("install:kubelet", kubeletDeps...))
+		plan.DependOn("systemd:daemon-reload", kubeletDeps...))
 	p, err := b.Plan()
 	if err != nil {
 		log.Fatalf("%v", err)

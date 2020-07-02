@@ -25,8 +25,7 @@ type OS struct {
 	MachineID  string `structs:"MachineID"`
 	SystemUUID string `structs:"SystemUUID"`
 
-	runner        plan.Runner
-	factsGathered bool
+	runner plan.Runner
 }
 
 type SELinuxStatus int

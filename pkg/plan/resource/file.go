@@ -70,7 +70,7 @@ func checksumFromFile(path string) ([]byte, error) {
 
 func checksumFromString(content string) []byte {
 	h := md5.New()
-	io.WriteString(h, content)
+	_, _ = io.WriteString(h, content)
 	return h.Sum(nil)
 }
 

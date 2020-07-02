@@ -384,30 +384,6 @@ func (p *Plan) ToJSON() string {
 	return displayableState(p.toState()).Marshal()
 }
 
-// Skip empty fields marked as "omitempty" in DOT as well as JSON
-func isEmptyField(elem reflect.Value, idx int) bool {
-	t := elem.Type()
-	f := t.Field(idx)
-	if f.PkgPath != "" {
-		// unexported
-		return true
-	}
-	z := reflect.Zero(f.Type)
-	val := elem.Field(idx)
-	if reflect.DeepEqual(val.Interface(), z.Interface()) {
-		tag, ok := f.Tag.Lookup("structs")
-		if ok {
-			tagfields := strings.Split(tag, ",")
-			for _, s := range tagfields {
-				if s == "omitempty" {
-					return true
-				}
-			}
-		}
-	}
-	return false
-}
-
 // ToDOT translates a Plan into DOT output
 func (p *Plan) ToDOT() string {
 	var dot bytes.Buffer
@@ -514,37 +490,6 @@ func resourceTypeByName(name string) resourceType {
 // EqualPlans Compares Plans for equality; not currently used except in tests
 func EqualPlans(p1, p2 Plan) bool {
 	return p1.ToJSON() == p2.ToJSON()
-}
-
-func graphsEqual(g1, g2 *graph) bool {
-	entrymap := make(map[interface{}]bool)
-	for node := range g1.nodes {
-		entrymap[node] = true
-	}
-	for node := range g2.nodes {
-		if !entrymap[node] {
-			return false
-		}
-		delete(entrymap, node)
-	}
-	if len(entrymap) > 0 {
-		return false
-	}
-	for from, tos := range g1.edges {
-		for to := range tos {
-			entrymap[edge{from, to}] = true
-		}
-	}
-	for from, tos := range g2.edges {
-		for to := range tos {
-			e := edge{from, to}
-			if !entrymap[e] {
-				return false
-			}
-			delete(entrymap, e)
-		}
-	}
-	return len(entrymap) == 0
 }
 
 // Main worker function for serialization
