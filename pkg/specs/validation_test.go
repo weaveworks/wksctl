@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	baremetalspecv1 "github.com/weaveworks/wksctl/pkg/baremetal/v1alpha3"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-	"k8s.io/client-go/kubernetes/scheme"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"
 )
 
@@ -23,9 +22,9 @@ spec:
       cidrBlocks: ["10.96.0.0/12"]
     pods:
       cidrBlocks: ["192.168.0.0/16"]
-    infrastructureRef:
-      kind: BareMetalCluster
-      name: example
+  infrastructureRef:
+    kind: BareMetalCluster
+    name: example
 ---
 apiVersion: "cluster.weave.works/v1alpha3"
 kind: "BareMetalCluster"
@@ -46,9 +45,9 @@ spec:
       cidrBlocks: ["10.96.0.0/12"]
     pods:
       cidrBlocks: ["192.168.0.0/16"]
-    infrastructureRef:
-      kind: BareMetalCluster
-      name: example
+  infrastructureRef:
+    kind: BareMetalCluster
+    name: example
 ---
 apiVersion: "cluster.weave.works/v1alpha3"
 kind: "BareMetalCluster"
@@ -291,8 +290,6 @@ func fieldsInError(errors field.ErrorList) []string {
 }
 
 func TestValidateCluster(t *testing.T) {
-	assert.NoError(t, clusterv1.AddToScheme(scheme.Scheme))
-	assert.NoError(t, baremetalspecv1.AddToScheme(scheme.Scheme))
 	tests := []struct {
 		input  string
 		errors []string
