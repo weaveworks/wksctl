@@ -85,7 +85,7 @@ func TestMain(m *testing.M) {
 	kube = harness.New(kubeOptions)
 
 	// Download kubectl!
-	if err := downloadKubectl("1.10.5"); err != nil {
+	if err := downloadKubectl("1.18.5"); err != nil {
 		log.Fatalf("could not download kubectl: %v", err)
 	}
 	kubectl = "./kubectl"
