@@ -1,18 +1,20 @@
 package specs
 
 import (
+	"fmt"
 	"io"
 	"os"
 
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"github.com/weaveworks/libgitops/pkg/serializer"
+	"github.com/weaveworks/wksctl/pkg/apis/baremetal/scheme"
 	"github.com/weaveworks/wksctl/pkg/cluster/machine"
 	existinginfrav1 "github.com/weaveworks/wksctl/pkg/existinginfra/v1alpha3"
 	"github.com/weaveworks/wksctl/pkg/utilities"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"
 	apierrors "sigs.k8s.io/cluster-api/errors"
-	clusteryaml "sigs.k8s.io/cluster-api/util/yaml"
 )
 
 // Utilities for managing cluster and machine specs.
@@ -89,25 +91,25 @@ func parseManifests(clusterManifestPath, machinesManifestPath string) (*clusterv
 }
 
 // ParseCluster converts the manifest file into a Cluster
-func ParseCluster(r io.ReadCloser) (cluster *clusterv1.Cluster, eic *existinginfrav1.ExistingInfraCluster, err error) {
-	decoder := clusteryaml.NewYAMLDecoder(r)
-	defer decoder.Close()
+func ParseCluster(rc io.ReadCloser) (cluster *clusterv1.Cluster, eic *existinginfrav1.ExistingInfraCluster, err error) {
+	// Read from the ReadCloser YAML document-by-document
+	fr := serializer.NewYAMLFrameReader(rc)
 
-	for {
-		obj, _, err := decoder.Decode(nil, nil)
-		if err == io.EOF {
-			break
-		} else if err != nil {
-			return nil, nil, errors.Wrap(err, "failed to parse cluster manifest")
-		}
+	// Decode all objects in the FrameReader
+	objs, err := scheme.Serializer.Decoder().DecodeAll(fr)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "failed to parse cluster manifest")
+	}
 
-		switch v := obj.(type) {
+	// Loop through the untyped objects we got and add them to the specific lists
+	for _, obj := range objs {
+		switch typed := obj.(type) {
 		case *clusterv1.Cluster:
-			cluster = v
+			cluster = typed
 		case *existinginfrav1.ExistingInfraCluster:
-			eic = v
+			eic = typed
 		default:
-			return nil, nil, errors.Errorf("unexpected type %T", v)
+			return nil, nil, fmt.Errorf("unexpected type %T", obj)
 		}
 	}
 

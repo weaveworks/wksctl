@@ -9,12 +9,13 @@ import (
 	"github.com/blang/semver"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"github.com/weaveworks/libgitops/pkg/serializer"
+	"github.com/weaveworks/wksctl/pkg/apis/baremetal/scheme"
 	existinginfrav1 "github.com/weaveworks/wksctl/pkg/existinginfra/v1alpha3"
 	"github.com/weaveworks/wksctl/pkg/kubernetes"
 	"github.com/weaveworks/wksctl/pkg/utilities/manifest"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"
-	clusteryaml "sigs.k8s.io/cluster-api/util/yaml"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -65,29 +66,29 @@ func ParseManifest(file string) (ml []*clusterv1.Machine, bl []*existinginfrav1.
 }
 
 // Parse parses the provided machines io.Reader.
-func Parse(r io.ReadCloser) (ml []*clusterv1.Machine, bl []*existinginfrav1.ExistingInfraMachine, err error) {
-	decoder := clusteryaml.NewYAMLDecoder(r)
-	defer decoder.Close()
+func Parse(rc io.ReadCloser) (ml []*clusterv1.Machine, bl []*existinginfrav1.ExistingInfraMachine, err error) {
+	// Read from the ReadCloser YAML document-by-document
+	fr := serializer.NewYAMLFrameReader(rc)
 
-	for {
-		obj, _, err := decoder.Decode(nil, nil)
-		if err == io.EOF {
-			break
-		} else if err != nil {
-			return nil, nil, err
-		}
+	// Decode all objects in the FrameReader
+	objs, err := scheme.Serializer.Decoder().DecodeAll(fr)
+	if err != nil {
+		return
+	}
 
-		switch v := obj.(type) {
+	// Loop through the untyped objects we got and add them to the specific lists
+	for _, obj := range objs {
+		switch typed := obj.(type) {
 		case *clusterv1.Machine:
-			ml = append(ml, v)
+			ml = append(ml, typed)
 		case *existinginfrav1.ExistingInfraMachine:
-			bl = append(bl, v)
+			bl = append(bl, typed)
 		default:
-			return nil, nil, fmt.Errorf("unexpected type %T", v)
+			return nil, nil, fmt.Errorf("unexpected type %T", obj)
 		}
 	}
 
-	return ml, bl, nil
+	return
 }
 
 // Validate validates the provided machines.
