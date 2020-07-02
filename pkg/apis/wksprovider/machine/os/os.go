@@ -18,7 +18,9 @@ import (
 	"github.com/bitnami-labs/sealed-secrets/pkg/crypto"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"github.com/weaveworks/libgitops/pkg/serializer"
 	"github.com/weaveworks/wksctl/pkg/addons"
+	"github.com/weaveworks/wksctl/pkg/apis/baremetal/scheme"
 	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/controller/manifests"
 	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/config"
 	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/crds"
@@ -38,7 +40,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/client-go/util/keyutil"
@@ -814,73 +815,76 @@ func createAuthConfigMapManifest(authnSecretName, authzSecretName string, authnC
 // Decrypts secret, adds plan resources to install files found inside, plus a kubeconfig file pointing to them.
 // returns the sealed file contents, decrypted contents, secret name, kubeconfig, error if any
 func processSecret(b *plan.Builder, key *rsa.PrivateKey, configDir, secretFileName, URL string) ([]byte, map[string][]byte, string, []byte, error) {
+	// Read the file contents at configDir/secretFileName
 	contents, err := getConfigFileContents(configDir, secretFileName)
 	if err != nil {
 		return nil, nil, "", nil, err
 	}
-	object, err := runtime.Decode(scheme.Codecs.UniversalDecoder(ssv1alpha1.SchemeGroupVersion), contents)
-	if err != nil {
-		return nil, nil, "", nil, err
+
+	// Create a new YAML FrameReader from the given bytes
+	fr := serializer.NewYAMLFrameReader(serializer.FromBytes(contents))
+	// Create the secret to decode into
+	ss := &ssv1alpha1.SealedSecret{}
+	// Decode the Sealed Secret into the object
+	if err := scheme.Serializer.Decoder().DecodeInto(fr, ss); err != nil {
+		return nil, nil, "", nil, errors.Wrapf(err, "File %q does not contain a sealed secret, couldn't decode", secretFileName)
 	}
+
 	fingerprint, err := crypto.PublicKeyFingerprint(&key.PublicKey)
 	if err != nil {
 		return nil, nil, "", nil, err
 	}
 	keys := map[string]*rsa.PrivateKey{fingerprint: key}
-	switch s := object.(type) {
-	case *ssv1alpha1.SealedSecret:
-		secret, err := s.Unseal(scheme.Codecs, keys)
-		if err != nil {
-			return nil, nil, "", nil, errors.Wrap(err, "Could not unseal auth secret")
-		}
-		decrypted := map[string][]byte{}
-		secretName := secret.Name
-		for _, key := range pemKeys {
-			fileContents, ok := secret.Data[key]
-			if !ok {
-				return nil, nil, "", nil, fmt.Errorf("Missing auth config value for: %q in secret %q", key, secretName)
-			}
-			resName := secretName + "-" + key
-			fileName := filepath.Join(PemDestDir, secretName, key+".pem")
-			b.AddResource("install:"+resName, &resource.File{Content: string(fileContents), Destination: fileName}, plan.DependOn("set-perms:pem-dir"))
-			decrypted[key] = fileContents
-		}
-		contextName := secretName + "-webhook"
-		userName := secretName + "-api-server"
-		config := &clientcmdapi.Config{
-			Kind:       "Config",
-			APIVersion: "v1",
-			Clusters: map[string]*clientcmdapi.Cluster{
-				secretName: {
-					CertificateAuthority: filepath.Join(PemDestDir, secretName, "certificate-authority.pem"),
-					Server:               URL,
-				},
-			},
-			AuthInfos: map[string]*clientcmdapi.AuthInfo{
-				userName: {
-					ClientCertificate: filepath.Join(PemDestDir, secretName, "client-certificate.pem"),
-					ClientKey:         filepath.Join(PemDestDir, secretName, "client-key.pem"),
-				},
-			},
-			CurrentContext: contextName,
-			Contexts: map[string]*clientcmdapi.Context{
-				contextName: {
-					Cluster:  secretName,
-					AuthInfo: userName,
-				},
-			},
-		}
-		authConfig, err := clientcmd.Write(*config)
-		if err != nil {
-			return nil, nil, "", nil, err
-		}
-		configResource := &resource.File{Content: string(authConfig), Destination: filepath.Join(ConfigDestDir, secretName+".yaml")}
-		b.AddResource("install:"+secretName, configResource, plan.DependOn("set-perms:pem-dir"))
 
-		return contents, decrypted, secretName, authConfig, nil
-	default:
-		return nil, nil, "", nil, fmt.Errorf("File %q does not contain a sealed secret", secretFileName)
+	secret, err := ss.Unseal(scheme.Codecs, keys)
+	if err != nil {
+		return nil, nil, "", nil, errors.Wrap(err, "Could not unseal auth secret")
 	}
+	decrypted := map[string][]byte{}
+	secretName := secret.Name
+	for _, key := range pemKeys {
+		fileContents, ok := secret.Data[key]
+		if !ok {
+			return nil, nil, "", nil, fmt.Errorf("Missing auth config value for: %q in secret %q", key, secretName)
+		}
+		resName := secretName + "-" + key
+		fileName := filepath.Join(PemDestDir, secretName, key+".pem")
+		b.AddResource("install:"+resName, &resource.File{Content: string(fileContents), Destination: fileName}, plan.DependOn("set-perms:pem-dir"))
+		decrypted[key] = fileContents
+	}
+	contextName := secretName + "-webhook"
+	userName := secretName + "-api-server"
+	config := &clientcmdapi.Config{
+		Kind:       "Config",
+		APIVersion: "v1",
+		Clusters: map[string]*clientcmdapi.Cluster{
+			secretName: {
+				CertificateAuthority: filepath.Join(PemDestDir, secretName, "certificate-authority.pem"),
+				Server:               URL,
+			},
+		},
+		AuthInfos: map[string]*clientcmdapi.AuthInfo{
+			userName: {
+				ClientCertificate: filepath.Join(PemDestDir, secretName, "client-certificate.pem"),
+				ClientKey:         filepath.Join(PemDestDir, secretName, "client-key.pem"),
+			},
+		},
+		CurrentContext: contextName,
+		Contexts: map[string]*clientcmdapi.Context{
+			contextName: {
+				Cluster:  secretName,
+				AuthInfo: userName,
+			},
+		},
+	}
+	authConfig, err := clientcmd.Write(*config)
+	if err != nil {
+		return nil, nil, "", nil, err
+	}
+	configResource := &resource.File{Content: string(authConfig), Destination: filepath.Join(ConfigDestDir, secretName+".yaml")}
+	b.AddResource("install:"+secretName, configResource, plan.DependOn("set-perms:pem-dir"))
+
+	return contents, decrypted, secretName, authConfig, nil
 }
 
 func createSealedSecretKeySecretManifest(privateKey, cert, ns string) ([]byte, error) {
