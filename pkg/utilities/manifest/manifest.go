@@ -8,45 +8,18 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	bmv1alpha3 "github.com/weaveworks/wksctl/pkg/baremetal/v1alpha3"
+	"github.com/weaveworks/wksctl/pkg/apis/baremetal/scheme"
 	"gopkg.in/oleiade/reflections.v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer/json"
-	"k8s.io/client-go/kubernetes/scheme"
-	clusterv1alpha3 "sigs.k8s.io/cluster-api/api/v1alpha3"
 	"sigs.k8s.io/yaml"
 )
 
-// cluster-api types
-const (
-	GroupName        = "sigs.k8s.io"
-	GroupVersion     = "v1alpha3"
-	DefaultNamespace = `weavek8sops`
-)
+const DefaultNamespace = `weavek8sops`
 
 var DefaultAddonNamespaces = map[string]string{"weave-net": "kube-system"}
-
-var SchemeGroupVersion = schema.GroupVersion{Group: GroupName, Version: GroupVersion}
-var SchemeBuilder = runtime.NewSchemeBuilder(addKnownTypes)
-var AddToScheme = SchemeBuilder.AddToScheme
-
-func addKnownTypes(scheme *runtime.Scheme) error {
-	scheme.AddKnownTypes(SchemeGroupVersion,
-		&clusterv1alpha3.Cluster{},
-		&clusterv1alpha3.ClusterList{},
-		&clusterv1alpha3.Machine{},
-		&clusterv1alpha3.MachineList{},
-	)
-	scheme.AddKnownTypes(bmv1alpha3.SchemeGroupVersion,
-		&bmv1alpha3.BareMetalCluster{},
-		&bmv1alpha3.BareMetalMachine{},
-	)
-	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
-	return nil
-}
 
 //WithNamespace takes in a file or string kubernetes manifest and updates any resources to
 //use the namespace specified.
