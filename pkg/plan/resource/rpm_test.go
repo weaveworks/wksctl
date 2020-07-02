@@ -5,6 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/weaveworks/wksctl/pkg/plan"
+	"github.com/weaveworks/wksctl/pkg/plan/runners/sudo"
 )
 
 func makeRPMState(name, version, release string) plan.State {
@@ -117,4 +118,33 @@ func TestRevisionComparison(t *testing.T) {
 	for _, test := range tests {
 		assert.Equal(t, test.expected, lowerRevisionThan(test.p1.State(), test.p2.State()))
 	}
+}
+
+func TestUndo(t *testing.T) {
+	// Test that we perform an Undo when passed an empty state
+	undid := false
+	undoAction = func(_ *RPM, _ plan.Runner, _ plan.State, _ string) error {
+		undid = true
+		return nil
+	}
+	res := &RPM{Name: "make", Version: "3.82", Release: "23.el7"}
+	err := res.Undo(&sudo.Runner{}, plan.EmptyState)
+	assert.NoError(t, err)
+	assert.True(t, undid)
+
+	// Test that we can choose to remove ANY version
+	var description string
+	undoAction = func(_ *RPM, _ plan.Runner, _ plan.State, pkgDesc string) error {
+		description = pkgDesc
+		return nil
+	}
+	err = res.Undo(&sudo.Runner{}, plan.EmptyState)
+	assert.NoError(t, err)
+	assert.Equal(t, description, "make")
+
+	// Test that we can choose to remove only the matching version
+	res = &RPM{Name: "make", Version: "3.82", Release: "23.el7", IgnoreOtherVersions: true}
+	err = res.Undo(&sudo.Runner{}, plan.EmptyState)
+	assert.NoError(t, err)
+	assert.Equal(t, description, "make-3.82-23.el7")
 }

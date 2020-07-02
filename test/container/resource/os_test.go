@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	uuid_regexp      = `[A-F0-9]{6}-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{12}`
-	machineid_regexp = `[a-f0-9]{32}`
+	uuidRegexp      = `[a-fA-F0-9]{6}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}`
+	machineidRegexp = `[a-f0-9]{32}`
 )
 
 func TestOS(t *testing.T) {
@@ -27,6 +27,6 @@ func TestOS(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "centos", os.Name)
 	assert.Equal(t, "7", os.Version)
-	assert.Regexp(t, machineid_regexp, os.MachineID)
-	assert.Regexp(t, uuid_regexp, os.SystemUUID)
+	assert.Regexp(t, machineidRegexp, os.MachineID)
+	assert.Regexp(t, uuidRegexp, os.SystemUUID)
 }
