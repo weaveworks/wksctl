@@ -45,20 +45,18 @@
 5. Configure it in your `cluster.yaml`:
 
     ```yaml
-    apiVersion: "cluster.k8s.io/v1alpha1"
-    kind: Cluster
+    apiVersion: "cluster.weave.works/v1alpha3"
+    kind: "BareMetalCluster"
     spec:
-      providerSpec:
-        value:
-          os:
-            files:
-            - source:
-                configmap: repo
-                key: local.repo
-              destination: /etc/yum.repos.d/local.repo
+      os:
+        files:
+        - source:
+            configmap: repo
+            key: local.repo
+          destination: /etc/yum.repos.d/local.repo
     ```
 
 ## Future work
 
-The exactly list of packages to install should be driven by the WKS v2 plan.
+The exact list of packages to install should be driven by the "plan" for nodes.
 Currently, it is hardcoded in the `Dockerfile` file.
