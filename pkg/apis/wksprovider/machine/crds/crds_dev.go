@@ -2,7 +2,11 @@
 
 package crds
 
-import "net/http"
+import (
+	"net/http"
+
+	"github.com/weaveworks/wksctl/pkg/utilities/fixeddate"
+)
 
 // CRDs contains wksctl's crds.
-var CRDs http.FileSystem = http.Dir("../../../../../config/crd")
+var CRDs http.FileSystem = fixeddate.Dir("../../../../../config/crd")
