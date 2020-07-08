@@ -434,7 +434,7 @@ func (a *MachineController) update(ctx context.Context, c *baremetalspecv1.BareM
 	if err != nil {
 		return gerrors.Wrapf(err, "Failed to parse node plan for machine %s", machine.Name)
 	}
-	if !currentState.Equal(planState) {
+	if currentState.Equal(planState) {
 		contextLog.Info("Machine and node have matching plans; nothing to do")
 		return nil
 	}
