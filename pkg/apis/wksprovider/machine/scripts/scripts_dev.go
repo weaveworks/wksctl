@@ -2,7 +2,11 @@
 
 package scripts
 
-import "net/http"
+import (
+	"net/http"
+
+	"github.com/weaveworks/wksctl/pkg/utilities/fixeddate"
+)
 
 // Scripts contains all operating systems' scripts.
-var Scripts http.FileSystem = http.Dir("all")
+var Scripts http.FileSystem = fixeddate.Dir("all")
