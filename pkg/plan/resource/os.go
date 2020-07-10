@@ -12,16 +12,6 @@ import (
 
 // OS is a set of OS properties.
 type OS struct {
-
-	// Name is the OS name, eg. 'centos' or 'debian'. On systemd OSes, this is the ID
-	// field of /etc/os-release. See:
-	//   https://www.freedesktop.org/software/systemd/man/os-release.html
-	Name string `structs:"Name"`
-
-	// Version the OS version. On systemd OSes, this is the VERSION_ID field of
-	// /etc/os-release. See:
-	//   https://www.freedesktop.org/software/systemd/man/os-release.html
-	Version    string `structs:"Version"`
 	MachineID  string `structs:"MachineID"`
 	SystemUUID string `structs:"SystemUUID"`
 
@@ -124,7 +114,6 @@ func (p *OS) State() plan.State {
 }
 
 var gatherFuncs []GatherFactFunc = []GatherFactFunc{
-	getOSRelease,
 	getMachineID,
 	getSystemUUID,
 }
@@ -168,26 +157,6 @@ func (p *OS) Apply(r plan.Runner, _ plan.Diff) (bool, error) {
 
 func (p *OS) Undo(r plan.Runner, current plan.State) error {
 	return nil
-}
-
-func getOSRelease(p *OS, r plan.Runner) error {
-	output, err := r.RunCommand("cat /etc/os-release", nil)
-	if err != nil {
-		return err
-	}
-	name := keyval(output, "ID")
-	if name == "" {
-		return fmt.Errorf("os: getOSRelease: could not query ID from output %s\n", output)
-	}
-	err = reflections.SetField(p, "Name", name)
-	if err != nil {
-		return err
-	}
-	version := keyval(output, "VERSION_ID")
-	if version == "" {
-		return errors.New("os: getOSRelease: could not query VERSION_ID")
-	}
-	return reflections.SetField(p, "Version", version)
 }
 
 func (p *OS) HasCommand(cmd string) (bool, error) {
@@ -253,32 +222,8 @@ func (p *OS) IsOSInContainerVM() (bool, error) {
 	return strings.Contains(output, "container=docker"), err
 }
 
-func (p *OS) GetMachineID(r plan.Runner) (string, error) {
-	err := getMachineID(p, r)
-	if err != nil {
-		return "", err
-	}
-	id, err := p.State().GetString("MachineID")
-	if err != nil {
-		return "", err
-	}
-	return id, nil
-}
-
 func getMachineID(p *OS, r plan.Runner) error {
 	return p.getValueFromFileContents(machineIDParams, r)
-}
-
-func (p *OS) GetSystemUUID(r plan.Runner) (string, error) {
-	err := getSystemUUID(p, r)
-	if err != nil {
-		return "", err
-	}
-	id, err := p.State().GetString("SystemUUID")
-	if err != nil {
-		return "", err
-	}
-	return id, nil
 }
 
 func getSystemUUID(p *OS, r plan.Runner) error {

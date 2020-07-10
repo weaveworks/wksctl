@@ -82,22 +82,13 @@ type Identifiers struct {
 	SystemUUID string
 }
 
-// IDs returns this machine's ID (see also OS#GetMachineID) and system UUID (see
-// also: OS#GetSystemUUID).
+// IDs returns this machine's ID system UUID.
 func (o OS) IDs() (*Identifiers, error) {
 	osres, err := resource.NewOS(o.runner)
 	if err != nil {
 		return nil, err
 	}
-	machineID, err := osres.GetMachineID(o.runner)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to read machine's ID")
-	}
-	systemUUID, err := osres.GetSystemUUID(o.runner)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to read machine's system UUID")
-	}
-	return &Identifiers{MachineID: machineID, SystemUUID: systemUUID}, nil
+	return &Identifiers{MachineID: osres.MachineID, SystemUUID: osres.SystemUUID}, nil
 }
 
 type crdFile struct {

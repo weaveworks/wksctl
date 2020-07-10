@@ -259,22 +259,6 @@ func TestGetEnvSpecificConfig(t *testing.T) {
 			wantNamespace:            "foo",
 		},
 		{
-			name:    "os-release error",
-			pkgType: resource.PkgTypeRPM,
-			runner: &fakeRunner{
-				value: map[string]runnerResult{
-					cmdOsRel:             {out: relUbuntu, err: errors.New("kaboom")},
-					cmdEnv:               {},
-					cmdSELinuxFound:      {},
-					cmdMachineID:         {out: "01234567"},
-					cmdUUID:              {out: "01234567"},
-					cmdSELinuxPermissive: {},
-					cmdSELinuxEnforcing:  {},
-				},
-			},
-			wantError: true,
-		},
-		{
 			name:    "environ error",
 			pkgType: resource.PkgTypeRPM,
 			runner: &fakeRunner{
