@@ -23,6 +23,12 @@ func NewState() State {
 	return make(map[string]interface{})
 }
 
+// ToJSON serialises a State into JSON
+func (s State) ToJSON() string {
+	json, _ := json.Marshal(s)
+	return string(json)
+}
+
 // NewStateFromJSON creates State from JSON.
 func NewStateFromJSON(r io.Reader) (State, error) {
 	p := NewState()
@@ -131,6 +137,7 @@ func (s State) IsEmpty() bool {
 }
 
 // Equal returns true if two States are equal.
+// Note that State deserialised from JSON can contain map types which do not compare equal.
 func (s State) Equal(other State) bool {
 	return reflect.DeepEqual(s, other)
 }
