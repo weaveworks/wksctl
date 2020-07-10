@@ -434,7 +434,10 @@ func (a *MachineController) update(ctx context.Context, c *baremetalspecv1.BareM
 	if err != nil {
 		return gerrors.Wrapf(err, "Failed to parse node plan for machine %s", machine.Name)
 	}
-	if currentState.Equal(planState) {
+	// check equality by re-serialising to JSON; this avoids any formatting differences, also
+	// type differences between deserialised State and State created from Plan.
+	planJSON := planState.ToJSON()
+	if currentState.ToJSON() == planJSON {
 		contextLog.Info("Machine and node have matching plans; nothing to do")
 		return nil
 	}
@@ -453,7 +456,6 @@ func (a *MachineController) update(ctx context.Context, c *baremetalspecv1.BareM
 			return err
 		}
 	}
-	planJSON := nodePlan.ToJSON()
 	upOrDowngrade := isUpOrDowngrade(machine, node)
 	contextLog.Infof("Is master: %t, is up or downgrade: %t", isMaster, upOrDowngrade)
 	if upOrDowngrade {
