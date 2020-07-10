@@ -7,8 +7,8 @@ defaults: &defaults
       environment:
         GOPATH: /go/
         SRCDIR: /src/github.com/weaveworks/wksctl
-        KUBECTL_URL: https://dl.k8s.io/v1.10.5/kubernetes-client-linux-amd64.tar.gz
-        KUBECTL_CHECKSUM: da9d557989a0b9671a610f21642052febb8f70c3cf144c98a8a4f7ecab6bafe2
+        KUBECTL_URL: https://dl.k8s.io/v1.18.5/kubernetes-client-linux-amd64.tar.gz
+        KUBECTL_CHECKSUM: f6051fa7f715c68d56998d9b4c9be4f08552f3a8427b2c6b9e2e5339dd2929b6
   working_directory: /src/github.com/weaveworks/wksctl
 
 workflows:
@@ -128,8 +128,8 @@ jobs:
       SRCDIR: /home/circleci/src/github.com/weaveworks/wksctl
       FOOTLOOSE_URL: https://github.com/weaveworks/footloose/releases/download/0.5.0/footloose-0.5.0-linux-x86_64
       FOOTLOOSE_CHECKSUM: 0e4e49e81940c5876eafa26607154acd788d9979e9f4a4215f17532a3ea5429a
-      KUBECTL_URL: https://dl.k8s.io/v1.10.5/kubernetes-client-linux-amd64.tar.gz
-      KUBECTL_CHECKSUM: da9d557989a0b9671a610f21642052febb8f70c3cf144c98a8a4f7ecab6bafe2
+      KUBECTL_URL: https://dl.k8s.io/v1.18.5/kubernetes-client-linux-amd64.tar.gz
+      KUBECTL_CHECKSUM: f6051fa7f715c68d56998d9b4c9be4f08552f3a8427b2c6b9e2e5339dd2929b6
     working_directory: /home/circleci/src/github.com/weaveworks/wksctl
     steps:
       - checkout
