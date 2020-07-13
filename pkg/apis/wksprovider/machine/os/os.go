@@ -27,7 +27,6 @@ import (
 	"github.com/weaveworks/wksctl/pkg/plan"
 	"github.com/weaveworks/wksctl/pkg/plan/recipe"
 	"github.com/weaveworks/wksctl/pkg/plan/resource"
-	"github.com/weaveworks/wksctl/pkg/plan/runners/ssh"
 	"github.com/weaveworks/wksctl/pkg/plan/runners/sudo"
 	"github.com/weaveworks/wksctl/pkg/specs"
 	"github.com/weaveworks/wksctl/pkg/utilities/envcfg"
@@ -1213,7 +1212,7 @@ const (
 
 // Identify uses the provided SSH client to identify the operating system of
 // the machine it is configured to talk to.
-func Identify(sshClient *ssh.Client) (*OS, error) {
+func Identify(sshClient plan.Runner) (*OS, error) {
 	osID, err := fetchOSID(sshClient)
 	if err != nil {
 		return nil, err
@@ -1237,7 +1236,7 @@ const (
 	idxOSID            = 1
 )
 
-func fetchOSID(sshClient *ssh.Client) (string, error) {
+func fetchOSID(sshClient plan.Runner) (string, error) {
 	stdOut, err := sshClient.RunCommand("cat /etc/*release", nil)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to fetch operating system ID")
