@@ -81,7 +81,7 @@ type Identifiers struct {
 	SystemUUID string
 }
 
-// IDs returns this machine's ID system UUID.
+// IDs returns this machine's ID and system UUID.
 func (o OS) IDs() (*Identifiers, error) {
 	osres, err := resource.NewOS(o.runner)
 	if err != nil {
