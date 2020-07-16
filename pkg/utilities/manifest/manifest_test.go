@@ -6,9 +6,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	baremetalv1 "github.com/weaveworks/wksctl/pkg/baremetal/v1alpha3"
-	"k8s.io/client-go/kubernetes/scheme"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"
 )
 
 const (
@@ -250,8 +247,6 @@ var nstests = []struct {
 }
 
 func TestManifestWithNamespace(t *testing.T) {
-	assert.NoError(t, clusterv1.AddToScheme(scheme.Scheme))
-	assert.NoError(t, baremetalv1.AddToScheme(scheme.Scheme))
 	for _, tt := range nstests {
 		t.Run(tt.name, func(t *testing.T) {
 			fname := createFile(t, tt.content, tt.fileName).Name()
@@ -260,8 +255,8 @@ func TestManifestWithNamespace(t *testing.T) {
 
 			updated, err := WithNamespace(fname, newNamespace)
 			assert.NoError(t, err)
-			assert.NotEqual(t, tt.content, updated)
-			assert.Contains(t, updated, newNamespace)
+			assert.NotEqual(t, tt.content, string(updated))
+			assert.Contains(t, string(updated), newNamespace)
 		})
 	}
 }
