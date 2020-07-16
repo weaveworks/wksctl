@@ -29,7 +29,7 @@ require (
 	github.com/weaveworks/footloose v0.0.0-20200609124411-8f3df89ea188
 	github.com/weaveworks/go-checkpoint v0.0.0-20170503165305-ebbb8b0518ab
 	github.com/weaveworks/launcher v0.0.0-20180824102238-59a4fcc32c9c
-	github.com/weaveworks/libgitops v0.0.0-20200701095510-58d3f66006af
+	github.com/weaveworks/libgitops v0.0.1
 	github.com/whilp/git-urls v0.0.0-20191001220047-6db9661140c0
 	golang.org/x/crypto v0.0.0-20200707235045-ab33eee955e0
 	golang.org/x/sys v0.0.0-20200625212154-ddb9806d33ae // indirect
@@ -47,6 +47,7 @@ require (
 	k8s.io/utils v0.0.0-20200619165400-6e3d28b6ed19
 	sigs.k8s.io/cluster-api v0.3.6
 	sigs.k8s.io/controller-runtime v0.6.0
+	sigs.k8s.io/kustomize/kyaml v0.4.1
 	sigs.k8s.io/yaml v1.2.0
 )
 
