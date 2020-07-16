@@ -1,12 +1,14 @@
 package resource
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"strings"
 
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"github.com/weaveworks/libgitops/pkg/serializer"
 	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/controller/manifests"
 	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/config"
 	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/config/kubeadm"
@@ -18,7 +20,6 @@ import (
 	"github.com/weaveworks/wksctl/pkg/utilities/object"
 	"github.com/weaveworks/wksctl/pkg/utilities/ssh"
 	"github.com/weaveworks/wksctl/pkg/utilities/version"
-	yml "github.com/weaveworks/wksctl/pkg/utilities/yaml"
 	corev1 "k8s.io/api/core/v1"
 	kubeadmapi "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm/v1beta1"
 	"sigs.k8s.io/yaml"
@@ -123,12 +124,23 @@ func (ki *KubeadmInit) Apply(runner plan.Runner, diff plan.Diff) (bool, error) {
 		return false, errors.Wrap(err, "failed to serialize kube-proxy's KubeProxyConfiguration object")
 	}
 
-	config := yml.Concat(clusterConfig, kubeadmConfig, kubeproxyConfig)
+	// Create a temporary buffer for YAML frames, and the corresponding YAML FrameWriter
+	buf := new(bytes.Buffer)
+	fw := serializer.NewYAMLFrameWriter(buf)
+
+	// Write all three frames into the FrameWriter, and use the output in configBytes
+	if err := serializer.WriteFrameList(fw,
+		[][]byte{clusterConfig, kubeadmConfig, kubeproxyConfig},
+	); err != nil {
+		return false, err
+	}
+	configBytes := buf.Bytes()
+
 	remotePath := "/tmp/wks_kubeadm_init_config.yaml"
-	if err = scripts.WriteFile(config, remotePath, 0660, runner); err != nil {
+	if err = scripts.WriteFile(configBytes, remotePath, 0660, runner); err != nil {
 		return false, errors.Wrap(err, "failed to upload kubeadm's configuration")
 	}
-	log.WithField("yaml", string(config)).Debug("uploaded kubeadm's configuration")
+	log.WithField("yaml", string(configBytes)).Debug("uploaded kubeadm's configuration")
 	//nolint:errcheck
 	defer removeFile(remotePath, runner) // TODO: Deferred error checking
 
