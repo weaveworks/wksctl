@@ -16,7 +16,13 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-const DefaultNamespace = `weavek8sops`
+const (
+	DefaultNamespace = `weavek8sops`
+
+	corev1Version = "v1"
+	listKind      = "List"
+	namespaceKind = "Namespace"
+)
 
 var DefaultAddonNamespaces = map[string]string{"weave-net": "kube-system"}
 
@@ -55,18 +61,18 @@ func WithNamespace(fileOrString, namespace string) ([]byte, error) {
 		// Parse the given frame's YAML. JSON also works
 		obj, err := kyaml.Parse(string(frame))
 		if err != nil {
-			return nil, nil
+			return nil, err
 		}
 
 		// Get the TypeMeta of the given object
 		meta, err := obj.GetMeta()
 		if err != nil {
-			return nil, nil
+			return nil, err
 		}
 
 		// Use special handling for the v1.List, as we need to traverse each item in the .items list
 		// Otherwise, just run setNamespaceOnObject for the parsed object
-		if meta.APIVersion == "v1" && meta.Kind == "List" {
+		if meta.APIVersion == corev1Version && meta.Kind == listKind {
 			// Visit each item under .items
 			if err := visitElementsForPath(obj, func(item *kyaml.RNode) error {
 				// Set namespace on the given item
@@ -97,11 +103,26 @@ func WithNamespace(fileOrString, namespace string) ([]byte, error) {
 }
 
 func setNamespaceOnObject(obj *kyaml.RNode, namespace string) error {
+	// Get the TypeMeta of the given object
+	meta, err := obj.GetMeta()
+	if err != nil {
+		return err
+	}
+
+	// The default namespaceFilter sets the "namespace" field (on the metadata object)
+	// to the desired namespace
+	namespaceFilter := setNamespaceFilter(namespace)
+	// However, if the given object IS a Namespace, we set the "name" field to the desired
+	// namespace name instead.
+	if meta.APIVersion == corev1Version && meta.Kind == namespaceKind {
+		namespaceFilter = kyaml.SetField("name", kyaml.NewScalarRNode(namespace))
+	}
+
 	// Lookup and create .metadata (if it doesn't exist), and set its
 	// namespace field to the desired value
-	err := obj.PipeE(
+	err = obj.PipeE(
 		kyaml.LookupCreate(kyaml.MappingNode, "metadata"),
-		setNamespaceFilter(namespace),
+		namespaceFilter,
 	)
 	if err != nil {
 		return err
