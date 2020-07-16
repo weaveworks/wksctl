@@ -10,7 +10,7 @@ edit_uri: ""
 
 theme:
   name: material
-  logo: _static/logo.png
+  logo: _static/logo.svg
   language: en
   feature:
     tabs: false
