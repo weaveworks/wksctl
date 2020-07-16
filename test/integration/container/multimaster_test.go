@@ -31,44 +31,44 @@ spec:
       cidrBlocks: [192.168.128.0/17]
     serviceDomain: cluster.local
   infrastructureRef:
-    apiVersion: "cluster.weave.works/v1alpha3"
+    apiVersion: cluster.weave.works/v1alpha3
     kind: BareMetalCluster
     name: test-multimaster
 ---
 apiVersion: cluster.weave.works/v1alpha3
-kind: "BareMetalCluster"
+kind: BareMetalCluster
 metadata:
   name: test-multimaster
 spec:
-      user: root
-      imageRepository: %s:%d
-      os:
-        files:
-        - source:
-            configmap: docker
-            key: daemon.json
-          destination: /etc/docker/daemon.json
-        - source:
-            configmap: repo
-            key: local.repo
-          destination: /etc/yum.repos.d/local.repo
-      cri:
-        kind: docker
-        package: docker-ce
-        version: 19.03.8
-      kubeletArguments:
-      - name: alsologtostderr
-        value: "true"
-      - name: container-runtime
-        value: docker
-      - name: eviction-hard
-        value: "memory.available<100Mi,nodefs.available<100Mi,imagefs.available<100Mi"
-      apiServer:
-        extraArguments:
-        - name: alsologtostderr
-          value: "true"
-        - name: audit-log-maxsize
-          value: "10000"
+  user: root
+  imageRepository: %s:%d
+  os:
+    files:
+    - source:
+      configmap: docker
+      key: daemon.json
+      destination: /etc/docker/daemon.json
+    - source:
+      configmap: repo
+      key: local.repo
+      destination: /etc/yum.repos.d/local.repo
+  cri:
+    kind: docker
+    package: docker-ce
+    version: 19.03.8
+  kubeletArguments:
+  - name: alsologtostderr
+    value: "true"
+  - name: container-runtime
+    value: docker
+  - name: eviction-hard
+    value: "memory.available<100Mi,nodefs.available<100Mi,imagefs.available<100Mi"
+  apiServer:
+    extraArguments:
+    - name: alsologtostderr
+      value: "true"
+    - name: audit-log-maxsize
+      value: "10000"
 `
 
 const machinesYAML = `
@@ -81,13 +81,13 @@ const machinesYAML = `
   spec:
     clusterName: test-multimaster
     infrastructureRef:
-      apiVersion: "cluster.weave.works/v1alpha3"
+      apiVersion: cluster.weave.works/v1alpha3
       kind: BareMetalMachine
       name: master-1
     bootstrap: {}
 ---
-  apiVersion: "cluster.weave.works/v1alpha3"
-  kind: "BareMetalMachine"
+  apiVersion: cluster.weave.works/v1alpha3
+  kind: BareMetalMachine
   metadata:
     name: master-1
   spec:
@@ -107,13 +107,13 @@ const machinesYAML = `
   spec:
     clusterName: test-multimaster
     infrastructureRef:
-      apiVersion: "cluster.weave.works/v1alpha3"
+      apiVersion: cluster.weave.works/v1alpha3
       kind: BareMetalMachine
       name: master-2
     bootstrap: {}
 ---
-  apiVersion: "cluster.weave.works/v1alpha3"
-  kind: "BareMetalMachine"
+  apiVersion: cluster.weave.works/v1alpha3
+  kind: BareMetalMachine
   metadata:
     name: master-2
   spec:
@@ -133,13 +133,13 @@ const machinesYAML = `
   spec:
     clusterName: test-multimaster
     infrastructureRef:
-      apiVersion: "cluster.weave.works/v1alpha3"
+      apiVersion: cluster.weave.works/v1alpha3
       kind: BareMetalMachine
       name: master-3
     bootstrap: {}
 ---
-  apiVersion: "cluster.weave.works/v1alpha3"
-  kind: "BareMetalMachine"
+  apiVersion: cluster.weave.works/v1alpha3
+  kind: BareMetalMachine
   metadata:
     name: master-3
   spec:
@@ -159,13 +159,13 @@ const machinesYAML = `
   spec:
     clusterName: test-multimaster
     infrastructureRef:
-      apiVersion: "cluster.weave.works/v1alpha3"
+      apiVersion: cluster.weave.works/v1alpha3
       kind: BareMetalMachine
       name: worker-1
     bootstrap: {}
 ---
-  apiVersion: "cluster.weave.works/v1alpha3"
-  kind: "BareMetalMachine"
+  apiVersion: cluster.weave.works/v1alpha3
+  kind: BareMetalMachine
   metadata:
     name: worker-1
   spec:
