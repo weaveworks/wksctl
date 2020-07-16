@@ -1,4 +1,4 @@
-FROM weaveworks/build-golang:1.13.5-stretch
+FROM weaveworks/build-golang:1.14.4-stretch
 
 RUN apt-get update && \
     apt-get install -y \

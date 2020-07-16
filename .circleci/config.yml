@@ -3,12 +3,12 @@ version: 2
 # https://circleci.com/blog/circleci-hacks-reuse-yaml-in-your-circleci-config-with-yaml/
 defaults: &defaults
   docker:
-    - image: docker.io/weaveworks/wksctl-build:update-build-image-cb52a6ea
+    - image: docker.io/weaveworks/wksctl-build:go-1.14.1-431fabe9
       environment:
         GOPATH: /go/
         SRCDIR: /src/github.com/weaveworks/wksctl
-        KUBECTL_URL: https://dl.k8s.io/v1.10.5/kubernetes-client-linux-amd64.tar.gz
-        KUBECTL_CHECKSUM: da9d557989a0b9671a610f21642052febb8f70c3cf144c98a8a4f7ecab6bafe2
+        KUBECTL_URL: https://dl.k8s.io/v1.18.5/kubernetes-client-linux-amd64.tar.gz
+        KUBECTL_CHECKSUM: f6051fa7f715c68d56998d9b4c9be4f08552f3a8427b2c6b9e2e5339dd2929b6
   working_directory: /src/github.com/weaveworks/wksctl
 
 workflows:
@@ -97,8 +97,8 @@ jobs:
     machine:
       docker_layer_caching: true
     environment:
-      GOURL: https://dl.google.com/go/go1.13.5.linux-amd64.tar.gz
-      GOCHECKSUM: 512103d7ad296467814a6e3f635631bd35574cab3369a97a323c9a585ccaa569
+      GOURL: https://dl.google.com/go/go1.14.4.linux-amd64.tar.gz
+      GOCHECKSUM: aed845e4185a0b2a3c3d5e1d0a35491702c55889192bb9c30e67a3de6849c067
       GOROOT: /home/circleci/goroot
       GOPATH: /home/circleci/go
       SRCDIR: /home/circleci/src/github.com/weaveworks/wksctl
@@ -121,15 +121,15 @@ jobs:
     machine:
       docker_layer_caching: true
     environment:
-      GOURL: https://dl.google.com/go/go1.13.5.linux-amd64.tar.gz
-      GOCHECKSUM: 512103d7ad296467814a6e3f635631bd35574cab3369a97a323c9a585ccaa569
+      GOURL: https://dl.google.com/go/go1.14.4.linux-amd64.tar.gz
+      GOCHECKSUM: aed845e4185a0b2a3c3d5e1d0a35491702c55889192bb9c30e67a3de6849c067
       GOROOT: /home/circleci/goroot
       GOPATH: /home/circleci/go
       SRCDIR: /home/circleci/src/github.com/weaveworks/wksctl
       FOOTLOOSE_URL: https://github.com/weaveworks/footloose/releases/download/0.5.0/footloose-0.5.0-linux-x86_64
       FOOTLOOSE_CHECKSUM: 0e4e49e81940c5876eafa26607154acd788d9979e9f4a4215f17532a3ea5429a
-      KUBECTL_URL: https://dl.k8s.io/v1.10.5/kubernetes-client-linux-amd64.tar.gz
-      KUBECTL_CHECKSUM: da9d557989a0b9671a610f21642052febb8f70c3cf144c98a8a4f7ecab6bafe2
+      KUBECTL_URL: https://dl.k8s.io/v1.18.5/kubernetes-client-linux-amd64.tar.gz
+      KUBECTL_CHECKSUM: f6051fa7f715c68d56998d9b4c9be4f08552f3a8427b2c6b9e2e5339dd2929b6
     working_directory: /home/circleci/src/github.com/weaveworks/wksctl
     steps:
       - checkout

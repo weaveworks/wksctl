@@ -7,6 +7,8 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+
+	"github.com/chanwit/plandiff"
 )
 
 // State is a collection of (key, value) pairs describing unequivocally a step
@@ -19,6 +21,12 @@ var EmptyState = State(nil)
 // NewState creates an empty set of parameters.
 func NewState() State {
 	return make(map[string]interface{})
+}
+
+// ToJSON serialises a State into JSON
+func (s State) ToJSON() string {
+	json, _ := json.Marshal(s)
+	return string(json)
 }
 
 // NewStateFromJSON creates State from JSON.
@@ -129,6 +137,7 @@ func (s State) IsEmpty() bool {
 }
 
 // Equal returns true if two States are equal.
+// Note that State deserialised from JSON can contain map types which do not compare equal.
 func (s State) Equal(other State) bool {
 	return reflect.DeepEqual(s, other)
 }
@@ -324,8 +333,9 @@ func (s State) Merge(a State) {
 	}
 }
 
-// Marshal returns a JSON representation of the state.
-func (s State) Marshal() string {
-	str, _ := json.MarshalIndent(s, "", " ")
-	return string(str)
+// Diff returns human-readable diffs from one State to another.
+func (s State) Diff(t State) (string, error) {
+	strA, _ := json.MarshalIndent(s, "", " ")
+	strB, _ := json.MarshalIndent(t, "", " ")
+	return plandiff.GetUnifiedDiff(string(strA), string(strB))
 }

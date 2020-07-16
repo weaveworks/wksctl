@@ -28,7 +28,7 @@ spec:
     services:
       cidrBlocks: [10.96.0.0/12]
     pods:
-      cidrBlocks: [192.168.0.0/16]
+      cidrBlocks: [192.168.128.0/17]
     serviceDomain: cluster.local
   infrastructureRef:
     apiVersion: "cluster.weave.works/v1alpha3"
@@ -44,14 +44,6 @@ spec:
       imageRepository: %s:%d
       os:
         files:
-        - source:
-            configmap: repo
-            key: kubernetes.repo
-          destination: /etc/yum.repos.d/kubernetes.repo
-        - source:
-            configmap: repo
-            key: docker-ce.repo
-          destination: /etc/yum.repos.d/docker-ce.repo
         - source:
             configmap: docker
             key: daemon.json
@@ -69,6 +61,8 @@ spec:
         value: "true"
       - name: container-runtime
         value: docker
+      - name: eviction-hard
+        value: "memory.available<100Mi,nodefs.available<100Mi,imagefs.available<100Mi"
       apiServer:
         extraArguments:
         - name: alsologtostderr
@@ -208,100 +202,6 @@ metadata:
   name: repo
   namespace: system
 data:
-  kubernetes.repo: |
-    [kubernetes]
-    name=Kubernetes
-    baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-x86_64
-    enabled=1
-    gpgcheck=1
-    repo_gpgcheck=1
-    gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
-    exclude=kube*
-  docker-ce.repo: |
-    [docker-ce-stable]
-    name=Docker CE Stable - $basearch
-    baseurl=https://download.docker.com/linux/centos/7/$basearch/stable
-    enabled=1
-    gpgcheck=1
-    gpgkey=https://download.docker.com/linux/centos/gpg
-
-    [docker-ce-stable-debuginfo]
-    name=Docker CE Stable - Debuginfo $basearch
-    baseurl=https://download.docker.com/linux/centos/7/debug-$basearch/stable
-    enabled=0
-    gpgcheck=1
-    gpgkey=https://download.docker.com/linux/centos/gpg
-
-    [docker-ce-stable-source]
-    name=Docker CE Stable - Sources
-    baseurl=https://download.docker.com/linux/centos/7/source/stable
-    enabled=0
-    gpgcheck=1
-    gpgkey=https://download.docker.com/linux/centos/gpg
-
-    [docker-ce-edge]
-    name=Docker CE Edge - $basearch
-    baseurl=https://download.docker.com/linux/centos/7/$basearch/edge
-    enabled=0
-    gpgcheck=1
-    gpgkey=https://download.docker.com/linux/centos/gpg
-
-    [docker-ce-edge-debuginfo]
-    name=Docker CE Edge - Debuginfo $basearch
-    baseurl=https://download.docker.com/linux/centos/7/debug-$basearch/edge
-    enabled=0
-    gpgcheck=1
-    gpgkey=https://download.docker.com/linux/centos/gpg
-
-    [docker-ce-edge-source]
-    name=Docker CE Edge - Sources
-    baseurl=https://download.docker.com/linux/centos/7/source/edge
-    enabled=0
-    gpgcheck=1
-    gpgkey=https://download.docker.com/linux/centos/gpg
-
-    [docker-ce-test]
-    name=Docker CE Test - $basearch
-    baseurl=https://download.docker.com/linux/centos/7/$basearch/test
-    enabled=0
-    gpgcheck=1
-    gpgkey=https://download.docker.com/linux/centos/gpg
-
-    [docker-ce-test-debuginfo]
-    name=Docker CE Test - Debuginfo $basearch
-    baseurl=https://download.docker.com/linux/centos/7/debug-$basearch/test
-    enabled=0
-    gpgcheck=1
-    gpgkey=https://download.docker.com/linux/centos/gpg
-
-    [docker-ce-test-source]
-    name=Docker CE Test - Sources
-    baseurl=https://download.docker.com/linux/centos/7/source/test
-    enabled=0
-    gpgcheck=1
-    gpgkey=https://download.docker.com/linux/centos/gpg
-
-    [docker-ce-nightly]
-    name=Docker CE Nightly - $basearch
-    baseurl=https://download.docker.com/linux/centos/7/$basearch/nightly
-    enabled=0
-    gpgcheck=1
-    gpgkey=https://download.docker.com/linux/centos/gpg
-
-    [docker-ce-nightly-debuginfo]
-    name=Docker CE Nightly - Debuginfo $basearch
-    baseurl=https://download.docker.com/linux/centos/7/debug-$basearch/nightly
-    enabled=0
-    gpgcheck=1
-    gpgkey=https://download.docker.com/linux/centos/gpg
-
-    [docker-ce-nightly-source]
-    name=Docker CE Nightly - Sources
-    baseurl=https://download.docker.com/linux/centos/7/source/nightly
-    enabled=0
-    gpgcheck=1
-    gpgkey=https://download.docker.com/linux/centos/gpg
-
   local.repo: |
     [local]
     name=Local
@@ -329,7 +229,8 @@ func TestMultimasterSetup(t *testing.T) {
 
 	// Ensure the local YUM repo is running:
 	if out := runIgnoreError(t, "docker", "inspect", "-f", "'{{.State.Running}}'", "yumrepo"); !strings.Contains(out, "true") {
-		run(t, "docker", "run", "-d", "-p", fmt.Sprintf("%d:80", repositoryPort), "--restart", "always", "--name", "yumrepo", "weaveworks/local-yum-repo:master-7b063513")
+		// NOTE: image must be updated each time Kubernetes or Docker is updated in wksctl
+		run(t, "docker", "run", "-d", "-p", fmt.Sprintf("%d:80", repositoryPort), "--restart", "always", "--name", "yumrepo", "weaveworks/local-yum-repo:master-48b0deac")
 	}
 	yumRepoIP := sanitizeIP(run(t, "docker", "inspect", "yumrepo", "--format='{{.NetworkSettings.IPAddress}}'"))
 
