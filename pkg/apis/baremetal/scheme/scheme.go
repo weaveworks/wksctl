@@ -3,7 +3,6 @@ package scheme
 import (
 	ssv1alpha1 "github.com/bitnami-labs/sealed-secrets/pkg/apis/sealed-secrets/v1alpha1"
 	"k8s.io/apimachinery/pkg/runtime"
-	k8sserializer "k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/apimachinery/pkg/util/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -18,11 +17,8 @@ var (
 	// Scheme contains information about all known types, API versions, and defaulting & conversion methods
 	Scheme = runtime.NewScheme()
 
-	// Codecs provides k8s API machinery low-level codec functionality
-	Codecs = k8sserializer.NewCodecFactory(Scheme)
-
 	// Serializer provides powerful high-level encoding/decoding functionality
-	Serializer = serializer.NewSerializer(Scheme, &Codecs)
+	Serializer = serializer.NewSerializer(Scheme, nil)
 )
 
 func init() {
