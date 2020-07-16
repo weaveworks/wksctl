@@ -333,18 +333,16 @@ func (a *Addon) buildJsonnet(config BuildOptions) ([]string, error) {
 		return nil, err
 	}
 
-	for filename, value := range output {
+	for filename, strValue := range output {
+		content := []byte(strValue)
 		if config.YAML {
-			data, err := yaml.JSONToYAML([]byte(value))
-			if err != nil {
-				return nil, err
-			}
-			value, err = manifest.WithNamespace(string(data), "wkp-addons")
+			// The WithNamespace function supports either JSON or YAML
+			content, err = manifest.WithNamespace(strValue, "wkp-addons")
 			if err != nil {
 				return nil, err
 			}
 		}
-		if err := ioutil.WriteFile(filename, []byte(value), 0660); err != nil {
+		if err := ioutil.WriteFile(filename, content, 0660); err != nil {
 			return nil, err
 		}
 	}

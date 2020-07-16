@@ -105,7 +105,6 @@ func writeTempFile(r plan.Runner, c []byte, fname string) (string, error) {
 
 // Apply performs a "kubectl apply" as specified in the receiver.
 func (ka *KubectlApply) Apply(runner plan.Runner, diff plan.Diff) (bool, error) {
-	var content string
 
 	// Get the manifest content.
 	c, err := ka.content()
@@ -114,13 +113,13 @@ func (ka *KubectlApply) Apply(runner plan.Runner, diff plan.Diff) (bool, error) 
 	}
 
 	if str(ka.Namespace) != "" {
-		content, err = manifest.WithNamespace(string(c), str(ka.Namespace))
+		content, err := manifest.WithNamespace(string(c), str(ka.Namespace))
 		if err != nil {
 			return false, err
 		}
-	}
-	if content != "" {
-		c = []byte(content)
+		if len(content) != 0 {
+			c = content
+		}
 	}
 
 	if err := kubectlApply(runner, kubectlApplyArgs{
