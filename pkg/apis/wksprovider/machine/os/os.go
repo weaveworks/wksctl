@@ -826,6 +826,8 @@ func processSecret(b *plan.Builder, key *rsa.PrivateKey, configDir, secretFileNa
 	// Create the secret to decode into
 	ss := &ssv1alpha1.SealedSecret{}
 	// Decode the Sealed Secret into the object
+	// In the future, if we wish to support other kinds of secrets than SealedSecrets, we
+	// can just change this to do .Decode(fr), and switch on the type
 	if err := scheme.Serializer.Decoder().DecodeInto(fr, ss); err != nil {
 		return nil, nil, "", nil, errors.Wrapf(err, "File %q does not contain a sealed secret, couldn't decode", secretFileName)
 	}
@@ -836,7 +838,11 @@ func processSecret(b *plan.Builder, key *rsa.PrivateKey, configDir, secretFileNa
 	}
 	keys := map[string]*rsa.PrivateKey{fingerprint: key}
 
-	secret, err := ss.Unseal(scheme.Codecs, keys)
+	codecs := scheme.Serializer.Codecs()
+	if codecs == nil {
+		return nil, nil, "", nil, fmt.Errorf("codecs must not be nil")
+	}
+	secret, err := ss.Unseal(*codecs, keys)
 	if err != nil {
 		return nil, nil, "", nil, errors.Wrap(err, "Could not unseal auth secret")
 	}
