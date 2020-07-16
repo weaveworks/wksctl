@@ -178,7 +178,7 @@ func (ki *KubeadmInit) updateManifestNamespace(fileName, namespace string) ([]by
 	if err != nil {
 		return nil, err
 	}
-	return []byte(c), nil
+	return c, nil
 }
 
 func (ki *KubeadmInit) kubectlApply(fileName, namespace string, runner plan.Runner) error {

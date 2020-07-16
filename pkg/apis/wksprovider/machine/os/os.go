@@ -690,7 +690,7 @@ func getConfigMapManifest(configDir, mapName, namespace string) ([]byte, error) 
 	if err != nil {
 		return nil, err
 	}
-	return []byte(content), nil
+	return content, nil
 }
 
 // getConfigFileContents reads a config manifest from a file in the config directory.
@@ -1036,7 +1036,7 @@ func capiControllerManifest(controller ControllerParams, namespace, configDir st
 		return nil, err
 	}
 	content, err := manifest.WithNamespace(string(manifestbytes), namespace)
-	return []byte(content), err
+	return content, err
 }
 
 func wksControllerManifest(controller ControllerParams, namespace, configDir string) ([]byte, error) {
@@ -1070,7 +1070,7 @@ func wksControllerManifest(controller ControllerParams, namespace, configDir str
 	if err != nil {
 		return nil, err
 	}
-	return updateControllerImage([]byte(content), controller.ImageOverride)
+	return updateControllerImage(content, controller.ImageOverride)
 }
 
 const deployment = "Deployment"
@@ -1343,7 +1343,7 @@ func buildAddon(addonDefn baremetalspecv1.Addon, imageRepository string, Cluster
 		if err != nil {
 			return nil, err
 		}
-		retManifests = append(retManifests, []byte(content))
+		retManifests = append(retManifests, content)
 	}
 	return retManifests, nil
 }
@@ -1362,12 +1362,12 @@ func processDeps(deps []string, manifests [][]byte, namespace string) ([][]byte,
 		if err != nil {
 			logger.Warnf("Failed to load addon dependency - %v", err)
 		}
-		ctent, err := manifest.WithNamespace(string(contents), namespace)
+		content, err := manifest.WithNamespace(string(contents), namespace)
 		if err != nil {
-			logger.Warnf("Failed to set namespace for manifest:\n%s\n", ctent)
+			logger.Warnf("Failed to set namespace for manifest:\n%s\n", content)
 		}
 		logger.Debugln("Loading dependency")
-		retManifests = append(retManifests, []byte(ctent))
+		retManifests = append(retManifests, content)
 	}
 	return retManifests, nil
 }
