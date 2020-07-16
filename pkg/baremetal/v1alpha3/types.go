@@ -17,7 +17,10 @@ type BareMetalCluster struct {
 }
 
 type BareMetalClusterSpec struct {
-	User                 string `json:"user"`
+	User string `json:"user"`
+	// TODO: Figure out a way to re-generate the CRDs. Also, this field should be removed in v1alpha3
+	// once we have the conversions in place
+	// +optional
 	DeprecatedSSHKeyPath string `json:"sshKeyPath"`
 	HTTPProxy            string `json:"httpProxy,omitempty"`
 
