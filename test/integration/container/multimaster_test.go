@@ -44,14 +44,14 @@ spec:
   imageRepository: %s:%d
   os:
     files:
-	- destination: /etc/docker/daemon.json
-	  source:
-		configmap: docker
-		key: daemon.json
-	- destination: /etc/yum.repos.d/local.repo
-	  source:
-		configmap: repo
-		key: local.repo
+    - destination: /etc/docker/daemon.json
+      source:
+        configmap: docker
+        key: daemon.json
+    - destination: /etc/yum.repos.d/local.repo
+      source:
+        configmap: repo
+        key: local.repo
   cri:
     kind: docker
     package: docker-ce
