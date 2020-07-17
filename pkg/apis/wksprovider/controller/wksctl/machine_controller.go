@@ -7,14 +7,11 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
-	goos "os"
 	"strings"
 	"time"
 
 	gerrors "github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
-	"github.com/weaveworks/footloose/pkg/cluster"
-	fconfig "github.com/weaveworks/footloose/pkg/config"
 	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/config"
 	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/os"
 	baremetalspecv1 "github.com/weaveworks/wksctl/pkg/baremetal/v1alpha3"
@@ -57,28 +54,8 @@ const (
 )
 
 var (
-	footlooseAddr    = "<unknown>"
-	footlooseBackend = "docker"
-	machineIPs       = map[string]string{}
+	machineIPs = map[string]string{}
 )
-
-// STOPGAP: copy of machine def from footloose; the footloose version has private fields
-type FootlooseMachine struct {
-	Spec *fconfig.Machine `json:"spec"`
-
-	// container name.
-	Name string `json:"name"`
-	// container hostname.
-	Hostname string `json:"hostname"`
-	// container ip.
-	IP string `json:"ip,omitempty"`
-
-	RuntimeNetworks []*cluster.RuntimeNetwork `json:"runtimeNetworks,omitempty"`
-	// Fields that are cached from the docker daemon.
-
-	Ports map[int]int `json:"ports,omitempty"`
-	// maps containerPort -> hostPort.
-}
 
 // TODO: should this be renamed 'reconciler' to match other CAPI providers ?
 
@@ -179,18 +156,6 @@ func (a *MachineController) create(ctx context.Context, installer *os.OS, c *bar
 	contextLog := log.WithFields(log.Fields{"machine": machine.Name, "cluster": c.Name})
 	contextLog.Info("creating machine...")
 
-	// Also, update footloose IP from env
-	log.Infof("FETCHING FOOTLOOSE ADDRESS...")
-	fip := goos.Getenv("FOOTLOOSE_SERVER_ADDR")
-	if fip != "" {
-		footlooseAddr = fip
-	}
-	backend := goos.Getenv("FOOTLOOSE_BACKEND")
-	if backend != "" {
-		footlooseBackend = backend
-	}
-	log.Infof("FOOTLOOSE ADDR: %s", footlooseAddr)
-	log.Infof("FOOTLOOSE BACKEND: %s", footlooseBackend)
 	nodePlan, err := a.getNodePlan(ctx, c, machine, a.getMachineAddress(bmm), installer)
 	if err != nil {
 		return err
@@ -1003,12 +968,6 @@ func (a *MachineController) getControllerNodeName(ctx context.Context) (string, 
 	return "", err
 }
 
-//nolint:unused
-// TODO: Remove if really unused
-func (a *MachineController) updateMachine(machine *baremetalspecv1.BareMetalMachine, ip string) {
-	machineIPs[getMachineID(machine)] = ip
-}
-
 func isMaster(node *corev1.Node) bool {
 	_, isMaster := node.Labels[masterLabel]
 	return isMaster
@@ -1040,10 +999,7 @@ func getMachineID(machine *baremetalspecv1.BareMetalMachine) string {
 }
 
 func (a *MachineController) getMachineAddress(m *baremetalspecv1.BareMetalMachine) string {
-	if m.Spec.Private.Address != "" {
-		return m.Spec.Private.Address
-	}
-	return machineIPs[getMachineID(m)]
+	return m.Spec.Private.Address
 }
 
 func (a *MachineController) SetupWithManager(mgr ctrl.Manager, options controller.Options) error {
