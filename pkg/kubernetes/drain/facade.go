@@ -7,37 +7,9 @@ import (
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/kubectl/pkg/drain"
 )
-
-// DefaultIgnoredDaemonSets represents the default daemonsets ignored by WKS,
-// when draining a node.
-var DefaultIgnoredDaemonSets = []metav1.ObjectMeta{
-	{
-		Namespace: "kube-system",
-		Name:      "aws-node",
-	},
-	{
-		Namespace: "kube-system",
-		Name:      "kube-proxy",
-	},
-	{
-		Name: "node-exporter",
-	},
-	{
-		Name: "prom-node-exporter",
-	},
-	{
-		Name: "weave-scope",
-	},
-	{
-		Name: "weave-scope-agent",
-	},
-	{
-		Name: "weave-net",
-	},
-}
 
 // DefaultTimeOut is the default duration Drain will wait for pods to be
 // evicted before erroring. This value will be used if Params.TimeOut is not
@@ -49,23 +21,24 @@ type Params struct {
 	Force               bool
 	DeleteLocalData     bool
 	IgnoreAllDaemonSets bool
-	IgnoreDaemonSets    []metav1.ObjectMeta
 	TimeOut             time.Duration
 }
 
 // Drain drains the provided node.
 func Drain(node *corev1.Node, clientSet kubernetes.Interface, params Params) error {
-	drainer := &Helper{
+	drainer := &drain.Helper{
 		Client:              clientSet,
 		Force:               params.Force,
 		DeleteLocalData:     params.DeleteLocalData,
 		IgnoreAllDaemonSets: params.IgnoreAllDaemonSets,
-		IgnoreDaemonSets:    params.IgnoreDaemonSets,
 	}
-	if err := drainer.CanUseEvictions(); err != nil {
-		// TODO: this wrapping should really be done within CanUseEvictions:
-		return errors.Wrapf(err, "checking if cluster implements policy API")
+	policyGroupVersion, err := drain.CheckEvictionSupport(clientSet)
+	if err != nil {
+		return errors.Wrapf(err, "eviction not supported")
+	} else if len(policyGroupVersion) == 0 {
+		return fmt.Errorf("policy group version not found in the API server; eviction is not supported")
 	}
+
 	if err := cordon(node, clientSet); err != nil {
 		return err
 	}
@@ -73,18 +46,21 @@ func Drain(node *corev1.Node, clientSet kubernetes.Interface, params Params) err
 }
 
 func cordon(node *corev1.Node, clientSet kubernetes.Interface) error {
-	cordonHelper := NewCordonHelper(node, CordonNode)
-	if cordonHelper.IsUpdateRequired() {
-		err, patchErr := cordonHelper.PatchOrReplace(clientSet)
+	cordonHelper := drain.NewCordonHelper(node)
+	// If the desired state (that the node should be unschedulable) doesn't match the actual state,
+	// then do the patch and replace logic
+	if cordonHelper.UpdateIfRequired(true) {
+		// false means no server dry run logic shall take place
+		err, patchErr := cordonHelper.PatchOrReplace(clientSet, false)
 		if patchErr != nil {
 			log.Warn(patchErr.Error())
 		}
 		if err != nil {
 			log.Error(err.Error())
 		}
-		log.Infof("%s node %q", CordonNode, node.Name)
+		log.Infof("cordoning node %q", node.Name)
 	} else {
-		log.Debugf("no need to %s node %q", CordonNode, node.Name)
+		log.Debugf("no need to cordon node %q", node.Name)
 	}
 	return nil
 }
@@ -96,7 +72,7 @@ func getOrDefault(timeOut time.Duration) time.Duration {
 	return timeOut
 }
 
-func evictPods(node *corev1.Node, timeOut time.Duration, drainer *Helper) error {
+func evictPods(node *corev1.Node, timeOut time.Duration, drainer *drain.Helper) error {
 	timer := time.After(timeOut)
 	start := time.Now()
 	for {
@@ -118,7 +94,7 @@ func evictPods(node *corev1.Node, timeOut time.Duration, drainer *Helper) error 
 	}
 }
 
-func evictPodsOn(node *corev1.Node, drainer *Helper) (int, error) {
+func evictPodsOn(node *corev1.Node, drainer *drain.Helper) (int, error) {
 	podsForDeletion, errs := drainer.GetPodsForDeletion(node.Name)
 	if len(errs) > 0 {
 		return -1, fmt.Errorf("errors: %v", errs) // TODO: improve formatting
@@ -128,13 +104,9 @@ func evictPodsOn(node *corev1.Node, drainer *Helper) (int, error) {
 	}
 	pods := podsForDeletion.Pods()
 	numPendingPods := len(pods)
-	for _, pod := range pods {
-		// TODO: handle API rate limitter error
-		if err := drainer.EvictOrDeletePod(pod); err != nil {
-			return numPendingPods, err
-		}
-	}
-	return numPendingPods, nil
+
+	err := drainer.DeleteOrEvictPods(pods)
+	return numPendingPods, err
 }
 
 func wait(timeOut time.Duration, start time.Time) {
