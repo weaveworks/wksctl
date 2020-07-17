@@ -1332,6 +1332,7 @@ func buildAddon(addonDefn existinginfrav1.Addon, imageRepository string, Cluster
 		OutputDirectory: tmpDir,
 		ImageRepository: imageRepository,
 		Params:          addonDefn.Params,
+		YAML:            true,
 	})
 	if err != nil {
 		return nil, err

@@ -100,7 +100,7 @@ func TestFlux(t *testing.T) {
 	_, err = f.WriteString(dk)
 	assert.NoError(t, f.Close())
 	assert.NoError(t, err)
-	identityStr := fmt.Sprintf("\"identity\": %q", base64.StdEncoding.EncodeToString([]byte(dk)))
+	identityStr := fmt.Sprintf("identity: %s", base64.StdEncoding.EncodeToString([]byte(dk)))
 
 	var gitDeployKeyPath = f.Name()
 	var tests = []struct {
@@ -111,8 +111,8 @@ func TestFlux(t *testing.T) {
 		{gitURL, "", gitDeployKeyPath, "", identityStr, "", "expected flux yaml with deploy key"},
 		{gitURL, "", "", "", "", identityStr, "expected flux yaml without deploy key"},
 		{gitURL, gitBranch, "", "", "--git-branch=" + gitBranch, "", "expected flux yaml with branch"},
-		{gitURL, gitBranch, "", "", "\"namespace\": \"system\"", "", "expected to be in the system namespace"},
-		{gitURL, gitBranch, "", "", "", "\"namespace\": \"flux\"", "flux should not be the namespace"},
+		{gitURL, gitBranch, "", "", "namespace: system", "", "expected to be in the system namespace"},
+		{gitURL, gitBranch, "", "", "", "namespace: flux", "flux should not be the namespace"},
 	}
 
 	for _, test := range tests {
