@@ -336,8 +336,12 @@ func (a *Addon) buildJsonnet(config BuildOptions) ([]string, error) {
 	for filename, strValue := range output {
 		content := []byte(strValue)
 		if config.YAML {
+			data, err := yaml.JSONToYAML(content)
+			if err != nil {
+				return nil, err
+			}
 			// The WithNamespace function supports either JSON or YAML
-			content, err = manifest.WithNamespace(strValue, "wkp-addons")
+			content, err = manifest.WithNamespace(string(data), "wkp-addons")
 			if err != nil {
 				return nil, err
 			}
