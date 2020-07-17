@@ -53,10 +53,6 @@ const (
 	bootstrapTokenID    string = "bootstrapTokenID"
 )
 
-var (
-	machineIPs = map[string]string{}
-)
-
 // TODO: should this be renamed 'reconciler' to match other CAPI providers ?
 
 // MachineController is responsible for managing this cluster's machines, and
@@ -992,10 +988,6 @@ func (a *MachineController) recordEvent(object runtime.Object, eventType, reason
 	default:
 		log.Debugf(messageFmt, args...)
 	}
-}
-
-func getMachineID(machine *baremetalspecv1.BareMetalMachine) string {
-	return machine.Namespace + ":" + machine.Name
 }
 
 func (a *MachineController) getMachineAddress(m *baremetalspecv1.BareMetalMachine) string {
