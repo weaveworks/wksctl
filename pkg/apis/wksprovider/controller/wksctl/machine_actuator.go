@@ -583,8 +583,12 @@ func (a *MachineActuator) update(ctx context.Context, cluster *clusterv1.Cluster
 // Parameter k8sversion specified here represents the version of both Kubernetes and Kubeadm.
 func (a *MachineActuator) kubeadmUpOrDowngrade(machine *clusterv1.Machine, node *corev1.Node, installer *os.OS,
 	k8sVersion, planKey, planJSON string, ntype nodeType) error {
-	if err := a.incUpgradeCount(node); err != nil {
+	tooManyRetries, err := a.incUpgradeCount(node)
+	if err != nil {
 		return err
+	}
+	if tooManyRetries {
+		return nil
 	}
 
 	b := plan.NewBuilder()
@@ -679,10 +683,13 @@ func (a *MachineActuator) performActualUpdate(
 	node *corev1.Node,
 	nodePlan *plan.Plan,
 	cluster *baremetalspecv1.BareMetalClusterProviderSpec) error {
-	if err := a.incUpgradeCount(node); err != nil {
+	tooManyRetries, err := a.incUpgradeCount(node)
+	if err != nil {
 		return err
 	}
-
+	if tooManyRetries {
+		return nil
+	}
 	if err := drain.Drain(node, a.clientSet, drain.Params{
 		Force:               true,
 		DeleteLocalData:     true,
@@ -1089,19 +1096,19 @@ func (a *MachineActuator) findNodeByID(machineID, systemUUID string) (*corev1.No
 
 var r = rand.New(rand.NewSource(time.Now().Unix()))
 
-func (a *MachineActuator) incUpgradeCount(node *corev1.Node) error {
+func (a *MachineActuator) incUpgradeCount(node *corev1.Node) (bool, error) {
 	count, err := a.getUpgradeCount(node)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	switch count {
 	case 0:
-		return a.setNodeAnnotation(node, upgradeCountKey, "0")
+		return false, a.setNodeAnnotation(node, upgradeCountKey, "0")
 	case maxUpgradeAttempts:
-		return fmt.Errorf("Maximum number of upgrade attempts exceeded for: %s", node.Name)
+		return true, fmt.Errorf("Maximum number of upgrade attempts exceeded for: %s", node.Name)
 	default:
-		return a.setNodeAnnotation(node, upgradeCountKey, fmt.Sprintf("%d", count+1))
+		return false, a.setNodeAnnotation(node, upgradeCountKey, fmt.Sprintf("%d", count+1))
 	}
 }
 
