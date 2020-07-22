@@ -892,12 +892,12 @@ func (a *MachineController) checkMasterHAConstraint(ctx context.Context) error {
 	for _, node := range nodes {
 		if hasConditionTrue(node, corev1.NodeReady) && !hasTaint(node, "NoSchedule") {
 			avail++
-			if avail >= 2 {
+			if avail > 2 { // We need 2 remaining after we take one offline
 				return nil
 			}
 		}
 	}
-	return errors.New("Fewer than two master nodes available")
+	return errors.New("Fewer than two control-plane nodes would be available")
 }
 
 func hasConditionTrue(node *corev1.Node, typ corev1.NodeConditionType) bool {
