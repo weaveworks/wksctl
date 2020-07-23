@@ -15,6 +15,7 @@ import (
 	goos "os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"time"
 
 	"github.com/chanwit/plandiff"
@@ -53,6 +54,8 @@ import (
 
 const (
 	planKey             string = "wks.weave.works/node-plan"
+	upgradeCountKey     string = "wks.weave.works/upgrade-count"
+	maxUpgradeAttempts  int    = 5
 	masterLabel         string = "node-role.kubernetes.io/master"
 	originalMasterLabel string = "wks.weave.works/original-master"
 	controllerName      string = "wks-controller"
@@ -501,14 +504,14 @@ func (a *MachineActuator) update(ctx context.Context, cluster *clusterv1.Cluster
 	}
 
 	contextLog.Infof("........................NEW UPDATE FOR: %s...........................", machine.Name)
-	isMaster := isMaster(node)
-	if isMaster {
+	nodeIsMaster := isMaster(node)
+	if nodeIsMaster {
 		if err := a.prepareForMasterUpdate(); err != nil {
 			return err
 		}
 	}
 	upOrDowngrade := isUpOrDowngrade(machine, node)
-	contextLog.Infof("Is master: %t, is up or downgrade: %t", isMaster, upOrDowngrade)
+	contextLog.Infof("Is master: %t, is up or downgrade: %t", nodeIsMaster, upOrDowngrade)
 	if upOrDowngrade {
 		if err := checkForVersionJump(machine, node); err != nil {
 			return err
@@ -525,20 +528,28 @@ func (a *MachineActuator) update(ctx context.Context, cluster *clusterv1.Cluster
 			return err
 		}
 		contextLog.Infof("Master needs update: %t", masterNeedsUpdate)
+		updatingNode, err := a.findUpdatingNode()
+		if err != nil {
+			return err
+		}
+		if updatingNode != nil && isMaster(updatingNode) && updatingNode != node {
+			contextLog.Infof("Master is updating: %s", updatingNode.Name)
+			return fmt.Errorf("Master %s is currently updating...", updatingNode.Name)
+		}
 		isOriginal, err := a.isOriginalMaster(node)
 		if err != nil {
 			return err
 		}
 		contextLog.Infof("Is original: %t", isOriginal)
-		if (!isOriginal && originalNeedsUpdate) || (!isMaster && masterNeedsUpdate) {
-			return errors.New("Master nodes must be upgraded before worker nodes")
+		if (!isOriginal && originalNeedsUpdate) || (!nodeIsMaster && masterNeedsUpdate) || (updatingNode != nil && updatingNode != node) {
+			return errors.New("A higher priority node currently needs updating")
 		}
 		isController, err := a.isControllerNode(node)
 		if err != nil {
 			return err
 		}
 		contextLog.Infof("Is controller: %t", isController)
-		if isMaster {
+		if nodeIsMaster {
 			if isController {
 				// If there is no error, this will end the run of this reconciliation since the controller will be migrated
 				if err := drain.Drain(node, a.clientSet, drain.Params{
@@ -572,6 +583,14 @@ func (a *MachineActuator) update(ctx context.Context, cluster *clusterv1.Cluster
 // Parameter k8sversion specified here represents the version of both Kubernetes and Kubeadm.
 func (a *MachineActuator) kubeadmUpOrDowngrade(machine *clusterv1.Machine, node *corev1.Node, installer *os.OS,
 	k8sVersion, planKey, planJSON string, ntype nodeType) error {
+	tooManyRetries, err := a.incUpgradeCount(node)
+	if err != nil {
+		return err
+	}
+	if tooManyRetries {
+		return nil
+	}
+
 	b := plan.NewBuilder()
 	b.AddResource(
 		"upgrade:node-unlock-kubernetes",
@@ -639,6 +658,10 @@ func (a *MachineActuator) kubeadmUpOrDowngrade(machine *clusterv1.Machine, node 
 		return err
 	}
 	log.Info("Finished with uncordon...")
+	if err = a.setNodeAnnotation(node, upgradeCountKey, ""); err != nil {
+		return err
+	}
+
 	if err = a.setNodeAnnotation(node, planKey, planJSON); err != nil {
 		return err
 	}
@@ -660,6 +683,13 @@ func (a *MachineActuator) performActualUpdate(
 	node *corev1.Node,
 	nodePlan *plan.Plan,
 	cluster *baremetalspecv1.BareMetalClusterProviderSpec) error {
+	tooManyRetries, err := a.incUpgradeCount(node)
+	if err != nil {
+		return err
+	}
+	if tooManyRetries {
+		return nil
+	}
 	if err := drain.Drain(node, a.clientSet, drain.Params{
 		Force:               true,
 		DeleteLocalData:     true,
@@ -673,6 +703,10 @@ func (a *MachineActuator) performActualUpdate(
 	if err := a.uncordon(node); err != nil {
 		return err
 	}
+	if err := a.setNodeAnnotation(node, upgradeCountKey, ""); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -843,6 +877,25 @@ func (a *MachineActuator) isOriginalMaster(node *corev1.Node) (bool, error) {
 		return false, err
 	}
 	return masterNode.Name == node.Name, nil
+}
+
+func (a *MachineActuator) findUpdatingNode() (*corev1.Node, error) {
+	nodes, err := a.getNodes()
+	if err != nil {
+		return nil, err
+	}
+	var updatingNode *corev1.Node = nil
+	for _, node := range nodes {
+		if node.Annotations[upgradeCountKey] != "" {
+			if updatingNode == nil {
+				updatingNode = node
+			} else {
+				return nil, errors.New("Multiple nodes found with active upgrade counts")
+			}
+		}
+	}
+
+	return updatingNode, nil
 }
 
 func extractEndpointAddress(urlstr string) (string, error) {
@@ -1043,6 +1096,30 @@ func (a *MachineActuator) findNodeByID(machineID, systemUUID string) (*corev1.No
 
 var r = rand.New(rand.NewSource(time.Now().Unix()))
 
+func (a *MachineActuator) incUpgradeCount(node *corev1.Node) (bool, error) {
+	count, err := a.getUpgradeCount(node)
+	if err != nil {
+		return false, err
+	}
+
+	switch count {
+	case 0:
+		return false, a.setNodeAnnotation(node, upgradeCountKey, "0")
+	case maxUpgradeAttempts:
+		return true, fmt.Errorf("Maximum number of upgrade attempts exceeded for: %s", node.Name)
+	default:
+		return false, a.setNodeAnnotation(node, upgradeCountKey, fmt.Sprintf("%d", count+1))
+	}
+}
+
+func (a *MachineActuator) getUpgradeCount(node *corev1.Node) (int, error) {
+	countAnnotation := node.Annotations[upgradeCountKey]
+	if countAnnotation == "" {
+		return 0, nil
+	}
+	return strconv.Atoi(countAnnotation)
+}
+
 func (a *MachineActuator) getMasterNode() (*corev1.Node, error) {
 	masters, err := a.getMasterNodes()
 	if err != nil {
@@ -1057,18 +1134,31 @@ func (a *MachineActuator) getMasterNode() (*corev1.Node, error) {
 }
 
 func (a *MachineActuator) getMasterNodes() ([]*corev1.Node, error) {
-	nodes, err := a.clientSet.CoreV1().Nodes().List(metav1.ListOptions{})
+	nodes, err := a.getNodes()
 	if err != nil {
-		return nil, gerrors.Wrap(err, "failed to list nodes")
+		return nil, err
 	}
 	masters := []*corev1.Node{}
-	for _, node := range nodes.Items {
-		if isMaster(&node) {
+	for _, node := range nodes {
+		if isMaster(node) {
 			n := node
-			masters = append(masters, &n)
+			masters = append(masters, n)
 		}
 	}
 	return masters, nil
+}
+
+func (a *MachineActuator) getNodes() ([]*corev1.Node, error) {
+	nodeList, err := a.clientSet.CoreV1().Nodes().List(metav1.ListOptions{})
+	if err != nil {
+		return nil, gerrors.Wrap(err, "failed to list nodes")
+	}
+	nodes := []*corev1.Node{}
+	for _, node := range nodeList.Items {
+		n := node
+		nodes = append(nodes, &n)
+	}
+	return nodes, nil
 }
 
 func (a *MachineActuator) getControllerNode() (*corev1.Node, error) {
