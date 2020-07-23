@@ -466,6 +466,21 @@ func (a *MachineActuator) update(ctx context.Context, cluster *clusterv1.Cluster
 	if err != nil {
 		return err
 	}
+	addr := a.getMachineAddress(machine)
+	node, err := a.findNodeByPrivateAddress(addr)
+	if err != nil {
+		return gerrors.Wrapf(err, "failed to find node by address: %s", addr)
+	}
+	updatingNode, err := a.findUpdatingNode()
+	if err != nil {
+		return err
+	}
+	contextLog := log.WithFields(log.Fields{"machine": machine.Name, "cluster": cluster.Name, "node": node.Name})
+	if updatingNode != nil && updatingNode != node {
+		msg := "Node %s is currently updating..."
+		contextLog.Infof(msg, updatingNode.Name)
+		return fmt.Errorf(msg, updatingNode.Name)
+	}
 	installer, closer, err := a.connectTo(machine, c, m)
 	if err != nil {
 		return gerrors.Wrapf(err, "failed to establish connection to machine %s", machine.Name)
@@ -476,15 +491,6 @@ func (a *MachineActuator) update(ctx context.Context, cluster *clusterv1.Cluster
 	if err := a.initializeMasterPlanIfNecessary(c); err != nil {
 		return err
 	}
-	ids, err := installer.IDs()
-	if err != nil {
-		return gerrors.Wrapf(err, "failed to read machine %s's IDs", machine.Name)
-	}
-	node, err := a.findNodeByID(ids.MachineID, ids.SystemUUID)
-	if err != nil {
-		return gerrors.Wrapf(err, "failed to find node by id: %s/%s", ids.MachineID, ids.SystemUUID)
-	}
-	contextLog := log.WithFields(log.Fields{"machine": machine.Name, "cluster": cluster.Name, "node": node.Name})
 	nodePlan, err := a.getNodePlan(c, machine, a.getMachineAddress(machine), installer)
 	if err != nil {
 		return gerrors.Wrapf(err, "Failed to get node plan for machine %s", machine.Name)
@@ -528,20 +534,12 @@ func (a *MachineActuator) update(ctx context.Context, cluster *clusterv1.Cluster
 			return err
 		}
 		contextLog.Infof("Master needs update: %t", masterNeedsUpdate)
-		updatingNode, err := a.findUpdatingNode()
-		if err != nil {
-			return err
-		}
-		if updatingNode != nil && isMaster(updatingNode) && updatingNode != node {
-			contextLog.Infof("Master is updating: %s", updatingNode.Name)
-			return fmt.Errorf("Master %s is currently updating...", updatingNode.Name)
-		}
 		isOriginal, err := a.isOriginalMaster(node)
 		if err != nil {
 			return err
 		}
 		contextLog.Infof("Is original: %t", isOriginal)
-		if (!isOriginal && originalNeedsUpdate) || (!nodeIsMaster && masterNeedsUpdate) || (updatingNode != nil && updatingNode != node) {
+		if (!isOriginal && originalNeedsUpdate) || (!nodeIsMaster && masterNeedsUpdate) {
 			return errors.New("A higher priority node currently needs updating")
 		}
 		isController, err := a.isControllerNode(node)
@@ -1088,6 +1086,19 @@ func (a *MachineActuator) findNodeByID(machineID, systemUUID string) (*corev1.No
 	}
 	for _, node := range nodes.Items {
 		if node.Status.NodeInfo.MachineID == machineID && node.Status.NodeInfo.SystemUUID == systemUUID {
+			return &node, nil
+		}
+	}
+	return nil, apierrs.NewNotFound(schema.GroupResource{Group: "", Resource: "nodes"}, "")
+}
+
+func (a *MachineActuator) findNodeByPrivateAddress(addr string) (*corev1.Node, error) {
+	nodes, err := a.clientSet.CoreV1().Nodes().List(metav1.ListOptions{})
+	if err != nil {
+		return nil, gerrors.Wrap(err, "failed to list nodes")
+	}
+	for _, node := range nodes.Items {
+		if getNodePrivateAddress(&node) == addr {
 			return &node, nil
 		}
 	}
