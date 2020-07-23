@@ -54,7 +54,7 @@ import (
 
 const (
 	planKey             string = "wks.weave.works/node-plan"
-	upgradeCountKey     string = "wks.weave.works/upgrade-count"
+	updateCountKey      string = "wks.weave.works/upgrade-count"
 	maxUpgradeAttempts  int    = 5
 	masterLabel         string = "node-role.kubernetes.io/master"
 	originalMasterLabel string = "wks.weave.works/original-master"
@@ -481,6 +481,13 @@ func (a *MachineActuator) update(ctx context.Context, cluster *clusterv1.Cluster
 		contextLog.Infof(msg, updatingNode.Name)
 		return fmt.Errorf(msg, updatingNode.Name)
 	}
+	tooManyRetries, err := a.incUpdateCount(node)
+	if err != nil {
+		return err
+	}
+	if tooManyRetries {
+		return nil
+	}
 	installer, closer, err := a.connectTo(machine, c, m)
 	if err != nil {
 		return gerrors.Wrapf(err, "failed to establish connection to machine %s", machine.Name)
@@ -581,14 +588,6 @@ func (a *MachineActuator) update(ctx context.Context, cluster *clusterv1.Cluster
 // Parameter k8sversion specified here represents the version of both Kubernetes and Kubeadm.
 func (a *MachineActuator) kubeadmUpOrDowngrade(machine *clusterv1.Machine, node *corev1.Node, installer *os.OS,
 	k8sVersion, planKey, planJSON string, ntype nodeType) error {
-	tooManyRetries, err := a.incUpgradeCount(node)
-	if err != nil {
-		return err
-	}
-	if tooManyRetries {
-		return nil
-	}
-
 	b := plan.NewBuilder()
 	b.AddResource(
 		"upgrade:node-unlock-kubernetes",
@@ -656,7 +655,7 @@ func (a *MachineActuator) kubeadmUpOrDowngrade(machine *clusterv1.Machine, node 
 		return err
 	}
 	log.Info("Finished with uncordon...")
-	if err = a.setNodeAnnotation(node, upgradeCountKey, ""); err != nil {
+	if err = a.setNodeAnnotation(node, updateCountKey, ""); err != nil {
 		return err
 	}
 
@@ -681,13 +680,6 @@ func (a *MachineActuator) performActualUpdate(
 	node *corev1.Node,
 	nodePlan *plan.Plan,
 	cluster *baremetalspecv1.BareMetalClusterProviderSpec) error {
-	tooManyRetries, err := a.incUpgradeCount(node)
-	if err != nil {
-		return err
-	}
-	if tooManyRetries {
-		return nil
-	}
 	if err := drain.Drain(node, a.clientSet, drain.Params{
 		Force:               true,
 		DeleteLocalData:     true,
@@ -701,7 +693,7 @@ func (a *MachineActuator) performActualUpdate(
 	if err := a.uncordon(node); err != nil {
 		return err
 	}
-	if err := a.setNodeAnnotation(node, upgradeCountKey, ""); err != nil {
+	if err := a.setNodeAnnotation(node, updateCountKey, ""); err != nil {
 		return err
 	}
 
@@ -884,7 +876,7 @@ func (a *MachineActuator) findUpdatingNode() (*corev1.Node, error) {
 	}
 	var updatingNode *corev1.Node = nil
 	for _, node := range nodes {
-		if node.Annotations[upgradeCountKey] != "" {
+		if node.Annotations[updateCountKey] != "" {
 			if updatingNode == nil {
 				updatingNode = node
 			} else {
@@ -1107,24 +1099,24 @@ func (a *MachineActuator) findNodeByPrivateAddress(addr string) (*corev1.Node, e
 
 var r = rand.New(rand.NewSource(time.Now().Unix()))
 
-func (a *MachineActuator) incUpgradeCount(node *corev1.Node) (bool, error) {
-	count, err := a.getUpgradeCount(node)
+func (a *MachineActuator) incUpdateCount(node *corev1.Node) (bool, error) {
+	count, err := a.getUpdateCount(node)
 	if err != nil {
 		return false, err
 	}
 
 	switch count {
 	case 0:
-		return false, a.setNodeAnnotation(node, upgradeCountKey, "0")
+		return false, a.setNodeAnnotation(node, updateCountKey, "0")
 	case maxUpgradeAttempts:
 		return true, fmt.Errorf("Maximum number of upgrade attempts exceeded for: %s", node.Name)
 	default:
-		return false, a.setNodeAnnotation(node, upgradeCountKey, fmt.Sprintf("%d", count+1))
+		return false, a.setNodeAnnotation(node, updateCountKey, fmt.Sprintf("%d", count+1))
 	}
 }
 
-func (a *MachineActuator) getUpgradeCount(node *corev1.Node) (int, error) {
-	countAnnotation := node.Annotations[upgradeCountKey]
+func (a *MachineActuator) getUpdateCount(node *corev1.Node) (int, error) {
+	countAnnotation := node.Annotations[updateCountKey]
 	if countAnnotation == "" {
 		return 0, nil
 	}
