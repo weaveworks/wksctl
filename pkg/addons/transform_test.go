@@ -16,9 +16,9 @@ func TestUpdateImage(t *testing.T) {
 	}{
 		// CNI addon's images should just have their repository updated:
 		{
-			image:         "docker.io/weaveworks/weave-kube:2.5.1",
+			image:         "docker.io/weaveworks/weave-kube:2.6.5",
 			repository:    "172.17.0.2:5000",
-			expectedImage: "172.17.0.2:5000/weaveworks/weave-kube:2.5.1",
+			expectedImage: "172.17.0.2:5000/weaveworks/weave-kube:2.6.5",
 			expectedError: nil,
 		},
 		// WKS controller's image should just have its repository updated:
