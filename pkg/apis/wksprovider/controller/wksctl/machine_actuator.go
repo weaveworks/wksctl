@@ -111,6 +111,7 @@ type MachineActuator struct {
 // Create the machine.
 func (a *MachineActuator) Create(ctx context.Context, cluster *clusterv1.Cluster, machine *clusterv1.Machine) error {
 	contextLog := log.WithFields(log.Fields{"context": ctx, "cluster": *cluster, "machine": *machine})
+	log.Infof("........................CREATING: %s...........................", machine.Name)
 	contextLog.Info("creating machine...")
 	if err := a.create(ctx, cluster, machine); err != nil {
 		contextLog.Errorf("failed to create machine: %v", err)
@@ -471,22 +472,15 @@ func (a *MachineActuator) update(ctx context.Context, cluster *clusterv1.Cluster
 	if err != nil {
 		return gerrors.Wrapf(err, "failed to find node by address: %s", addr)
 	}
+	contextLog := log.WithFields(log.Fields{"machine": machine.Name, "cluster": cluster.Name, "node": node.Name})
 	updatingNode, err := a.findUpdatingNode()
 	if err != nil {
 		return err
 	}
-	contextLog := log.WithFields(log.Fields{"machine": machine.Name, "cluster": cluster.Name, "node": node.Name})
-	if updatingNode != nil && updatingNode != node {
-		msg := "Node %s is currently updating..."
-		contextLog.Infof(msg, updatingNode.Name)
-		return fmt.Errorf(msg, updatingNode.Name)
-	}
-	tooManyRetries, err := a.incUpdateCount(node)
-	if err != nil {
-		return err
-	}
-	if tooManyRetries {
-		return nil
+	if updatingNode != nil && updatingNode.Name != node.Name {
+		msg := "Can't update node %s; node %s is currently updating..."
+		contextLog.Infof(msg, node.Name, updatingNode.Name)
+		return fmt.Errorf(msg, node.Name, updatingNode.Name)
 	}
 	installer, closer, err := a.connectTo(machine, c, m)
 	if err != nil {
@@ -496,20 +490,17 @@ func (a *MachineActuator) update(ctx context.Context, cluster *clusterv1.Cluster
 
 	// Bootstrap - set plan on seed node if not present before any updates can occur
 	if err := a.initializeMasterPlanIfNecessary(c); err != nil {
-		return err
+		return a.restartableFailure(node, err)
 	}
 	nodePlan, err := a.getNodePlan(c, machine, a.getMachineAddress(machine), installer)
 	if err != nil {
-		return gerrors.Wrapf(err, "Failed to get node plan for machine %s", machine.Name)
+		return a.restartableFailure(node, gerrors.Wrapf(err, "Failed to get node plan for machine %s", machine.Name))
 	}
 	planJSON := nodePlan.ToJSON()
 	currentPlan := node.Annotations[planKey]
 	if currentPlan == planJSON {
 		contextLog.Info("Machine and node have matching plans; nothing to do")
-		if err = a.setNodeAnnotation(node, updateCountKey, ""); err != nil {
-			return err
-		}
-		return nil
+		return a.clearUpdateCount(node)
 	}
 
 	if diffedPlan, err := plandiff.GetUnifiedDiff(currentPlan, planJSON); err == nil {
@@ -523,7 +514,7 @@ func (a *MachineActuator) update(ctx context.Context, cluster *clusterv1.Cluster
 	nodeIsMaster := isMaster(node)
 	if nodeIsMaster {
 		if err := a.prepareForMasterUpdate(); err != nil {
-			return err
+			return a.restartableFailure(node, err)
 		}
 	}
 	upOrDowngrade := isUpOrDowngrade(machine, node)
@@ -536,25 +527,25 @@ func (a *MachineActuator) update(ctx context.Context, cluster *clusterv1.Cluster
 		nodeStyleVersion := "v" + version
 		originalNeedsUpdate, err := a.checkIfOriginalMasterNotAtVersion(nodeStyleVersion)
 		if err != nil {
-			return err
+			return a.restartableFailure(node, err)
 		}
 		contextLog.Infof("Original needs update: %t", originalNeedsUpdate)
 		masterNeedsUpdate, err := a.checkIfMasterNotAtVersion(nodeStyleVersion)
 		if err != nil {
-			return err
+			return a.restartableFailure(node, err)
 		}
 		contextLog.Infof("Master needs update: %t", masterNeedsUpdate)
 		isOriginal, err := a.isOriginalMaster(node)
 		if err != nil {
-			return err
+			return a.restartableFailure(node, err)
 		}
 		contextLog.Infof("Is original: %t", isOriginal)
 		if (!isOriginal && originalNeedsUpdate) || (!nodeIsMaster && masterNeedsUpdate) {
-			return errors.New("A higher priority node currently needs updating")
+			return a.restartableFailure(node, errors.New("A higher priority node currently needs updating"))
 		}
 		isController, err := a.isControllerNode(node)
 		if err != nil {
-			return err
+			return a.restartableFailure(node, err)
 		}
 		contextLog.Infof("Is controller: %t", isController)
 		if nodeIsMaster {
@@ -585,6 +576,17 @@ func (a *MachineActuator) update(ctx context.Context, cluster *clusterv1.Cluster
 	}
 	a.recordEvent(machine, corev1.EventTypeNormal, "Update", "updated machine %s", machine.Name)
 	return nil
+}
+
+func (a *MachineActuator) restartableFailure(node *corev1.Node, cause error) error {
+	if err := a.clearUpdateCount(node); err != nil {
+		return err
+	}
+	return cause
+}
+
+func (a *MachineActuator) clearUpdateCount(node *corev1.Node) error {
+	return a.setNodeAnnotation(node, updateCountKey, "")
 }
 
 // kubeadmUpOrDowngrade does upgrade or downgrade a machine.
@@ -658,7 +660,7 @@ func (a *MachineActuator) kubeadmUpOrDowngrade(machine *clusterv1.Machine, node 
 		return err
 	}
 	log.Info("Finished with uncordon...")
-	if err = a.setNodeAnnotation(node, updateCountKey, ""); err != nil {
+	if err = a.clearUpdateCount(node); err != nil {
 		return err
 	}
 
@@ -696,11 +698,7 @@ func (a *MachineActuator) performActualUpdate(
 	if err := a.uncordon(node); err != nil {
 		return err
 	}
-	if err := a.setNodeAnnotation(node, updateCountKey, ""); err != nil {
-		return err
-	}
-
-	return nil
+	return a.clearUpdateCount(node)
 }
 
 func (a *MachineActuator) getNodePlan(providerSpec *baremetalspecv1.BareMetalClusterProviderSpec, machine *clusterv1.Machine, machineAddress string, installer *os.OS) (*plan.Plan, error) {
@@ -1052,6 +1050,28 @@ func (a *MachineActuator) exists(ctx context.Context, cluster *clusterv1.Cluster
 		a.updateMachine(machine, ip)
 		contextLog.Infof("Updated machine: %s", ip)
 	}
+	addr := a.getMachineAddress(machine)
+	if node, err := a.findNodeByPrivateAddress(addr); err == nil {
+		contextLog := log.WithFields(log.Fields{"machine": machine.Name, "cluster": cluster.Name, "node": node.Name})
+		updatingNode, err := a.findUpdatingNode()
+		if err != nil {
+			return true, err
+		}
+		if updatingNode != nil && updatingNode.Name != node.Name {
+			msg := "Can't update node %s; node %s is currently updating..."
+			contextLog.Infof(msg, node.Name, updatingNode.Name)
+			return true, fmt.Errorf(msg, node.Name, updatingNode.Name)
+		}
+		tooManyRetries, err := a.incUpdateCount(node)
+		if err != nil {
+			return true, err
+		}
+		if tooManyRetries {
+			return true, nil
+		}
+		count, e := a.getUpdateCount(node)
+		fmt.Printf("Update count for %s incremented to: %d, ERR: %v\n", node.Name, count, e)
+	}
 	os, closer, err := a.connectTo(machine, c, m)
 	if err != nil {
 		return false, gerrors.Wrapf(err, "failed to establish connection to machine %s", machine.Name)
@@ -1107,12 +1127,12 @@ func (a *MachineActuator) incUpdateCount(node *corev1.Node) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-
+	fmt.Printf("Update count for: %s = %d\n", node.Name, count)
 	switch count {
 	case 0:
-		return false, a.setNodeAnnotation(node, updateCountKey, "0")
+		return false, a.setNodeAnnotation(node, updateCountKey, "1")
 	case maxUpgradeAttempts:
-		return true, fmt.Errorf("Maximum number of upgrade attempts exceeded for: %s", node.Name)
+		return true, nil
 	default:
 		return false, a.setNodeAnnotation(node, updateCountKey, fmt.Sprintf("%d", count+1))
 	}
