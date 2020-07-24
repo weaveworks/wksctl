@@ -1070,7 +1070,7 @@ func (a *MachineActuator) exists(ctx context.Context, cluster *clusterv1.Cluster
 			return true, nil
 		}
 		count, e := a.getUpdateCount(node)
-		fmt.Printf("Update count for %s incremented to: %d, ERR: %v\n", node.Name, count, e)
+		contextLog.Infof("Update count for %s incremented to: %d, ERR: %v\n", node.Name, count, e)
 	}
 	os, closer, err := a.connectTo(machine, c, m)
 	if err != nil {
@@ -1127,7 +1127,6 @@ func (a *MachineActuator) incUpdateCount(node *corev1.Node) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	fmt.Printf("Update count for: %s = %d\n", node.Name, count)
 	switch count {
 	case 0:
 		return false, a.setNodeAnnotation(node, updateCountKey, "1")
