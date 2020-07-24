@@ -54,7 +54,7 @@ import (
 
 const (
 	planKey             string = "wks.weave.works/node-plan"
-	updateCountKey      string = "wks.weave.works/upgrade-count"
+	updateCountKey      string = "wks.weave.works/update-count"
 	maxUpgradeAttempts  int    = 5
 	masterLabel         string = "node-role.kubernetes.io/master"
 	originalMasterLabel string = "wks.weave.works/original-master"
@@ -506,6 +506,9 @@ func (a *MachineActuator) update(ctx context.Context, cluster *clusterv1.Cluster
 	currentPlan := node.Annotations[planKey]
 	if currentPlan == planJSON {
 		contextLog.Info("Machine and node have matching plans; nothing to do")
+		if err = a.setNodeAnnotation(node, updateCountKey, ""); err != nil {
+			return err
+		}
 		return nil
 	}
 
