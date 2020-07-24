@@ -25,8 +25,6 @@ import (
 
 type initOptionType struct {
 	dependencyPath       string
-	footlooseIP          string
-	footlooseBackend     string
 	gitURL               string
 	gitBranch            string
 	gitPath              string
@@ -56,15 +54,13 @@ var (
 
 	initOptions initOptionType
 
-	namespacePrefixPattern          = "kind: Namespace\n  metadata:\n    name: "
-	namespaceNamePattern            = multiLineRegexp(namespacePrefixPattern + `\S+`)
-	controllerFootlooseAddrLocation = multiLineRegexp(`(\s*)- name: controller`)
-	controllerFootlooseEnvEntry     = multiLineRegexp(`env:\n\s*- name: FOOTLOOSE_SERVER_ADDR`)
-	controllerImageSegment          = multiLineRegexp(`(image:\s*\S*[-]controller)(:\s*\S+)?`)
-	namespacePattern                = multiLineRegexp(`namespace:\s*\S+`)
-	gitURLPattern                   = multiLineRegexp(`(--git-url)=\S+`)
-	gitBranchPattern                = multiLineRegexp(`(--git-branch)=\S+`)
-	gitPathPattern                  = multiLineRegexp(`(--git-path)=\S+`)
+	namespacePrefixPattern = "kind: Namespace\n  metadata:\n    name: "
+	namespaceNamePattern   = multiLineRegexp(namespacePrefixPattern + `\S+`)
+	controllerImageSegment = multiLineRegexp(`(image:\s*\S*[-]controller)(:\s*\S+)?`)
+	namespacePattern       = multiLineRegexp(`namespace:\s*\S+`)
+	gitURLPattern          = multiLineRegexp(`(--git-url)=\S+`)
+	gitBranchPattern       = multiLineRegexp(`(--git-branch)=\S+`)
+	gitPathPattern         = multiLineRegexp(`(--git-path)=\S+`)
 
 	updates = []manifestUpdate{
 		{name: "weave-net", selector: equal("weave-net.yaml"), updater: updateWeaveNetManifests},
@@ -79,10 +75,6 @@ func multiLineRegexp(pattern string) *regexp.Regexp {
 }
 
 func init() {
-	Cmd.Flags().StringVar(
-		&initOptions.footlooseIP, "footloose-ip", "172.17.0.1", "address of footloose server on host")
-	Cmd.Flags().StringVar(
-		&initOptions.footlooseBackend, "footloose-backend", "docker", "which machine backend to use: ignite or docker")
 	Cmd.Flags().StringVar(
 		&initOptions.localRepoDirectory, "gitk8s-clone", ".", "Local location of cloned git repository")
 	Cmd.Flags().StringVar(&initOptions.gitURL, "git-url", "",
@@ -144,12 +136,6 @@ func updateControllerManifests(contents []byte, options initOptionType) ([]byte,
 		withVersion = controllerImageSegment.ReplaceAll(contents, []byte(`image: `+controllerVersion))
 	} else {
 		withVersion = controllerImageSegment.ReplaceAll(contents, []byte(`$1:`+controllerVersion))
-	}
-	if controllerFootlooseEnvEntry.Find(withVersion) == nil {
-		return controllerFootlooseAddrLocation.ReplaceAll(withVersion,
-			// We want to add to the matched entry so we start with $0 (the entire match) and use $1 to get the indentation correct.
-			// The $1 contains a leading newline.
-			[]byte(fmt.Sprintf("$0$1  env:$1  - name: FOOTLOOSE_SERVER_ADDR$1    value: %s$1  - name: FOOTLOOSE_BACKEND$1    value: %s", options.footlooseIP, options.footlooseBackend))), nil
 	}
 	return withVersion, nil
 }
