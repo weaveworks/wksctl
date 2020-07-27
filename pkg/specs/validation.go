@@ -178,7 +178,7 @@ func populateCluster(cluster *clusterv1.Cluster) {
 	populateNetwork(cluster)
 }
 
-func validateCluster(cluster *clusterv1.Cluster, bmc *existinginfrav1.ExistingInfraCluster, manifestPath string) field.ErrorList {
+func validateCluster(cluster *clusterv1.Cluster, eic *existinginfrav1.ExistingInfraCluster, manifestPath string) field.ErrorList {
 	var errors field.ErrorList
 
 	for _, f := range []clusterValidationFunc{
@@ -187,7 +187,7 @@ func validateCluster(cluster *clusterv1.Cluster, bmc *existinginfrav1.ExistingIn
 		validateSSHKeyEmpty,
 		validateAddons,
 	} {
-		errors = append(errors, f(cluster, &bmc.Spec, manifestPath)...)
+		errors = append(errors, f(cluster, &eic.Spec, manifestPath)...)
 	}
 
 	return errors

@@ -30,8 +30,8 @@ func (a *ClusterReconciler) Reconcile(req ctrl.Request) (_ ctrl.Result, reterr e
 	contextLog := log.WithField("name", req.NamespacedName)
 
 	// request only contains the name of the object, so fetch it from the api-server
-	bmc := &existinginfrav1.ExistingInfraCluster{}
-	err := a.client.Get(ctx, req.NamespacedName, bmc)
+	eic := &existinginfrav1.ExistingInfraCluster{}
+	err := a.client.Get(ctx, req.NamespacedName, eic)
 	if err != nil {
 		if apierrs.IsNotFound(err) { // isn't there; give in
 			return ctrl.Result{}, nil
@@ -40,7 +40,7 @@ func (a *ClusterReconciler) Reconcile(req ctrl.Request) (_ ctrl.Result, reterr e
 	}
 
 	// Get Cluster via OwnerReferences
-	cluster, err := util.GetOwnerCluster(ctx, a.client, bmc.ObjectMeta)
+	cluster, err := util.GetOwnerCluster(ctx, a.client, eic.ObjectMeta)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -50,20 +50,20 @@ func (a *ClusterReconciler) Reconcile(req ctrl.Request) (_ ctrl.Result, reterr e
 	}
 	contextLog = contextLog.WithField("cluster", cluster.Name)
 
-	if util.IsPaused(cluster, bmc) {
+	if util.IsPaused(cluster, eic) {
 		contextLog.Info("ExistingInfraCluster or linked Cluster is marked as paused. Won't reconcile")
 		return ctrl.Result{}, nil
 	}
 
 	// Initialize the patch helper
-	patchHelper, err := patch.NewHelper(bmc, a.client)
+	patchHelper, err := patch.NewHelper(eic, a.client)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
 	// Attempt to Patch the ExistingInfraMachine object and status after each reconciliation.
 	defer func() {
-		if err := patchHelper.Patch(ctx, bmc); err != nil {
+		if err := patchHelper.Patch(ctx, eic); err != nil {
 			contextLog.Errorf("failed to patch ExistingInfraCluster: %v", err)
 			if reterr == nil {
 				reterr = err
@@ -72,12 +72,12 @@ func (a *ClusterReconciler) Reconcile(req ctrl.Request) (_ ctrl.Result, reterr e
 	}()
 
 	// Object still there but with deletion timestamp => run our finalizer
-	if !bmc.ObjectMeta.DeletionTimestamp.IsZero() {
+	if !eic.ObjectMeta.DeletionTimestamp.IsZero() {
 		a.recordEvent(cluster, corev1.EventTypeNormal, "Delete", "Deleted cluster %v", cluster.Name)
 		return ctrl.Result{}, errors.New("ClusterReconciler#Delete not implemented")
 	}
 
-	bmc.Status.Ready = true // TODO: know whether it is really ready
+	eic.Status.Ready = true // TODO: know whether it is really ready
 
 	return ctrl.Result{}, nil
 }

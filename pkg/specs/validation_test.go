@@ -276,9 +276,9 @@ spec:
 
 func clusterFromString(t *testing.T, s string) (*clusterv1.Cluster, *existinginfrav1.ExistingInfraCluster) {
 	r := ioutil.NopCloser(strings.NewReader(s))
-	cluster, bmc, err := ParseCluster(r)
+	cluster, eic, err := ParseCluster(r)
 	assert.NoError(t, err)
-	return cluster, bmc
+	return cluster, eic
 }
 
 // Gather the list of fields paths that didn't pass validation.
@@ -317,9 +317,9 @@ func TestValidateCluster(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		cluster, bmc := clusterFromString(t, test.input)
+		cluster, eic := clusterFromString(t, test.input)
 		populateCluster(cluster)
-		errors := validateCluster(cluster, bmc, "/tmp/test.yaml")
+		errors := validateCluster(cluster, eic, "/tmp/test.yaml")
 		assert.Equal(t, len(test.errors), len(errors))
 		assert.Equal(t, test.errors, fieldsInError(errors))
 

@@ -1259,7 +1259,7 @@ func fetchOSID(sshClient *ssh.Client) (string, error) {
 }
 
 // parseCluster converts the manifest file into a Cluster
-func parseCluster(clusterManifestPath string) (bmc *existinginfrav1.ExistingInfraCluster, err error) {
+func parseCluster(clusterManifestPath string) (eic *existinginfrav1.ExistingInfraCluster, err error) {
 	f, err := os.Open(clusterManifestPath)
 	if err != nil {
 		return nil, err

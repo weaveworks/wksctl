@@ -70,8 +70,8 @@ func (r *MachineController) Reconcile(req ctrl.Request) (_ ctrl.Result, reterr e
 	contextLog := log.WithField("name", req.NamespacedName)
 
 	// request only contains the name of the object, so fetch it from the api-server
-	bmm := &existinginfrav1.ExistingInfraMachine{}
-	err := r.client.Get(ctx, req.NamespacedName, bmm)
+	eim := &existinginfrav1.ExistingInfraMachine{}
+	err := r.client.Get(ctx, req.NamespacedName, eim)
 	if err != nil {
 		if apierrs.IsNotFound(err) { // isn't there; give in
 			return ctrl.Result{}, nil
@@ -80,7 +80,7 @@ func (r *MachineController) Reconcile(req ctrl.Request) (_ ctrl.Result, reterr e
 	}
 
 	// Get Machine via OwnerReferences
-	machine, err := util.GetOwnerMachine(ctx, r.client, bmm.ObjectMeta)
+	machine, err := util.GetOwnerMachine(ctx, r.client, eim.ObjectMeta)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -97,7 +97,7 @@ func (r *MachineController) Reconcile(req ctrl.Request) (_ ctrl.Result, reterr e
 		return ctrl.Result{}, nil
 	}
 
-	if util.IsPaused(cluster, bmm) {
+	if util.IsPaused(cluster, eim) {
 		contextLog.Info("ExistingInfraMachine or linked Cluster is marked as paused. Won't reconcile")
 		return ctrl.Result{}, nil
 	}
@@ -108,23 +108,23 @@ func (r *MachineController) Reconcile(req ctrl.Request) (_ ctrl.Result, reterr e
 		contextLog.Info("Cluster is missing infrastructureRef")
 		return ctrl.Result{}, nil
 	}
-	bmc := &existinginfrav1.ExistingInfraCluster{}
+	eic := &existinginfrav1.ExistingInfraCluster{}
 	if err := r.client.Get(ctx, client.ObjectKey{
-		Namespace: bmm.Namespace,
+		Namespace: eim.Namespace,
 		Name:      cluster.Spec.InfrastructureRef.Name,
-	}, bmc); err != nil {
+	}, eic); err != nil {
 		contextLog.Info("ExistingInfraCluster is not available yet")
 		return ctrl.Result{}, nil
 	}
 
 	// Initialize the patch helper
-	patchHelper, err := patch.NewHelper(bmm, r.client)
+	patchHelper, err := patch.NewHelper(eim, r.client)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 	// Attempt to Patch the ExistingInfraMachine object and status after each reconciliation.
 	defer func() {
-		if err := patchHelper.Patch(ctx, bmm); err != nil {
+		if err := patchHelper.Patch(ctx, eim); err != nil {
 			contextLog.Errorf("failed to patch ExistingInfraMachine: %v", err)
 			if reterr == nil {
 				reterr = err
@@ -133,26 +133,26 @@ func (r *MachineController) Reconcile(req ctrl.Request) (_ ctrl.Result, reterr e
 	}()
 
 	// Object still there but with deletion timestamp => run our finalizer
-	if !bmm.ObjectMeta.DeletionTimestamp.IsZero() {
-		err := r.delete(ctx, bmc, machine, bmm)
+	if !eim.ObjectMeta.DeletionTimestamp.IsZero() {
+		err := r.delete(ctx, eic, machine, eim)
 		if err != nil {
 			contextLog.Errorf("failed to delete machine: %v", err)
 		}
 		return ctrl.Result{}, err
 	}
 
-	err = r.update(ctx, bmc, machine, bmm)
+	err = r.update(ctx, eic, machine, eim)
 	if err != nil {
 		contextLog.Errorf("failed to update machine: %v", err)
 	}
 	return ctrl.Result{}, err
 }
 
-func (a *MachineController) create(ctx context.Context, installer *os.OS, c *existinginfrav1.ExistingInfraCluster, machine *clusterv1.Machine, bmm *existinginfrav1.ExistingInfraMachine) error {
+func (a *MachineController) create(ctx context.Context, installer *os.OS, c *existinginfrav1.ExistingInfraCluster, machine *clusterv1.Machine, eim *existinginfrav1.ExistingInfraMachine) error {
 	contextLog := log.WithFields(log.Fields{"machine": machine.Name, "cluster": c.Name})
 	contextLog.Info("creating machine...")
 
-	nodePlan, err := a.getNodePlan(ctx, c, machine, a.getMachineAddress(bmm), installer)
+	nodePlan, err := a.getNodePlan(ctx, c, machine, a.getMachineAddress(eim), installer)
 	if err != nil {
 		return err
 	}
@@ -174,8 +174,8 @@ func (a *MachineController) create(ctx context.Context, installer *os.OS, c *exi
 		return err
 	}
 	// CAPI machine controller requires providerID
-	bmm.Spec.ProviderID = node.Spec.ProviderID
-	bmm.Status.Ready = true
+	eim.Spec.ProviderID = node.Spec.ProviderID
+	eim.Status.Ready = true
 	a.recordEvent(machine, corev1.EventTypeNormal, "Create", "created machine %s", machine.Name)
 	return nil
 }
@@ -315,11 +315,11 @@ func (a *MachineController) installNewBootstrapToken(ctx context.Context, ns str
 }
 
 // Delete the machine. If no error is returned, it is assumed that all dependent resources have been cleaned up.
-func (a *MachineController) delete(ctx context.Context, c *existinginfrav1.ExistingInfraCluster, machine *clusterv1.Machine, bmm *existinginfrav1.ExistingInfraMachine) error {
+func (a *MachineController) delete(ctx context.Context, c *existinginfrav1.ExistingInfraCluster, machine *clusterv1.Machine, eim *existinginfrav1.ExistingInfraMachine) error {
 	contextLog := log.WithFields(log.Fields{"machine": machine.Name, "cluster": c.Name})
 	contextLog.Info("deleting machine ...")
 
-	os, closer, err := a.connectTo(ctx, c, bmm)
+	os, closer, err := a.connectTo(ctx, c, eim)
 	if err != nil {
 		return gerrors.Wrapf(err, "failed to establish connection to machine %s", machine.Name)
 	}
@@ -356,10 +356,10 @@ func (a *MachineController) delete(ctx context.Context, c *existinginfrav1.Exist
 }
 
 // Update the machine to the provided definition.
-func (a *MachineController) update(ctx context.Context, c *existinginfrav1.ExistingInfraCluster, machine *clusterv1.Machine, bmm *existinginfrav1.ExistingInfraMachine) error {
+func (a *MachineController) update(ctx context.Context, c *existinginfrav1.ExistingInfraCluster, machine *clusterv1.Machine, eim *existinginfrav1.ExistingInfraMachine) error {
 	contextLog := log.WithFields(log.Fields{"machine": machine.Name, "cluster": c.Name})
 	contextLog.Info("updating machine...")
-	installer, closer, err := a.connectTo(ctx, c, bmm)
+	installer, closer, err := a.connectTo(ctx, c, eim)
 	if err != nil {
 		return gerrors.Wrapf(err, "failed to establish connection to machine %s", machine.Name)
 	}
@@ -372,7 +372,7 @@ func (a *MachineController) update(ctx context.Context, c *existinginfrav1.Exist
 	node, err := a.findNodeByID(ctx, ids.MachineID, ids.SystemUUID)
 	if err != nil {
 		if apierrs.IsNotFound(err) { // isn't there; try to create it
-			return a.create(ctx, installer, c, machine, bmm)
+			return a.create(ctx, installer, c, machine, eim)
 		}
 		return gerrors.Wrapf(err, "failed to find node by id: %s/%s", ids.MachineID, ids.SystemUUID)
 	}
@@ -381,7 +381,7 @@ func (a *MachineController) update(ctx context.Context, c *existinginfrav1.Exist
 	if err = a.setNodeProviderIDIfNecessary(ctx, node); err != nil {
 		return err
 	}
-	nodePlan, err := a.getNodePlan(ctx, c, machine, a.getMachineAddress(bmm), installer)
+	nodePlan, err := a.getNodePlan(ctx, c, machine, a.getMachineAddress(eim), installer)
 	if err != nil {
 		return gerrors.Wrapf(err, "Failed to get node plan for machine %s", machine.Name)
 	}
@@ -475,8 +475,8 @@ func (a *MachineController) update(ctx context.Context, c *existinginfrav1.Exist
 		return err
 	}
 	// CAPI machine controller requires providerID
-	bmm.Spec.ProviderID = node.Spec.ProviderID
-	bmm.Status.Ready = true
+	eim.Spec.ProviderID = node.Spec.ProviderID
+	eim.Status.Ready = true
 
 	a.recordEvent(machine, corev1.EventTypeNormal, "Update", "updated machine %s", machine.Name)
 	return nil

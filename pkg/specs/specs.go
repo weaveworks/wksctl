@@ -28,15 +28,15 @@ type Specs struct {
 
 // Get a "Specs" object that can create an SSHClient (and retrieve useful nested fields)
 func NewFromPaths(clusterManifestPath, machinesManifestPath string) *Specs {
-	cluster, bmc, machines, bml, err := parseManifests(clusterManifestPath, machinesManifestPath)
+	cluster, eic, machines, bml, err := parseManifests(clusterManifestPath, machinesManifestPath)
 	if err != nil {
 		log.Fatal("Error parsing manifest: ", err)
 	}
-	return New(cluster, bmc, machines, bml)
+	return New(cluster, eic, machines, bml)
 }
 
 // Get a "Specs" object that can create an SSHClient (and retrieve useful nested fields)
-func New(cluster *clusterv1.Cluster, bmc *existinginfrav1.ExistingInfraCluster, machines []*clusterv1.Machine, bl []*existinginfrav1.ExistingInfraMachine) *Specs {
+func New(cluster *clusterv1.Cluster, eic *existinginfrav1.ExistingInfraCluster, machines []*clusterv1.Machine, bl []*existinginfrav1.ExistingInfraMachine) *Specs {
 	_, master := machine.FirstMaster(machines, bl)
 	if master == nil {
 		log.Fatal("No master provided in manifest.")
@@ -49,7 +49,7 @@ func New(cluster *clusterv1.Cluster, bmc *existinginfrav1.ExistingInfraCluster, 
 	}
 	return &Specs{
 		Cluster:     cluster,
-		ClusterSpec: &bmc.Spec,
+		ClusterSpec: &eic.Spec,
 		MasterSpec:  &master.Spec,
 
 		machineCount: len(machines),
@@ -58,13 +58,13 @@ func New(cluster *clusterv1.Cluster, bmc *existinginfrav1.ExistingInfraCluster, 
 }
 
 func parseManifests(clusterManifestPath, machinesManifestPath string) (*clusterv1.Cluster, *existinginfrav1.ExistingInfraCluster, []*clusterv1.Machine, []*existinginfrav1.ExistingInfraMachine, error) {
-	cluster, bmc, err := ParseClusterManifest(clusterManifestPath)
+	cluster, eic, err := ParseClusterManifest(clusterManifestPath)
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
 	populateCluster(cluster)
 
-	validationErrors := validateCluster(cluster, bmc, clusterManifestPath)
+	validationErrors := validateCluster(cluster, eic, clusterManifestPath)
 	if len(validationErrors) > 0 {
 		utilities.PrintErrors(validationErrors)
 		return nil, nil, nil, nil, apierrors.InvalidMachineConfiguration(
@@ -85,11 +85,11 @@ func parseManifests(clusterManifestPath, machinesManifestPath string) (*clusterv
 		return nil, nil, nil, nil, err
 	}
 
-	return cluster, bmc, machines, bl, nil
+	return cluster, eic, machines, bl, nil
 }
 
 // ParseCluster converts the manifest file into a Cluster
-func ParseCluster(r io.ReadCloser) (cluster *clusterv1.Cluster, bmc *existinginfrav1.ExistingInfraCluster, err error) {
+func ParseCluster(r io.ReadCloser) (cluster *clusterv1.Cluster, eic *existinginfrav1.ExistingInfraCluster, err error) {
 	decoder := clusteryaml.NewYAMLDecoder(r)
 	defer decoder.Close()
 
@@ -105,7 +105,7 @@ func ParseCluster(r io.ReadCloser) (cluster *clusterv1.Cluster, bmc *existinginf
 		case *clusterv1.Cluster:
 			cluster = v
 		case *existinginfrav1.ExistingInfraCluster:
-			bmc = v
+			eic = v
 		default:
 			return nil, nil, errors.Errorf("unexpected type %T", v)
 		}
@@ -115,7 +115,7 @@ func ParseCluster(r io.ReadCloser) (cluster *clusterv1.Cluster, bmc *existinginf
 		return nil, nil, errors.New("parsed cluster manifest lacks Cluster definition")
 	}
 
-	if bmc == nil {
+	if eic == nil {
 		return nil, nil, errors.New("parsed cluster manifest lacks ExistingInfraCluster definition")
 	}
 

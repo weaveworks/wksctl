@@ -186,9 +186,9 @@ func setKubernetesVersion(l []*clusterv1.Machine, version string) {
 func parseClusterManifest(t *testing.T, file string) (*clusterv1.Cluster, *existinginfrav1.ExistingInfraCluster) {
 	f, err := os.Open(file)
 	assert.NoError(t, err)
-	cluster, bmCluster, err := specs.ParseCluster(f)
+	cluster, eiCluster, err := specs.ParseCluster(f)
 	assert.NoError(t, err)
-	return cluster, bmCluster
+	return cluster, eiCluster
 }
 
 // The installer names the kubeconfig file from the cluster namespace and name
@@ -375,18 +375,18 @@ func TestApply(t *testing.T) {
 	terraform, err := newTerraformOutputFromFile(options.terraform.outputPath)
 	require.NoError(t, err)
 
-	machines, bmMachines := makeMachinesFromTerraform(t, c.Name, terraform, terraform.numMachines()-1)
+	machines, eiMachines := makeMachinesFromTerraform(t, c.Name, terraform, terraform.numMachines()-1)
 	setKubernetesVersion(machines, kubernetes.DefaultVersion)
-	writeYamlManifests(t, configPath("machines.yaml"), machines, bmMachines)
+	writeYamlManifests(t, configPath("machines.yaml"), machines, eiMachines)
 
 	// Generate bad version to check failure return codes
-	savedAddress := bmMachines[0].Spec.Private.Address
-	bmMachines[0].Spec.Private.Address = "192.168.111.111"
-	writeYamlManifests(t, configPath("badmachines.yaml"), machines, bmMachines)
-	bmMachines[0].Spec.Private.Address = savedAddress
+	savedAddress := eiMachines[0].Spec.Private.Address
+	eiMachines[0].Spec.Private.Address = "192.168.111.111"
+	writeYamlManifests(t, configPath("badmachines.yaml"), machines, eiMachines)
+	eiMachines[0].Spec.Private.Address = savedAddress
 
 	machinesManifestPath := configPath("machines.yaml")
-	_, m := machine.FirstMaster(machines, bmMachines)
+	_, m := machine.FirstMaster(machines, eiMachines)
 	assert.NotNil(t, m)
 	ip := m.Spec.Public.Address
 	port := m.Spec.Public.Port
