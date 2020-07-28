@@ -45,8 +45,8 @@
 5. Configure it in your `cluster.yaml`:
 
     ```yaml
-    apiVersion: "cluster.weave.works/v1alpha3"
-    kind: "BareMetalCluster"
+    apiVersion: cluster.weave.works/v1alpha3
+    kind: ExistingInfraCluster
     spec:
       os:
         files:
