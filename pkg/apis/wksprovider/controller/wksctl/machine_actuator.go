@@ -513,7 +513,7 @@ func (a *MachineActuator) update(ctx context.Context, cluster *clusterv1.Cluster
 	contextLog.Infof("........................NEW UPDATE FOR: %s...........................", machine.Name)
 	nodeIsMaster := isMaster(node)
 	if nodeIsMaster {
-		if err := a.prepareForMasterUpdate(); err != nil {
+		if err := a.prepareForMasterUpdate(node); err != nil {
 			return a.restartableFailure(node, err)
 		}
 	}
@@ -671,9 +671,9 @@ func (a *MachineActuator) kubeadmUpOrDowngrade(machine *clusterv1.Machine, node 
 	return nil
 }
 
-func (a *MachineActuator) prepareForMasterUpdate() error {
+func (a *MachineActuator) prepareForMasterUpdate(node *v1.Node) error {
 	// Check if it's safe to update a master
-	if err := a.checkMasterHAConstraint(); err != nil {
+	if err := a.checkMasterHAConstraint(node); err != nil {
 		return gerrors.Wrap(err, "Not enough available master nodes to allow master update")
 	}
 	return nil
@@ -983,7 +983,7 @@ func (a *MachineActuator) modifyNode(node *corev1.Node, updater func(node *corev
 	return nil
 }
 
-func (a *MachineActuator) checkMasterHAConstraint() error {
+func (a *MachineActuator) checkMasterHAConstraint(nodeBeingUpdated *v1.Node) error {
 	nodes, err := a.getMasterNodes()
 	if err != nil {
 		// If we can't read the nodes, return the error so we don't
@@ -991,15 +991,25 @@ func (a *MachineActuator) checkMasterHAConstraint() error {
 		return err
 	}
 	avail := 0
+	quorum := (len(nodes) + 1) / 2
 	for _, node := range nodes {
+		if sameNode(nodeBeingUpdated, node) {
+			continue
+		}
 		if hasConditionTrue(node, corev1.NodeReady) && !hasTaint(node, "NoSchedule") {
 			avail++
-			if avail > 2 { // We need 2 remaining after we take one offline
+			if avail >= quorum {
 				return nil
 			}
 		}
 	}
-	return errors.New("Fewer than two control-plane nodes would be available")
+	return fmt.Errorf("Fewer than %d control-plane nodes would be available", quorum)
+}
+
+// we compare Nodes by name, because name is required to be unique and
+// uids will differ if we manage to delete and recreate the object.
+func sameNode(a, b *v1.Node) bool {
+	return a.Name == b.Name
 }
 
 func hasConditionTrue(node *corev1.Node, typ corev1.NodeConditionType) bool {
