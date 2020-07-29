@@ -2,4 +2,4 @@
 // +k8s:openapi-gen=true
 // +k8s:defaulter-gen=TypeMeta
 
-package baremetalproviderspec
+package existinginfraproviderspec

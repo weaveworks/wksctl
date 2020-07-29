@@ -22,10 +22,10 @@ func init() {
 
 func addKnownTypes(scheme *runtime.Scheme) error {
 	scheme.AddKnownTypes(SchemeGroupVersion,
-		&BareMetalMachine{},
-		&BareMetalMachineList{},
-		&BareMetalCluster{},
-		&BareMetalClusterList{},
+		&ExistingInfraMachine{},
+		&ExistingInfraMachineList{},
+		&ExistingInfraCluster{},
+		&ExistingInfraClusterList{},
 	)
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
 	return nil
