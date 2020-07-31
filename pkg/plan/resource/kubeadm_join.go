@@ -2,12 +2,12 @@ package resource
 
 import (
 	"fmt"
-	"github.com/weaveworks/wksctl/pkg/utilities/version"
 	"strings"
 
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/weaveworks/wksctl/pkg/plan"
+	"github.com/weaveworks/wksctl/pkg/utilities/version"
 )
 
 // KubeadmJoin represents an attempt to join a Kubernetes node via kubeadm.

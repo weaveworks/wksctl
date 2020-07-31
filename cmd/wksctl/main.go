@@ -18,7 +18,6 @@ import (
 	"github.com/weaveworks/wksctl/cmd/wksctl/registrysynccommands"
 	"github.com/weaveworks/wksctl/cmd/wksctl/version"
 	"github.com/weaveworks/wksctl/cmd/wksctl/zshcompletions"
-	existinginfrav1 "github.com/weaveworks/wksctl/pkg/existinginfra/v1alpha3"
 	v "github.com/weaveworks/wksctl/pkg/version"
 )
 

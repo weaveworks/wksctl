@@ -9,8 +9,8 @@ import (
 	clusterv1alpha3 "sigs.k8s.io/cluster-api/api/v1alpha3"
 
 	"github.com/weaveworks/libgitops/pkg/serializer"
-	"github.com/weaveworks/wksctl/pkg/baremetal/v1alpha3"
 	"github.com/weaveworks/wksctl/pkg/baremetalproviderspec/v1alpha1"
+	"github.com/weaveworks/wksctl/pkg/existinginfra/v1alpha3"
 )
 
 var (

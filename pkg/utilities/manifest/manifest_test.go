@@ -6,9 +6,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	existinginfrav1 "github.com/weaveworks/wksctl/pkg/existinginfra/v1alpha3"
-	"k8s.io/client-go/kubernetes/scheme"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"
 )
 
 const (

@@ -6,14 +6,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/pkg/errors"
-	bmv1alpha3 "github.com/weaveworks/wksctl/pkg/existinginfra/v1alpha3"
-	"gopkg.in/oleiade/reflections.v1"
-	"k8s.io/apimachinery/pkg/api/meta"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/serializer/json"
-	"sigs.k8s.io/yaml"
+	"github.com/weaveworks/libgitops/pkg/serializer"
+	kyaml "sigs.k8s.io/kustomize/kyaml/yaml"
 )
 
 const (

@@ -7,10 +7,9 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"github.com/weaveworks/wksctl/pkg/apis/baremetal/scheme"
 	wks "github.com/weaveworks/wksctl/pkg/apis/wksprovider/controller/wksctl"
 	machineutil "github.com/weaveworks/wksctl/pkg/cluster/machine"
-	existinginfrav1 "github.com/weaveworks/wksctl/pkg/existinginfra/v1alpha3"
+	"github.com/weaveworks/wksctl/pkg/scheme"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
@@ -91,14 +90,6 @@ func run(cmd *cobra.Command, args []string) {
 	})
 	if err != nil {
 		log.Fatalf("failed to create the cluster manager: %v", err)
-	}
-
-	log.Info("registering scheme for all resources")
-	if err := existinginfrav1.AddToScheme(mgr.GetScheme()); err != nil {
-		log.Fatal(err)
-	}
-	if err := clusterv1.AddToScheme(mgr.GetScheme()); err != nil {
-		log.Fatal(err)
 	}
 
 	log.Info("registering controllers to the cluster manager")
