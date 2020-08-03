@@ -12,21 +12,17 @@ import (
 	"testing"
 	"time"
 
-	"k8s.io/client-go/tools/clientcmd"
-
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/weaveworks/wksctl/pkg/cluster/machine"
+	existinginfrav1 "github.com/weaveworks/wksctl/pkg/existinginfra/v1alpha3"
 	"github.com/weaveworks/wksctl/pkg/kubernetes"
 	"github.com/weaveworks/wksctl/pkg/plan/runners/ssh"
 	"github.com/weaveworks/wksctl/pkg/specs"
-
-	existinginfrav1 "github.com/weaveworks/wksctl/pkg/existinginfra/v1alpha3"
 	spawn "github.com/weaveworks/wksctl/test/integration/spawn"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/tools/clientcmd"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"
 )
 
@@ -363,9 +359,6 @@ func writeTmpFile(runner *ssh.Client, inputFilename, outputFilename string) erro
 }
 
 func TestApply(t *testing.T) {
-	assert.NoError(t, clusterv1.AddToScheme(scheme.Scheme))
-	assert.NoError(t, existinginfrav1.AddToScheme(scheme.Scheme))
-
 	clusterManifestPath := configPath("cluster.yaml")
 	_, c := parseClusterManifest(t, clusterManifestPath)
 

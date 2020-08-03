@@ -9,9 +9,8 @@ import (
 	"github.com/spf13/cobra"
 	wks "github.com/weaveworks/wksctl/pkg/apis/wksprovider/controller/wksctl"
 	machineutil "github.com/weaveworks/wksctl/pkg/cluster/machine"
-	existinginfrav1 "github.com/weaveworks/wksctl/pkg/existinginfra/v1alpha3"
+	"github.com/weaveworks/wksctl/pkg/scheme"
 	"k8s.io/client-go/kubernetes"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -85,17 +84,12 @@ func run(cmd *cobra.Command, args []string) {
 	if err != nil {
 		log.Fatalf("failed to create Kubernetes client set: %v", err)
 	}
-	mgr, err := manager.New(cfg, manager.Options{})
+	mgr, err := manager.New(cfg, manager.Options{
+		// Use our own Scheme here with our known types, and the client-go k8s ones
+		Scheme: scheme.Scheme,
+	})
 	if err != nil {
 		log.Fatalf("failed to create the cluster manager: %v", err)
-	}
-
-	log.Info("registering scheme for all resources")
-	if err := existinginfrav1.AddToScheme(mgr.GetScheme()); err != nil {
-		log.Fatal(err)
-	}
-	if err := clusterv1.AddToScheme(mgr.GetScheme()); err != nil {
-		log.Fatal(err)
 	}
 
 	log.Info("registering controllers to the cluster manager")

@@ -15,8 +15,6 @@ require (
 	github.com/google/go-jsonnet v0.16.0
 	github.com/googleapis/gnostic v0.4.1 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.1 // indirect
-	github.com/kr/text v0.2.0 // indirect
-	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
 	github.com/oleiade/reflections v1.0.0 // indirect
 	github.com/pelletier/go-toml v1.8.0
 	github.com/pkg/errors v0.9.1
@@ -31,13 +29,13 @@ require (
 	github.com/weaveworks/footloose v0.0.0-20200609124411-8f3df89ea188
 	github.com/weaveworks/go-checkpoint v0.0.0-20170503165305-ebbb8b0518ab
 	github.com/weaveworks/launcher v0.0.0-20180824102238-59a4fcc32c9c
+	github.com/weaveworks/libgitops v0.0.2
 	github.com/whilp/git-urls v0.0.0-20191001220047-6db9661140c0
 	golang.org/x/crypto v0.0.0-20200707235045-ab33eee955e0
 	golang.org/x/sys v0.0.0-20200625212154-ddb9806d33ae // indirect
 	golang.org/x/tools v0.0.0-20200708003708-134513de8882 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.1.0 // indirect
 	google.golang.org/appengine v1.6.5 // indirect
-	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
 	gopkg.in/oleiade/reflections.v1 v1.0.0
 	gopkg.in/src-d/go-git.v4 v4.13.1
 	k8s.io/api v0.18.5
@@ -50,6 +48,7 @@ require (
 	k8s.io/utils v0.0.0-20200619165400-6e3d28b6ed19
 	sigs.k8s.io/cluster-api v0.3.6
 	sigs.k8s.io/controller-runtime v0.6.0
+	sigs.k8s.io/kustomize/kyaml v0.1.11
 	sigs.k8s.io/yaml v1.2.0
 )
 

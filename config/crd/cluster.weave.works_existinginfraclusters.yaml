@@ -159,7 +159,6 @@ spec:
               type: string
           required:
           - cri
-          - sshKeyPath
           - user
           type: object
         status:

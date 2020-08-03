@@ -6,9 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	existinginfrav1 "github.com/weaveworks/wksctl/pkg/existinginfra/v1alpha3"
-	"k8s.io/client-go/kubernetes/scheme"
-	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"
+	"github.com/weaveworks/libgitops/pkg/serializer"
 )
 
 const (
@@ -250,18 +248,16 @@ var nstests = []struct {
 }
 
 func TestManifestWithNamespace(t *testing.T) {
-	assert.NoError(t, clusterv1.AddToScheme(scheme.Scheme))
-	assert.NoError(t, existinginfrav1.AddToScheme(scheme.Scheme))
 	for _, tt := range nstests {
 		t.Run(tt.name, func(t *testing.T) {
 			fname := createFile(t, tt.content, tt.fileName).Name()
 
 			defer os.Remove(fname)
 
-			updated, err := WithNamespace(fname, newNamespace)
+			updated, err := WithNamespace(serializer.FromFile(fname), newNamespace)
 			assert.NoError(t, err)
-			assert.NotEqual(t, tt.content, updated)
-			assert.Contains(t, updated, newNamespace)
+			assert.NotEqual(t, tt.content, string(updated))
+			assert.Contains(t, string(updated), newNamespace)
 		})
 	}
 }

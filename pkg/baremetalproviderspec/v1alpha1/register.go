@@ -1,14 +1,13 @@
-package v1alpha3
+package v1alpha1
 
 import (
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-const GroupName = "cluster.weave.works"
+const GroupName = "baremetalproviderspec"
 
-var SchemeGroupVersion = schema.GroupVersion{Group: GroupName, Version: "v1alpha3"}
+var SchemeGroupVersion = schema.GroupVersion{Group: GroupName, Version: "v1alpha1"}
 
 var (
 	SchemeBuilder      runtime.SchemeBuilder
@@ -22,12 +21,8 @@ func init() {
 
 func addKnownTypes(scheme *runtime.Scheme) error {
 	scheme.AddKnownTypes(SchemeGroupVersion,
-		&ExistingInfraMachine{},
-		&ExistingInfraMachineList{},
-		&ExistingInfraCluster{},
-		&ExistingInfraClusterList{},
+		&BareMetalClusterProviderSpec{},
+		&BareMetalMachineProviderSpec{},
 	)
-	// TODO: Do we really need this?
-	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
 	return nil
 }
