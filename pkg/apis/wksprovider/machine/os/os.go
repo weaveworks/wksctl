@@ -829,7 +829,7 @@ func processSecret(b *plan.Builder, key *rsa.PrivateKey, configDir, secretFileNa
 	// In the future, if we wish to support other kinds of secrets than SealedSecrets, we
 	// can just change this to do .Decode(fr), and switch on the type
 	if err := scheme.Serializer.Decoder().DecodeInto(fr, ss); err != nil {
-		return nil, nil, "", nil, errors.Wrapf(err, "File %q does not contain a sealed secret, couldn't decode", secretFileName)
+		return nil, nil, "", nil, errors.Wrapf(err, "couldn't decode the file %q into a sealed secret", secretFileName)
 	}
 
 	fingerprint, err := crypto.PublicKeyFingerprint(&key.PublicKey)
