@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/weaveworks/libgitops/pkg/serializer"
 )
 
 const (
@@ -253,7 +254,7 @@ func TestManifestWithNamespace(t *testing.T) {
 
 			defer os.Remove(fname)
 
-			updated, err := WithNamespace(fname, newNamespace)
+			updated, err := WithNamespace(serializer.FromFile(fname), newNamespace)
 			assert.NoError(t, err)
 			assert.NotEqual(t, tt.content, string(updated))
 			assert.Contains(t, string(updated), newNamespace)

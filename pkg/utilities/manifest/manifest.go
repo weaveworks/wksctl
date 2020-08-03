@@ -3,8 +3,6 @@ package manifest
 import (
 	"bytes"
 	"io"
-	"os"
-	"strings"
 
 	"github.com/weaveworks/libgitops/pkg/serializer"
 	kyaml "sigs.k8s.io/kustomize/kyaml/yaml"
@@ -20,15 +18,7 @@ const (
 
 var DefaultAddonNamespaces = map[string]string{"weave-net": "kube-system"}
 
-func WithNamespace(fileOrString, namespace string) ([]byte, error) {
-	// Set up the readcloser from either a file, or from the given string
-	var rc io.ReadCloser
-	if isFile(fileOrString) {
-		rc = serializer.FromFile(fileOrString)
-	} else {
-		rc = serializer.FromBytes([]byte(fileOrString))
-	}
-
+func WithNamespace(rc io.ReadCloser, namespace string) ([]byte, error) {
 	// Create a FrameReader and FrameWriter, using YAML document separators
 	// The FrameWriter will write into buf
 	fr := serializer.NewYAMLFrameReader(rc)
@@ -139,12 +129,4 @@ func visitElementsForPath(obj *kyaml.RNode, fn func(node *kyaml.RNode) error, pa
 
 func setNamespaceFilter(ns string) kyaml.FieldSetter {
 	return kyaml.SetField("namespace", kyaml.NewScalarRNode(ns))
-}
-
-func isFile(fileOrString string) bool {
-	_, err := os.Stat(fileOrString)
-	if err != nil && (os.IsNotExist(err) || strings.Contains(err.Error(), "file name too long")) {
-		return false
-	}
-	return true
 }

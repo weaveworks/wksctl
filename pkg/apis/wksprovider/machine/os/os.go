@@ -686,7 +686,7 @@ func getConfigMapManifest(configDir, mapName, namespace string) ([]byte, error) 
 	if err != nil {
 		return nil, err
 	}
-	content, err := manifest.WithNamespace(string(bytes), namespace)
+	content, err := manifest.WithNamespace(serializer.FromBytes(bytes), namespace)
 	if err != nil {
 		return nil, err
 	}
@@ -1041,7 +1041,7 @@ func capiControllerManifest(controller ControllerParams, namespace, configDir st
 	if err != nil {
 		return nil, err
 	}
-	content, err := manifest.WithNamespace(string(manifestbytes), namespace)
+	content, err := manifest.WithNamespace(serializer.FromBytes(manifestbytes), namespace)
 	return content, err
 }
 
@@ -1072,7 +1072,7 @@ func wksControllerManifest(controller ControllerParams, namespace, configDir str
 	if err != nil {
 		return nil, err
 	}
-	content, err := manifest.WithNamespace(string(manifestbytes), namespace)
+	content, err := manifest.WithNamespace(serializer.FromBytes(manifestbytes), namespace)
 	if err != nil {
 		return nil, err
 	}
@@ -1346,7 +1346,7 @@ func buildAddon(addonDefn existinginfrav1.Addon, imageRepository string, Cluster
 	// The build puts files in a temp dir we read them into []byte and return those
 	// so we can cleanup the temp files
 	for _, m := range manifests {
-		content, err := manifest.WithNamespace(m, namespace)
+		content, err := manifest.WithNamespace(serializer.FromFile(m), namespace)
 		if err != nil {
 			return nil, err
 		}
@@ -1369,7 +1369,7 @@ func processDeps(deps []string, manifests [][]byte, namespace string) ([][]byte,
 		if err != nil {
 			logger.Warnf("Failed to load addon dependency - %v", err)
 		}
-		content, err := manifest.WithNamespace(string(contents), namespace)
+		content, err := manifest.WithNamespace(serializer.FromBytes(contents), namespace)
 		if err != nil {
 			logger.Warnf("Failed to set namespace for manifest:\n%s\n", content)
 		}

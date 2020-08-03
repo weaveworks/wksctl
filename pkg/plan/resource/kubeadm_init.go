@@ -186,7 +186,7 @@ func (ki *KubeadmInit) updateManifestNamespace(fileName, namespace string) ([]by
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to open manifest")
 	}
-	c, err := manifest.WithNamespace(string(content), namespace)
+	c, err := manifest.WithNamespace(serializer.FromBytes(content), namespace)
 	if err != nil {
 		return nil, err
 	}

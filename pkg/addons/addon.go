@@ -13,6 +13,7 @@ import (
 	"github.com/ghodss/yaml"
 	"github.com/google/go-jsonnet"
 	log "github.com/sirupsen/logrus"
+	"github.com/weaveworks/libgitops/pkg/serializer"
 	"github.com/weaveworks/wksctl/pkg/addons/assets"
 	"github.com/weaveworks/wksctl/pkg/qjson"
 	"github.com/weaveworks/wksctl/pkg/registry"
@@ -341,7 +342,7 @@ func (a *Addon) buildJsonnet(config BuildOptions) ([]string, error) {
 				return nil, err
 			}
 			// The WithNamespace function supports either JSON or YAML
-			content, err = manifest.WithNamespace(string(data), "wkp-addons")
+			content, err = manifest.WithNamespace(serializer.FromBytes(data), "wkp-addons")
 			if err != nil {
 				return nil, err
 			}

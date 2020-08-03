@@ -8,6 +8,7 @@ import (
 
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"github.com/weaveworks/libgitops/pkg/serializer"
 	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/scripts"
 	"github.com/weaveworks/wksctl/pkg/plan"
 	"github.com/weaveworks/wksctl/pkg/utilities/manifest"
@@ -113,7 +114,7 @@ func (ka *KubectlApply) Apply(runner plan.Runner, diff plan.Diff) (bool, error) 
 	}
 
 	if str(ka.Namespace) != "" {
-		content, err := manifest.WithNamespace(string(c), str(ka.Namespace))
+		content, err := manifest.WithNamespace(serializer.FromBytes(c), str(ka.Namespace))
 		if err != nil {
 			return false, err
 		}
