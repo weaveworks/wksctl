@@ -413,7 +413,7 @@ func (a *MachineController) update(ctx context.Context, c *existinginfrav1.Exist
 	contextLog.Infof("........................NEW UPDATE FOR: %s...........................", machine.Name)
 	isMaster := isMaster(node)
 	if isMaster {
-		if err := a.prepareForMasterUpdate(ctx); err != nil {
+		if err := a.prepareForMasterUpdate(ctx, node); err != nil {
 			return err
 		}
 	}
@@ -517,9 +517,9 @@ func (a *MachineController) kubeadmUpOrDowngrade(ctx context.Context, machine *c
 	return nil
 }
 
-func (a *MachineController) prepareForMasterUpdate(ctx context.Context) error {
+func (a *MachineController) prepareForMasterUpdate(ctx context.Context, node *v1.Node) error {
 	// Check if it's safe to update a master
-	if err := a.checkMasterHAConstraint(ctx); err != nil {
+	if err := a.checkMasterHAConstraint(ctx, node); err != nil {
 		return gerrors.Wrap(err, "Not enough available master nodes to allow master update")
 	}
 	return nil
@@ -842,7 +842,7 @@ func (a *MachineController) modifyNode(ctx context.Context, node *corev1.Node, u
 	return nil
 }
 
-func (a *MachineController) checkMasterHAConstraint(ctx context.Context) error {
+func (a *MachineController) checkMasterHAConstraint(ctx context.Context, nodeBeingUpdated *v1.Node) error {
 	nodes, err := a.getMasterNodes(ctx)
 	if err != nil {
 		// If we can't read the nodes, return the error so we don't
@@ -850,15 +850,25 @@ func (a *MachineController) checkMasterHAConstraint(ctx context.Context) error {
 		return err
 	}
 	avail := 0
+	quorum := (len(nodes) + 1) / 2
 	for _, node := range nodes {
+		if sameNode(nodeBeingUpdated, node) {
+			continue
+		}
 		if hasConditionTrue(node, corev1.NodeReady) && !hasTaint(node, "NoSchedule") {
 			avail++
-			if avail > 2 { // We need 2 remaining after we take one offline
+			if avail >= quorum {
 				return nil
 			}
 		}
 	}
-	return errors.New("Fewer than two control-plane nodes would be available")
+	return fmt.Errorf("Fewer than %d control-plane nodes would be available", quorum)
+}
+
+// we compare Nodes by name, because name is required to be unique and
+// uids will differ if we manage to delete and recreate the object.
+func sameNode(a, b *v1.Node) bool {
+	return a.Name == b.Name
 }
 
 func hasConditionTrue(node *corev1.Node, typ corev1.NodeConditionType) bool {
