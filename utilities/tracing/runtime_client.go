@@ -31,7 +31,7 @@ func NewRuntimeClient(cache cache.Cache, config *rest.Config, options client.Opt
 		StatusClient: c,
 	}
 
-	return &tracingClient{Client: delegatingClient}, nil
+	return &tracingClient{Client: delegatingClient, scheme: options.Scheme}, nil
 }
 
 // helper functions
@@ -55,12 +55,19 @@ func traceError(sp ot.Span, err error) error {
 // wrapper for Client which emits spans on each call
 type tracingClient struct {
 	client.Client
+	scheme *runtime.Scheme
 }
 
 func (c *tracingClient) Get(ctx context.Context, key client.ObjectKey, obj runtime.Object) error {
 	sp, ctx := ot.StartSpanFromContext(ctx, "client.Get", ot.Tag{Key: "objectKey", Value: key.String()})
 	defer sp.Finish()
-	setObjectTags(sp, obj)
+	// obj is generally blank at this point, so go via the scheme to find out what it is.
+	if c.scheme != nil {
+		gvks, _, _ := c.scheme.ObjectKinds(obj)
+		for _, gvk := range gvks {
+			sp.SetTag("objectKind", gvk.String())
+		}
+	}
 	return traceError(sp, c.Client.Get(ctx, key, obj))
 }
 
