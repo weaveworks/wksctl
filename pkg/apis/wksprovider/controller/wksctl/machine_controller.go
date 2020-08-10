@@ -855,7 +855,7 @@ func (a *MachineController) checkMasterHAConstraint(ctx context.Context, nodeBei
 		if sameNode(nodeBeingUpdated, node) {
 			continue
 		}
-		if hasConditionTrue(node, corev1.NodeReady) && !hasTaint(node, "NoSchedule") {
+		if hasConditionTrue(node, corev1.NodeReady) {
 			avail++
 			if avail >= quorum {
 				return nil
@@ -874,15 +874,6 @@ func sameNode(a, b *v1.Node) bool {
 func hasConditionTrue(node *corev1.Node, typ corev1.NodeConditionType) bool {
 	for _, cond := range node.Status.Conditions {
 		if cond.Type == typ && cond.Status == corev1.ConditionTrue {
-			return true
-		}
-	}
-	return false
-}
-
-func hasTaint(node *corev1.Node, value string) bool {
-	for _, taint := range node.Spec.Taints {
-		if taint.Value == value {
 			return true
 		}
 	}
