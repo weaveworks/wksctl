@@ -10,6 +10,7 @@ import (
 	wks "github.com/weaveworks/wksctl/pkg/apis/wksprovider/controller/wksctl"
 	machineutil "github.com/weaveworks/wksctl/pkg/cluster/machine"
 	"github.com/weaveworks/wksctl/pkg/scheme"
+	"github.com/weaveworks/wksctl/utilities/tracing"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
@@ -76,6 +77,12 @@ func preRun(cmd *cobra.Command, args []string) {
 func run(cmd *cobra.Command, args []string) {
 	log.Infof("Starting wks controller version %s", version)
 
+	tracingCloser, err := tracing.SetupJaeger("existingInfra-controller")
+	if err != nil {
+		log.Fatalf("failed to set up Jaeger: %v", err)
+	}
+	defer tracingCloser.Close()
+
 	cfg, err := config.GetConfig()
 	if err != nil {
 		log.Fatalf("failed to get the coordinates of the API server: %v", err)
@@ -86,7 +93,8 @@ func run(cmd *cobra.Command, args []string) {
 	}
 	mgr, err := manager.New(cfg, manager.Options{
 		// Use our own Scheme here with our known types, and the client-go k8s ones
-		Scheme: scheme.Scheme,
+		Scheme:    scheme.Scheme,
+		NewClient: tracing.NewRuntimeClient,
 	})
 	if err != nil {
 		log.Fatalf("failed to create the cluster manager: %v", err)

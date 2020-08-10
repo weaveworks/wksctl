@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	ot "github.com/opentracing/opentracing-go"
 	gerrors "github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/config"
@@ -67,6 +68,8 @@ type MachineController struct {
 
 func (r *MachineController) Reconcile(req ctrl.Request) (_ ctrl.Result, reterr error) {
 	ctx := context.TODO() // upstream will add this eventually
+	sp, ctx := ot.StartSpanFromContext(ctx, "MachineController.Reconcile", ot.Tag{Key: "objectKey", Value: req.NamespacedName})
+	defer sp.Finish()
 	contextLog := log.WithField("name", req.NamespacedName)
 
 	// request only contains the name of the object, so fetch it from the api-server
@@ -78,6 +81,7 @@ func (r *MachineController) Reconcile(req ctrl.Request) (_ ctrl.Result, reterr e
 		}
 		return ctrl.Result{}, err
 	}
+	sp.SetTag("ResourceVersion", eim.ResourceVersion)
 
 	// Get Machine via OwnerReferences
 	machine, err := util.GetOwnerMachine(ctx, r.client, eim.ObjectMeta)
