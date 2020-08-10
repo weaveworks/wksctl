@@ -28,7 +28,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
@@ -207,7 +206,8 @@ func (a *MachineController) connectTo(ctx context.Context, c *existinginfrav1.Ex
 }
 
 func (a *MachineController) sshKey(ctx context.Context) ([]byte, error) {
-	secret, err := a.clientSet.CoreV1().Secrets(a.controllerNamespace).Get(ctx, controllerSecret, metav1.GetOptions{})
+	var secret v1.Secret
+	err := a.client.Get(ctx, client.ObjectKey{Namespace: a.controllerNamespace, Name: controllerSecret}, &secret)
 	if err != nil {
 		return nil, gerrors.Wrap(err, "failed to get WKS' secret")
 	}
@@ -229,7 +229,8 @@ type kubeadmJoinSecrets struct {
 }
 
 func (a *MachineController) kubeadmJoinSecrets(ctx context.Context) (*kubeadmJoinSecrets, error) {
-	secret, err := a.clientSet.CoreV1().Secrets(a.controllerNamespace).Get(ctx, controllerSecret, metav1.GetOptions{})
+	var secret v1.Secret
+	err := a.client.Get(ctx, client.ObjectKey{Namespace: a.controllerNamespace, Name: controllerSecret}, &secret)
 	if err != nil {
 		return nil, gerrors.Wrap(err, "failed to get WKS' secret")
 	}
@@ -240,12 +241,12 @@ func (a *MachineController) kubeadmJoinSecrets(ctx context.Context) (*kubeadmJoi
 	}, nil
 }
 
-func (a *MachineController) updateKubeadmJoinSecrets(ctx context.Context, ID string) error {
+func (a *MachineController) updateKubeadmJoinSecrets(ctx context.Context, ID string, secret *corev1.Secret) error {
 	len := base64.StdEncoding.EncodedLen(len(ID))
 	enc := make([]byte, len)
 	base64.StdEncoding.Encode(enc, []byte(ID))
 	patch := []byte(fmt.Sprintf("{\"data\":{\"%s\":\"%s\"}}", bootstrapTokenID, enc))
-	_, err := a.clientSet.CoreV1().Secrets(a.controllerNamespace).Patch(ctx, controllerSecret, types.StrategicMergePatchType, patch, metav1.PatchOptions{})
+	err := a.client.Patch(ctx, secret, client.RawPatch(types.StrategicMergePatchType, patch))
 	if err != nil {
 		log.Debugf("failed to patch wks secret %s %v", patch, err)
 	}
@@ -255,7 +256,8 @@ func (a *MachineController) updateKubeadmJoinSecrets(ctx context.Context, ID str
 func (a *MachineController) token(ctx context.Context, ID string) (string, error) {
 	ns := "kube-system"
 	name := fmt.Sprintf("%s%s", bootstrapapi.BootstrapTokenSecretPrefix, ID)
-	secret, err := a.clientSet.CoreV1().Secrets(ns).Get(ctx, name, metav1.GetOptions{})
+	secret := &v1.Secret{}
+	err := a.client.Get(ctx, client.ObjectKey{Namespace: ns, Name: name}, secret)
 	if err != nil {
 		// The secret may have been removed if it expired so we will generate a new one
 		log.Debugf("failed to find original bootstrap token %s/%s, generating a new one", ns, name)
@@ -304,15 +306,16 @@ func (a *MachineController) installNewBootstrapToken(ctx context.Context, ns str
 	if err != nil {
 		return nil, gerrors.Errorf("failed to create new bootstrap token %s/%s", ns, secret.ObjectMeta.Name)
 	}
-	s, err := a.clientSet.CoreV1().Secrets(ns).Create(ctx, secret, metav1.CreateOptions{})
+	err = a.client.Create(ctx, secret)
 	if err != nil {
 		return nil, gerrors.Errorf("failed to install new bootstrap token %s/%s", ns, secret.ObjectMeta.Name)
 	}
+	s := secret
 	tokenID, ok := s.Data[bootstrapapi.BootstrapTokenIDKey]
 	if !ok {
 		return nil, gerrors.Errorf("token-id not found %s/%s", s.ObjectMeta.Namespace, s.ObjectMeta.Name)
 	}
-	if err := a.updateKubeadmJoinSecrets(ctx, string(tokenID)); err != nil {
+	if err := a.updateKubeadmJoinSecrets(ctx, string(tokenID), s); err != nil {
 		return nil, gerrors.Errorf("Failed to update wks join token %s/%s", s.ObjectMeta.Namespace, s.ObjectMeta.Name)
 	}
 	return s, nil
@@ -352,7 +355,7 @@ func (a *MachineController) delete(ctx context.Context, c *existinginfrav1.Exist
 	}); err != nil {
 		return err
 	}
-	if err = a.clientSet.CoreV1().Nodes().Delete(ctx, node.Name, metav1.DeleteOptions{}); err != nil {
+	if err := a.client.Delete(ctx, node); err != nil {
 		return err
 	}
 	a.recordEvent(machine, corev1.EventTypeNormal, "Delete", "deleted machine %s", machine.Name)
@@ -613,8 +616,8 @@ func (a *MachineController) getNodePlan(ctx context.Context, provider *existingi
 }
 
 func (a *MachineController) getAuthConfigMap(ctx context.Context) (*v1.ConfigMap, error) {
-	client := a.clientSet.CoreV1().ConfigMaps(a.controllerNamespace)
-	maps, err := client.List(ctx, metav1.ListOptions{})
+	var maps corev1.ConfigMapList
+	err := a.client.List(ctx, &maps, &client.ListOptions{Namespace: a.controllerNamespace})
 	if err != nil {
 		return nil, err
 	}
@@ -630,8 +633,8 @@ func (a *MachineController) getAuthSecrets(ctx context.Context, authConfigMap *v
 	authSecrets := map[string]resource.SecretData{}
 	for _, authType := range []string{"authentication", "authorization"} {
 		secretName := authConfigMap.Data[authType+"-secret-name"]
-		client := a.clientSet.CoreV1().Secrets(a.controllerNamespace)
-		secret, err := client.Get(ctx, secretName, metav1.GetOptions{})
+		var secret v1.Secret
+		err := a.client.Get(ctx, client.ObjectKey{Namespace: a.controllerNamespace, Name: secretName}, &secret)
 		// TODO: retry several times like the old code did (?)
 		// TODO: check whether it is a not-found response
 		if err != nil {
@@ -647,12 +650,12 @@ func (a *MachineController) getAuthSecrets(ctx context.Context, authConfigMap *v
 
 func (a *MachineController) getProviderConfigMaps(ctx context.Context, provider *existinginfrav1.ExistingInfraCluster) (map[string]*v1.ConfigMap, error) {
 	fileSpecs := provider.Spec.OS.Files
-	client := a.clientSet.CoreV1().ConfigMaps(a.controllerNamespace)
 	configMaps := map[string]*v1.ConfigMap{}
 	for _, fileSpec := range fileSpecs {
 		mapName := fileSpec.Source.ConfigMap
 		if _, seen := configMaps[mapName]; !seen {
-			configMap, err := client.Get(ctx, mapName, metav1.GetOptions{})
+			configMap := &corev1.ConfigMap{}
+			err := a.client.Get(ctx, client.ObjectKey{Namespace: a.controllerNamespace, Name: mapName}, configMap)
 			if err != nil {
 				return nil, err
 			}
@@ -758,15 +761,15 @@ func nodeVersion(node *corev1.Node) string {
 
 func (a *MachineController) uncordon(ctx context.Context, node *corev1.Node) error {
 	contextLog := log.WithFields(log.Fields{"node": node.Name})
-	client := a.clientSet.CoreV1().Nodes()
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		result, getErr := client.Get(ctx, node.Name, metav1.GetOptions{})
+		var result v1.Node
+		getErr := a.client.Get(ctx, client.ObjectKey{Name: node.Name}, &result)
 		if getErr != nil {
 			contextLog.Errorf("failed to read node info, can't reschedule: %v", getErr)
 			return getErr
 		}
 		result.Spec.Unschedulable = false
-		_, updateErr := client.Update(ctx, result, metav1.UpdateOptions{})
+		updateErr := a.client.Update(ctx, &result)
 		if updateErr != nil {
 			contextLog.Errorf("failed to reschedule node: %v", updateErr)
 			return updateErr
@@ -824,15 +827,15 @@ func (a *MachineController) removeNodeLabel(ctx context.Context, node *corev1.No
 
 func (a *MachineController) modifyNode(ctx context.Context, node *corev1.Node, updater func(node *corev1.Node)) error {
 	contextLog := log.WithFields(log.Fields{"node": node.Name})
-	client := a.clientSet.CoreV1().Nodes()
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		result, getErr := client.Get(ctx, node.Name, metav1.GetOptions{})
+		result := &v1.Node{}
+		getErr := a.client.Get(ctx, client.ObjectKey{Name: node.Name}, result)
 		if getErr != nil {
 			contextLog.Errorf("failed to read node info, assuming unsafe to update: %v", getErr)
 			return getErr
 		}
 		updater(result)
-		_, updateErr := client.Update(ctx, result, metav1.UpdateOptions{})
+		updateErr := a.client.Update(ctx, result)
 		if updateErr != nil {
 			contextLog.Errorf("failed attempt to update node annotation: %v", updateErr)
 			return updateErr
@@ -885,7 +888,8 @@ func hasConditionTrue(node *corev1.Node, typ corev1.NodeConditionType) bool {
 }
 
 func (a *MachineController) findNodeByID(ctx context.Context, machineID, systemUUID string) (*corev1.Node, error) {
-	nodes, err := a.clientSet.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
+	var nodes v1.NodeList
+	err := a.client.List(ctx, &nodes)
 	if err != nil {
 		return nil, gerrors.Wrap(err, "failed to list nodes")
 	}
@@ -917,7 +921,8 @@ func (a *MachineController) getMasterNode(ctx context.Context) (*corev1.Node, er
 }
 
 func (a *MachineController) getMasterNodes(ctx context.Context) ([]*corev1.Node, error) {
-	nodes, err := a.clientSet.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
+	var nodes v1.NodeList
+	err := a.client.List(ctx, &nodes)
 	if err != nil {
 		return nil, gerrors.Wrap(err, "failed to list nodes")
 	}
@@ -957,7 +962,8 @@ func (a *MachineController) isControllerNode(ctx context.Context, node *corev1.N
 }
 
 func (a *MachineController) getControllerNodeName(ctx context.Context) (string, error) {
-	pods, err := a.clientSet.CoreV1().Pods(a.controllerNamespace).List(ctx, metav1.ListOptions{})
+	var pods v1.PodList
+	err := a.client.List(ctx, &pods, &client.ListOptions{Namespace: a.controllerNamespace})
 	if err != nil {
 		return "", err
 	}
