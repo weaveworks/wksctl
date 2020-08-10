@@ -5,6 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/os"
 	"github.com/weaveworks/wksctl/pkg/plan"
 	"github.com/weaveworks/wksctl/pkg/plan/resource"
 	"github.com/weaveworks/wksctl/test/container/images"
@@ -19,14 +20,16 @@ func TestOS(t *testing.T) {
 	r, closer := NewRunnerForTest(t, images.CentOS7)
 	defer closer()
 
-	os := &resource.OS{}
+	os, err := os.Identify(r.Runner)
+	assert.NoError(t, err)
+
+	resOs := &resource.OS{}
 	// os.apply shoud force a query and update of state.
 	emptyDiff := plan.EmptyDiff()
-	_, err := os.Apply(r, emptyDiff)
+	_, err = resOs.Apply(r, emptyDiff)
 
 	assert.NoError(t, err)
 	assert.Equal(t, "centos", os.Name)
-	assert.Equal(t, "7", os.Version)
-	assert.Regexp(t, machineidRegexp, os.MachineID)
-	assert.Regexp(t, uuidRegexp, os.SystemUUID)
+	assert.Regexp(t, machineidRegexp, resOs.MachineID)
+	assert.Regexp(t, uuidRegexp, resOs.SystemUUID)
 }
