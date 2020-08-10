@@ -25,7 +25,6 @@ import (
 	bootstraputils "github.com/weaveworks/wksctl/pkg/utilities/kubeadm"
 	"github.com/weaveworks/wksctl/pkg/utilities/version"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -202,7 +201,7 @@ func (a *MachineController) connectTo(ctx context.Context, c *existinginfrav1.Ex
 }
 
 func (a *MachineController) sshKey(ctx context.Context) ([]byte, error) {
-	var secret v1.Secret
+	var secret corev1.Secret
 	err := a.client.Get(ctx, client.ObjectKey{Namespace: a.controllerNamespace, Name: controllerSecret}, &secret)
 	if err != nil {
 		return nil, gerrors.Wrap(err, "failed to get WKS' secret")
@@ -225,7 +224,7 @@ type kubeadmJoinSecrets struct {
 }
 
 func (a *MachineController) kubeadmJoinSecrets(ctx context.Context) (*kubeadmJoinSecrets, error) {
-	var secret v1.Secret
+	var secret corev1.Secret
 	err := a.client.Get(ctx, client.ObjectKey{Namespace: a.controllerNamespace, Name: controllerSecret}, &secret)
 	if err != nil {
 		return nil, gerrors.Wrap(err, "failed to get WKS' secret")
@@ -252,7 +251,7 @@ func (a *MachineController) updateKubeadmJoinSecrets(ctx context.Context, ID str
 func (a *MachineController) token(ctx context.Context, ID string) (string, error) {
 	ns := "kube-system"
 	name := fmt.Sprintf("%s%s", bootstrapapi.BootstrapTokenSecretPrefix, ID)
-	secret := &v1.Secret{}
+	secret := &corev1.Secret{}
 	err := a.client.Get(ctx, client.ObjectKey{Namespace: ns, Name: name}, secret)
 	if err != nil {
 		// The secret may have been removed if it expired so we will generate a new one
@@ -519,7 +518,7 @@ func (a *MachineController) kubeadmUpOrDowngrade(ctx context.Context, machine *c
 	return nil
 }
 
-func (a *MachineController) prepareForMasterUpdate(ctx context.Context, node *v1.Node) error {
+func (a *MachineController) prepareForMasterUpdate(ctx context.Context, node *corev1.Node) error {
 	// Check if it's safe to update a master
 	if err := a.checkMasterHAConstraint(ctx, node); err != nil {
 		return gerrors.Wrap(err, "Not enough available master nodes to allow master update")
@@ -610,7 +609,7 @@ func (a *MachineController) getNodePlan(ctx context.Context, provider *existingi
 	return plan, nil
 }
 
-func (a *MachineController) getAuthConfigMap(ctx context.Context) (*v1.ConfigMap, error) {
+func (a *MachineController) getAuthConfigMap(ctx context.Context) (*corev1.ConfigMap, error) {
 	var maps corev1.ConfigMapList
 	err := a.client.List(ctx, &maps, &client.ListOptions{Namespace: a.controllerNamespace})
 	if err != nil {
@@ -624,11 +623,11 @@ func (a *MachineController) getAuthConfigMap(ctx context.Context) (*v1.ConfigMap
 	return nil, nil
 }
 
-func (a *MachineController) getAuthSecrets(ctx context.Context, authConfigMap *v1.ConfigMap) (map[string]resource.SecretData, error) {
+func (a *MachineController) getAuthSecrets(ctx context.Context, authConfigMap *corev1.ConfigMap) (map[string]resource.SecretData, error) {
 	authSecrets := map[string]resource.SecretData{}
 	for _, authType := range []string{"authentication", "authorization"} {
 		secretName := authConfigMap.Data[authType+"-secret-name"]
-		var secret v1.Secret
+		var secret corev1.Secret
 		err := a.client.Get(ctx, client.ObjectKey{Namespace: a.controllerNamespace, Name: secretName}, &secret)
 		// TODO: retry several times like the old code did (?)
 		// TODO: check whether it is a not-found response
@@ -643,9 +642,9 @@ func (a *MachineController) getAuthSecrets(ctx context.Context, authConfigMap *v
 	return authSecrets, nil
 }
 
-func (a *MachineController) getProviderConfigMaps(ctx context.Context, provider *existinginfrav1.ExistingInfraCluster) (map[string]*v1.ConfigMap, error) {
+func (a *MachineController) getProviderConfigMaps(ctx context.Context, provider *existinginfrav1.ExistingInfraCluster) (map[string]*corev1.ConfigMap, error) {
 	fileSpecs := provider.Spec.OS.Files
-	configMaps := map[string]*v1.ConfigMap{}
+	configMaps := map[string]*corev1.ConfigMap{}
 	for _, fileSpec := range fileSpecs {
 		mapName := fileSpec.Source.ConfigMap
 		if _, seen := configMaps[mapName]; !seen {
@@ -757,7 +756,7 @@ func nodeVersion(node *corev1.Node) string {
 func (a *MachineController) uncordon(ctx context.Context, node *corev1.Node) error {
 	contextLog := log.WithFields(log.Fields{"node": node.Name})
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		var result v1.Node
+		var result corev1.Node
 		getErr := a.client.Get(ctx, client.ObjectKey{Name: node.Name}, &result)
 		if getErr != nil {
 			contextLog.Errorf("failed to read node info, can't reschedule: %v", getErr)
@@ -823,7 +822,7 @@ func (a *MachineController) removeNodeLabel(ctx context.Context, node *corev1.No
 func (a *MachineController) modifyNode(ctx context.Context, node *corev1.Node, updater func(node *corev1.Node)) error {
 	contextLog := log.WithFields(log.Fields{"node": node.Name})
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		result := &v1.Node{}
+		result := &corev1.Node{}
 		getErr := a.client.Get(ctx, client.ObjectKey{Name: node.Name}, result)
 		if getErr != nil {
 			contextLog.Errorf("failed to read node info, assuming unsafe to update: %v", getErr)
@@ -844,7 +843,7 @@ func (a *MachineController) modifyNode(ctx context.Context, node *corev1.Node, u
 	return nil
 }
 
-func (a *MachineController) checkMasterHAConstraint(ctx context.Context, nodeBeingUpdated *v1.Node) error {
+func (a *MachineController) checkMasterHAConstraint(ctx context.Context, nodeBeingUpdated *corev1.Node) error {
 	nodes, err := a.getMasterNodes(ctx)
 	if err != nil {
 		// If we can't read the nodes, return the error so we don't
@@ -869,7 +868,7 @@ func (a *MachineController) checkMasterHAConstraint(ctx context.Context, nodeBei
 
 // we compare Nodes by name, because name is required to be unique and
 // uids will differ if we manage to delete and recreate the object.
-func sameNode(a, b *v1.Node) bool {
+func sameNode(a, b *corev1.Node) bool {
 	return a.Name == b.Name
 }
 
@@ -892,7 +891,7 @@ func hasTaint(node *corev1.Node, value string) bool {
 }
 
 func (a *MachineController) findNodeByID(ctx context.Context, machineID, systemUUID string) (*corev1.Node, error) {
-	var nodes v1.NodeList
+	var nodes corev1.NodeList
 	err := a.client.List(ctx, &nodes)
 	if err != nil {
 		return nil, gerrors.Wrap(err, "failed to list nodes")
@@ -925,7 +924,7 @@ func (a *MachineController) getMasterNode(ctx context.Context) (*corev1.Node, er
 }
 
 func (a *MachineController) getMasterNodes(ctx context.Context) ([]*corev1.Node, error) {
-	var nodes v1.NodeList
+	var nodes corev1.NodeList
 	err := a.client.List(ctx, &nodes)
 	if err != nil {
 		return nil, gerrors.Wrap(err, "failed to list nodes")
@@ -966,7 +965,7 @@ func (a *MachineController) isControllerNode(ctx context.Context, node *corev1.N
 }
 
 func (a *MachineController) getControllerNodeName(ctx context.Context) (string, error) {
-	var pods v1.PodList
+	var pods corev1.PodList
 	err := a.client.List(ctx, &pods, &client.ListOptions{Namespace: a.controllerNamespace})
 	if err != nil {
 		return "", err
