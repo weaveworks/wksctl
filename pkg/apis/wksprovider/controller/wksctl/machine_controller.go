@@ -648,12 +648,12 @@ func (a *MachineController) getProviderConfigMaps(ctx context.Context, provider 
 	for _, fileSpec := range fileSpecs {
 		mapName := fileSpec.Source.ConfigMap
 		if _, seen := configMaps[mapName]; !seen {
-			configMap := &corev1.ConfigMap{}
-			err := a.client.Get(ctx, client.ObjectKey{Namespace: a.controllerNamespace, Name: mapName}, configMap)
+			var configMap corev1.ConfigMap
+			err := a.client.Get(ctx, client.ObjectKey{Namespace: a.controllerNamespace, Name: mapName}, &configMap)
 			if err != nil {
 				return nil, err
 			}
-			configMaps[mapName] = configMap
+			configMaps[mapName] = &configMap
 		}
 	}
 	return configMaps, nil
@@ -822,14 +822,14 @@ func (a *MachineController) removeNodeLabel(ctx context.Context, node *corev1.No
 func (a *MachineController) modifyNode(ctx context.Context, node *corev1.Node, updater func(node *corev1.Node)) error {
 	contextLog := log.WithFields(log.Fields{"node": node.Name})
 	retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		result := &corev1.Node{}
-		getErr := a.client.Get(ctx, client.ObjectKey{Name: node.Name}, result)
+		var result corev1.Node
+		getErr := a.client.Get(ctx, client.ObjectKey{Name: node.Name}, &result)
 		if getErr != nil {
 			contextLog.Errorf("failed to read node info, assuming unsafe to update: %v", getErr)
 			return getErr
 		}
-		updater(result)
-		updateErr := a.client.Update(ctx, result)
+		updater(&result)
+		updateErr := a.client.Update(ctx, &result)
 		if updateErr != nil {
 			contextLog.Errorf("failed attempt to update node annotation: %v", updateErr)
 			return updateErr
