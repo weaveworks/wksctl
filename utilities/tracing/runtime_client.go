@@ -58,23 +58,27 @@ type tracingClient struct {
 	scheme *runtime.Scheme
 }
 
-func (c *tracingClient) Get(ctx context.Context, key client.ObjectKey, obj runtime.Object) error {
-	sp, ctx := ot.StartSpanFromContext(ctx, "client.Get", ot.Tag{Key: "objectKey", Value: key.String()})
-	defer sp.Finish()
-	// obj is generally blank at this point, so go via the scheme to find out what it is.
+// go via scheme to find out what an object is
+func (c *tracingClient) tagBlankObject(sp ot.Span, obj runtime.Object) {
 	if c.scheme != nil {
 		gvks, _, _ := c.scheme.ObjectKinds(obj)
 		for _, gvk := range gvks {
 			sp.SetTag("objectKind", gvk.String())
 		}
 	}
+}
+
+func (c *tracingClient) Get(ctx context.Context, key client.ObjectKey, obj runtime.Object) error {
+	sp, ctx := ot.StartSpanFromContext(ctx, "client.Get", ot.Tag{Key: "objectKey", Value: key.String()})
+	defer sp.Finish()
+	c.tagBlankObject(sp, obj)
 	return traceError(sp, c.Client.Get(ctx, key, obj))
 }
 
 func (c *tracingClient) List(ctx context.Context, list runtime.Object, opts ...client.ListOption) error {
 	sp, ctx := ot.StartSpanFromContext(ctx, "client.List")
 	defer sp.Finish()
-	setObjectTags(sp, list)
+	c.tagBlankObject(sp, list)
 	return traceError(sp, c.Client.List(ctx, list, opts...))
 }
 
@@ -109,7 +113,7 @@ func (c *tracingClient) Patch(ctx context.Context, obj runtime.Object, patch cli
 func (c *tracingClient) DeleteAllOf(ctx context.Context, obj runtime.Object, opts ...client.DeleteAllOfOption) error {
 	sp, ctx := ot.StartSpanFromContext(ctx, "client.DeleteAllOf")
 	defer sp.Finish()
-	setObjectTags(sp, obj)
+	c.tagBlankObject(sp, obj)
 	return traceError(sp, c.Client.DeleteAllOf(ctx, obj, opts...))
 }
 
