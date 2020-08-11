@@ -1,8 +1,10 @@
 package main
 
 import (
+	"context"
 	"os"
 
+	ot "github.com/opentracing/opentracing-go"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/weaveworks/go-checkpoint"
@@ -19,6 +21,7 @@ import (
 	"github.com/weaveworks/wksctl/cmd/wksctl/version"
 	"github.com/weaveworks/wksctl/cmd/wksctl/zshcompletions"
 	v "github.com/weaveworks/wksctl/pkg/version"
+	"github.com/weaveworks/wksctl/utilities/tracing"
 )
 
 var rootCmd = &cobra.Command{
@@ -42,6 +45,16 @@ func configureLogger(cmd *cobra.Command, args []string) {
 }
 
 func main() {
+	tracingCloser, err := tracing.SetupJaeger("wksctl")
+	if err != nil {
+		log.Fatalf("failed to set up Jaeger: %v", err)
+	}
+	defer tracingCloser.Close()
+
+	sp := ot.StartSpan("wksctl")
+	defer sp.Finish()
+	ctx := ot.ContextWithSpan(context.Background(), sp)
+
 	rootCmd.PersistentFlags().BoolVarP(&options.verbose, "verbose", "v", false, "Enable verbose output")
 
 	rootCmd.AddCommand(addon.Cmd)
@@ -65,7 +78,8 @@ func main() {
 			checkResponse.CurrentVersion, checkResponse.CurrentDownloadURL)
 	}
 
-	if err := rootCmd.Execute(); err != nil {
+	if err := rootCmd.ExecuteContext(ctx); err != nil {
+		sp.Finish()
 		os.Exit(1)
 	}
 
