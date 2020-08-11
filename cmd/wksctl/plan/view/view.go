@@ -95,10 +95,14 @@ func displayPlan(ctx context.Context, clusterManifestPath, machinesManifestPath 
 	}
 	defer sshClient.Close()
 <<<<<<< HEAD
+<<<<<<< HEAD
 	installer, err := capeios.Identify(ctx, sshClient)
 =======
 	installer, err := capeios.Identify(context.TODO(), sshClient)
 >>>>>>> a2f045e... propagate context into plan calls
+=======
+	installer, err := capeios.Identify(ctx, sshClient)
+>>>>>>> bc66adb... Plumb Context through 'plan' steps
 	if err != nil {
 		return errors.Wrapf(err, "failed to identify operating system for seed node (%s)", sp.GetMasterPublicAddress())
 	}
