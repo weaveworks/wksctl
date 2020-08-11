@@ -26,7 +26,15 @@ items:
           - list
           - watch
       - apiGroups:
-          - networking.k8s.io
+          - extensions
+        resources:
+          - networkpolicies
+        verbs:
+          - get
+          - list
+          - watch
+      - apiGroups:
+          - 'networking.k8s.io'
         resources:
           - networkpolicies
         verbs:
@@ -64,10 +72,10 @@ items:
     rules:
       - apiGroups:
           - ''
-        resourceNames:
-          - weave-net
         resources:
           - configmaps
+        resourceNames:
+          - weave-net
         verbs:
           - get
           - update
@@ -100,10 +108,11 @@ items:
         name: weave-net
       namespace: kube-system
     spec:
-      minReadySeconds: 5
+      # Wait 5 seconds to let pod connect before rolling next pod
       selector:
         matchLabels:
           name: weave-net
+      minReadySeconds: 5
       template:
         metadata:
           labels:
@@ -119,7 +128,8 @@ items:
                     fieldRef:
                       apiVersion: v1
                       fieldPath: spec.nodeName
-              image: 'docker.io/weaveworks/weave-kube:2.6.5'
+              image: 'docker.io/weaveworks/weave-kube:2.7.0'
+              imagePullPolicy: Always
               readinessProbe:
                 httpGet:
                   host: 127.0.0.1
@@ -127,7 +137,7 @@ items:
                   port: 6784
               resources:
                 requests:
-                  cpu: 10m
+                  cpu: 50m
               securityContext:
                 privileged: true
               volumeMounts:
@@ -145,6 +155,7 @@ items:
                   mountPath: /lib/modules
                 - name: xtables-lock
                   mountPath: /run/xtables.lock
+                  readOnly: false
             - name: weave-npc
               env:
                 - name: HOSTNAME
@@ -152,19 +163,21 @@ items:
                     fieldRef:
                       apiVersion: v1
                       fieldPath: spec.nodeName
-              image: 'docker.io/weaveworks/weave-npc:2.6.5'
+              image: 'docker.io/weaveworks/weave-npc:2.7.0'
+              imagePullPolicy: Always
+              # npc-args
               resources:
                 requests:
-                  cpu: 10m
+                  cpu: 50m
               securityContext:
                 privileged: true
               volumeMounts:
                 - name: xtables-lock
                   mountPath: /run/xtables.lock
-          dnsPolicy: ClusterFirstWithHostNet
+                  readOnly: false
           hostNetwork: true
+          dnsPolicy: ClusterFirstWithHostNet
           hostPID: true
-          priorityClassName: system-node-critical
           restartPolicy: Always
           securityContext:
             seLinuxOptions: {}
@@ -197,5 +210,6 @@ items:
               hostPath:
                 path: /run/xtables.lock
                 type: FileOrCreate
+          priorityClassName: system-node-critical
       updateStrategy:
         type: RollingUpdate

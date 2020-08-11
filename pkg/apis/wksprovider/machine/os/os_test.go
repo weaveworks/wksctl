@@ -227,7 +227,7 @@ items:
                   fieldRef:
                     apiVersion: v1
                     fieldPath: spec.nodeName
-            image: 'docker.io/weaveworks/weave-kube:2.6.5'
+            image: 'docker.io/weaveworks/weave-kube:2.7.0'
             imagePullPolicy: Always
             readinessProbe:
               httpGet:
@@ -262,7 +262,7 @@ items:
                   fieldRef:
                     apiVersion: v1
                     fieldPath: spec.nodeName
-            image: 'docker.io/weaveworks/weave-npc:2.6.5'
+            image: 'docker.io/weaveworks/weave-npc:2.7.0'
             imagePullPolicy: Always
             # npc-args
             resources:
