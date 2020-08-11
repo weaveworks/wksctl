@@ -1,6 +1,7 @@
 package resource
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/pkg/errors"
@@ -26,8 +27,8 @@ func (r *Run) State() plan.State {
 }
 
 // Apply implements plan.Resource.
-func (r *Run) Apply(runner plan.Runner, diff plan.Diff) (bool, error) {
-	str, err := runner.RunCommand(r.Script.String(), nil)
+func (r *Run) Apply(ctx context.Context, runner plan.Runner, diff plan.Diff) (bool, error) {
+	str, err := runner.RunCommand(ctx, r.Script.String(), nil)
 	if r.Output != nil {
 		*r.Output = str
 	}
@@ -38,14 +39,14 @@ func (r *Run) Apply(runner plan.Runner, diff plan.Diff) (bool, error) {
 }
 
 // Undo implements plan.Resource.
-func (r *Run) Undo(runner plan.Runner, current plan.State) error {
+func (r *Run) Undo(ctx context.Context, runner plan.Runner, current plan.State) error {
 	if r.UndoScript == nil {
 		if r.UndoResource == nil {
 			return nil
 		} else {
-			return r.UndoResource.Undo(runner, plan.EmptyState)
+			return r.UndoResource.Undo(ctx, runner, plan.EmptyState)
 		}
 	}
-	_, err := runner.RunCommand(r.UndoScript.String(), nil)
+	_, err := runner.RunCommand(ctx, r.UndoScript.String(), nil)
 	return err
 }

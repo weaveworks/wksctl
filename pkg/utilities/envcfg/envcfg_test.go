@@ -1,6 +1,7 @@
 package envcfg
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -35,7 +36,7 @@ type fakeRunner struct {
 	value map[string]runnerResult
 }
 
-func (f *fakeRunner) RunCommand(cmd string, _ io.Reader) (stdouterr string, err error) {
+func (f *fakeRunner) RunCommand(_ context.Context, cmd string, _ io.Reader) (stdouterr string, err error) {
 	val, ok := f.value[cmd]
 	if !ok {
 		panic(fmt.Sprintf("fakeRunner: asked to run command without defined result: %q", cmd))
@@ -45,6 +46,7 @@ func (f *fakeRunner) RunCommand(cmd string, _ io.Reader) (stdouterr string, err 
 
 // TestGetEnvSpecificConfig simulates various system states (by means of faked results of individual commands), computes EnvSpecificConfig based on that and checks that results match expectations.
 func TestGetEnvSpecificConfig(t *testing.T) {
+	ctx := context.Background()
 	for _, tt := range []struct {
 		name string
 
@@ -295,7 +297,7 @@ func TestGetEnvSpecificConfig(t *testing.T) {
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			// act
-			cfg, err := GetEnvSpecificConfig(tt.pkgType, tt.wantNamespace, tt.cloudProvider, tt.runner)
+			cfg, err := GetEnvSpecificConfig(ctx, tt.pkgType, tt.wantNamespace, tt.cloudProvider, tt.runner)
 
 			// assert
 			if (err != nil) != tt.wantError {

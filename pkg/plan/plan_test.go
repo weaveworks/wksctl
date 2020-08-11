@@ -1,6 +1,7 @@
 package plan
 
 import (
+	"context"
 	"strings"
 	"testing"
 
@@ -21,17 +22,17 @@ func (npr nonPointerResource) State() State {
 }
 
 // QueryState implements plan.Resource.
-func (npr nonPointerResource) QueryState(runner Runner) (State, error) {
+func (npr nonPointerResource) QueryState(_ context.Context, runner Runner) (State, error) {
 	return EmptyState, nil
 }
 
 // Apply implements Resource.
-func (npr nonPointerResource) Apply(runner Runner, diff Diff) (bool, error) {
+func (npr nonPointerResource) Apply(_ context.Context, runner Runner, diff Diff) (bool, error) {
 	return true, nil
 }
 
 // Undo implements Resource.
-func (npr nonPointerResource) Undo(runner Runner, current State) error {
+func (npr nonPointerResource) Undo(_ context.Context, runner Runner, current State) error {
 	return nil
 }
 
@@ -103,6 +104,7 @@ func TestPlanToDOT(t *testing.T) {
 
 // Test invalidation behavior using testResource as a mock
 func TestSimpleDepEverythingValid(t *testing.T) {
+	ctx := context.Background()
 	r := &testutils.MockRunner{Output: "", Err: nil}
 	b := NewBuilder()
 	b.AddResource("dependee", &testResource{ID: "dependee"})
@@ -110,7 +112,7 @@ func TestSimpleDepEverythingValid(t *testing.T) {
 	assert.Equal(t, 0, len(b.Errors()))
 	p, err := b.Plan()
 	assert.NoError(t, err)
-	resourceValidity := p.EnsureResourceValid("dependent", r)
+	resourceValidity := p.EnsureResourceValid(ctx, "dependent", r)
 	assert.Equal(
 		t,
 		ValidityTree{
@@ -128,6 +130,7 @@ func TestSimpleDepEverythingValid(t *testing.T) {
 }
 
 func TestMultiLevelMultiDepEverythingValid(t *testing.T) {
+	ctx := context.Background()
 	r := &testutils.MockRunner{Output: "", Err: nil}
 	b := NewBuilder()
 	b.AddResource("bottom-1", &testResource{ID: "bottom-1"})
@@ -138,7 +141,7 @@ func TestMultiLevelMultiDepEverythingValid(t *testing.T) {
 	assert.Equal(t, 0, len(b.Errors()))
 	p, err := b.Plan()
 	assert.NoError(t, err)
-	resourceValidity := p.EnsureResourceValid("top", r)
+	resourceValidity := p.EnsureResourceValid(ctx, "top", r)
 	bot1 := ValidityTree{
 		ResourceID:     "bottom-1",
 		ValidityStatus: Valid,
@@ -168,6 +171,7 @@ func TestMultiLevelMultiDepEverythingValid(t *testing.T) {
 }
 
 func TestSimpleDepCorrectablyInvalid(t *testing.T) {
+	ctx := context.Background()
 	r := &testutils.MockRunner{Output: "", Err: nil}
 	b := NewBuilder()
 	b.AddResource("dependee", &testResource{ID: "dependee", StatesShouldNotMatch: true})
@@ -175,7 +179,7 @@ func TestSimpleDepCorrectablyInvalid(t *testing.T) {
 	assert.Equal(t, 0, len(b.Errors()))
 	p, err := b.Plan()
 	assert.NoError(t, err)
-	resourceValidity := p.EnsureResourceValid("dependent", r)
+	resourceValidity := p.EnsureResourceValid(ctx, "dependent", r)
 	assert.Equal(
 		t,
 		ValidityTree{
@@ -197,6 +201,7 @@ func TestSimpleDepCorrectablyInvalid(t *testing.T) {
 // All resources already at their desired states.
 // Nothing gets applied but everything considered valid.
 func TestStraightLinePlanApplyAllUpToDate(t *testing.T) {
+	ctx := context.Background()
 	r := &testutils.MockRunner{Output: "", Err: nil}
 	b := NewBuilder()
 	b.AddResource("resource-1", &testResource{ID: "resource-1"})
@@ -209,7 +214,7 @@ func TestStraightLinePlanApplyAllUpToDate(t *testing.T) {
 	diff := Diff{
 		CurrentState:    EmptyState,
 		InvalidatedDeps: []Resource{}}
-	propagate, err := p.Apply(r, diff)
+	propagate, err := p.Apply(ctx, r, diff)
 	assert.NoError(t, err)
 	assert.False(t, propagate)
 }
@@ -217,6 +222,7 @@ func TestStraightLinePlanApplyAllUpToDate(t *testing.T) {
 // No resources already at their desired states.
 // Everything gets applied and updates its state.
 func TestStraightLinePlanApplyAllValid(t *testing.T) {
+	ctx := context.Background()
 	r := &testutils.MockRunner{Output: "", Err: nil}
 	b := NewBuilder()
 	b.AddResource("resource-1",
@@ -241,13 +247,14 @@ func TestStraightLinePlanApplyAllValid(t *testing.T) {
 	diff := Diff{
 		CurrentState:    EmptyState,
 		InvalidatedDeps: []Resource{}}
-	propagate, err := p.Apply(r, diff)
+	propagate, err := p.Apply(ctx, r, diff)
 	assert.True(t, propagate)
 	assert.NoError(t, err)
 }
 
 // Cached state passed in, no failure
 func TestMultiLevelMultiDepApplyCachedState(t *testing.T) {
+	ctx := context.Background()
 	r := &testutils.MockRunner{Output: "", Err: nil}
 	b := NewBuilder("plan-1")
 	b.AddResource("bottom-1",
@@ -276,7 +283,7 @@ func TestMultiLevelMultiDepApplyCachedState(t *testing.T) {
 			"middle-2": State(map[string]interface{}{"m2state": 4}),
 			"top":      State(map[string]interface{}{"tstate": 5})}),
 		InvalidatedDeps: []Resource{}}
-	propagate, err := p.Apply(r, diff)
+	propagate, err := p.Apply(ctx, r, diff)
 	assert.NoError(t, err)
 	assert.True(t, propagate)
 }

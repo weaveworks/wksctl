@@ -1,6 +1,7 @@
 package resource
 
 import (
+	"context"
 	"crypto/md5"
 	"fmt"
 	"io"
@@ -38,8 +39,8 @@ func (f *File) State() plan.State {
 }
 
 // QueryState implements plan.Resource.
-func (f *File) QueryState(runner plan.Runner) (plan.State, error) {
-	output, err := runner.RunCommand(fmt.Sprintf("md5sum %s", f.Destination), nil)
+func (f *File) QueryState(ctx context.Context, runner plan.Runner) (plan.State, error) {
+	output, err := runner.RunCommand(ctx, fmt.Sprintf("md5sum %s", f.Destination), nil)
 	// XXX: this error message is actually locale dependent!
 	if err != nil && strings.Contains(output, "No such file or directory") {
 		return plan.EmptyState, nil
@@ -101,7 +102,7 @@ func (f *File) content() ([]byte, error) {
 }
 
 // Apply implements plan.Resource.
-func (f *File) Apply(runner plan.Runner, diff plan.Diff) (bool, error) {
+func (f *File) Apply(ctx context.Context, runner plan.Runner, diff plan.Diff) (bool, error) {
 	if err := f.computeChecksum(); err != nil {
 		return false, errors.Wrapf(err, "file: %s", f.Destination)
 	}
@@ -115,16 +116,16 @@ func (f *File) Apply(runner plan.Runner, diff plan.Diff) (bool, error) {
 		return false, err
 	}
 
-	return true, scripts.WriteFile(content, f.Destination, 0660, runner)
+	return true, scripts.WriteFile(ctx, content, f.Destination, 0660, runner)
 }
 
 // Undo implements plan.Resource.
-func (f *File) Undo(runner plan.Runner, current plan.State) error {
+func (f *File) Undo(ctx context.Context, runner plan.Runner, current plan.State) error {
 	// Not checking checksum on Undo since File resources are being
 	// used to undo actions taken within commands like kubeadminit.
 	// In some cases we need to make sure files that would have been
 	// created by the command are gone but we don't know if they've been
 	// created or not.
-	_, err := runner.RunCommand(fmt.Sprintf("rm -f %s", f.Destination), nil)
+	_, err := runner.RunCommand(ctx, fmt.Sprintf("rm -f %s", f.Destination), nil)
 	return err
 }

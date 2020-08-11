@@ -159,10 +159,10 @@ func (a *MachineController) create(ctx context.Context, installer *os.OS, c *exi
 	if err != nil {
 		return err
 	}
-	if err := installer.SetupNode(nodePlan); err != nil {
+	if err := installer.SetupNode(ctx, nodePlan); err != nil {
 		return gerrors.Wrapf(err, "failed to set up machine %s", machine.Name)
 	}
-	ids, err := installer.IDs()
+	ids, err := installer.IDs(ctx)
 	if err != nil {
 		return gerrors.Wrapf(err, "failed to read machine %s's IDs", machine.Name)
 	}
@@ -198,7 +198,7 @@ func (a *MachineController) connectTo(ctx context.Context, c *existinginfrav1.Ex
 	if err != nil {
 		return nil, nil, gerrors.Wrapf(err, "failed to create SSH client using %v", m.Spec.Private)
 	}
-	os, err := os.Identify(sshClient)
+	os, err := os.Identify(ctx, sshClient)
 	if err != nil {
 		return nil, nil, gerrors.Wrapf(err, "failed to identify machine %s's operating system", a.getMachineAddress(m))
 	}
@@ -331,7 +331,7 @@ func (a *MachineController) delete(ctx context.Context, c *existinginfrav1.Exist
 		return gerrors.Wrapf(err, "failed to establish connection to machine %s", machine.Name)
 	}
 	defer closer.Close()
-	ids, err := os.IDs()
+	ids, err := os.IDs(ctx)
 	if err != nil {
 		return gerrors.Wrapf(err, "failed to read machine %s's IDs", machine.Name)
 	}
@@ -372,7 +372,7 @@ func (a *MachineController) update(ctx context.Context, c *existinginfrav1.Exist
 	}
 	defer closer.Close()
 
-	ids, err := installer.IDs()
+	ids, err := installer.IDs(ctx)
 	if err != nil {
 		return gerrors.Wrapf(err, "failed to read machine %s's IDs", machine.Name)
 	}
@@ -507,7 +507,7 @@ func (a *MachineController) kubeadmUpOrDowngrade(ctx context.Context, machine *c
 	if err != nil {
 		return err
 	}
-	if err := installer.SetupNode(&p); err != nil {
+	if err := installer.SetupNode(ctx, &p); err != nil {
 		log.Infof("Failed to upgrade node %s: %v", node.Name, err)
 		return err
 	}
@@ -546,7 +546,7 @@ func (a *MachineController) performActualUpdate(
 	}); err != nil {
 		return err
 	}
-	if err := installer.SetupNode(nodePlan); err != nil {
+	if err := installer.SetupNode(ctx, nodePlan); err != nil {
 		return gerrors.Wrapf(err, "failed to set up machine %s", machine.Name)
 	}
 	if err := a.uncordon(ctx, node); err != nil {
@@ -588,7 +588,7 @@ func (a *MachineController) getNodePlan(ctx context.Context, provider *existingi
 			return nil, err
 		}
 	}
-	plan, err := installer.CreateNodeSetupPlan(os.NodeParams{
+	plan, err := installer.CreateNodeSetupPlan(ctx, os.NodeParams{
 		IsMaster:                 machine.Labels["set"] == "master",
 		MasterIP:                 masterIP,
 		MasterPort:               6443, // TODO: read this dynamically, from somewhere.

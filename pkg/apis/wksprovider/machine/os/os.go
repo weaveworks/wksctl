@@ -2,6 +2,7 @@ package os
 
 import (
 	"bytes"
+	"context"
 	"crypto/rsa"
 	"encoding/base64"
 	"fmt"
@@ -83,8 +84,8 @@ type Identifiers struct {
 }
 
 // IDs returns this machine's ID and system UUID.
-func (o OS) IDs() (*Identifiers, error) {
-	osres, err := resource.NewOS(o.runner)
+func (o OS) IDs(ctx context.Context) (*Identifiers, error) {
+	osres, err := resource.NewOS(ctx, o.runner)
 	if err != nil {
 		return nil, err
 	}
@@ -194,21 +195,21 @@ func (params SeedNodeParams) GetAddonNamespace(name string) string {
 // SetupSeedNode installs Kubernetes on this machine, and store the provided
 // manifests in the API server, so that the rest of the cluster can then be
 // set up by the WKS controller.
-func (o OS) SetupSeedNode(params SeedNodeParams) error {
-	p, err := o.CreateSeedNodeSetupPlan(params)
+func (o OS) SetupSeedNode(ctx context.Context, params SeedNodeParams) error {
+	p, err := o.CreateSeedNodeSetupPlan(ctx, params)
 	if err != nil {
 		return err
 	}
-	return o.applySeedNodePlan(p)
+	return o.applySeedNodePlan(ctx, p)
 }
 
 // CreateSeedNodeSetupPlan constructs the seed node plan used to setup the initial node
 // prior to turning control over to wks-controller
-func (o OS) CreateSeedNodeSetupPlan(params SeedNodeParams) (*plan.Plan, error) {
+func (o OS) CreateSeedNodeSetupPlan(ctx context.Context, params SeedNodeParams) (*plan.Plan, error) {
 	if err := params.Validate(); err != nil {
 		return nil, err
 	}
-	cfg, err := envcfg.GetEnvSpecificConfig(o.PkgType, params.Namespace, params.KubeletConfig.CloudProvider, o.runner)
+	cfg, err := envcfg.GetEnvSpecificConfig(ctx, o.PkgType, params.Namespace, params.KubeletConfig.CloudProvider, o.runner)
 	if err != nil {
 		return nil, err
 	}
@@ -239,7 +240,7 @@ func (o OS) CreateSeedNodeSetupPlan(params SeedNodeParams) (*plan.Plan, error) {
 		return nil, err
 	}
 
-	criRes := recipe.BuildCRIPlan(&cluster.Spec.CRI, cfg, o.PkgType)
+	criRes := recipe.BuildCRIPlan(ctx, &cluster.Spec.CRI, cfg, o.PkgType)
 	b.AddResource("install:cri", criRes, plan.DependOn("install:config"))
 
 	k8sRes := recipe.BuildK8SPlan(kubernetesVersion, params.KubeletConfig.NodeIP, cfg.SELinuxInstalled, cfg.SetSELinuxPermissive, cfg.DisableSwap, cfg.LockYUMPkgs, o.PkgType, params.KubeletConfig.CloudProvider, params.KubeletConfig.ExtraArguments)
@@ -322,7 +323,7 @@ func (o OS) CreateSeedNodeSetupPlan(params SeedNodeParams) (*plan.Plan, error) {
 	}
 
 	// Set plan as an annotation on node, just like controller does
-	seedNodePlan, err := o.seedNodeSetupPlan(params, &cluster.Spec, configMaps, authConfigMap, pemSecretResources, kubernetesVersion, kubernetesNamespace)
+	seedNodePlan, err := o.seedNodeSetupPlan(ctx, params, &cluster.Spec, configMaps, authConfigMap, pemSecretResources, kubernetesVersion, kubernetesNamespace)
 	if err != nil {
 		return nil, err
 	}
@@ -565,7 +566,7 @@ func addClusterAPICRDs(b *plan.Builder) ([]string, error) {
 	return crdIDs, nil
 }
 
-func (o OS) seedNodeSetupPlan(params SeedNodeParams, providerSpec *existinginfrav1.ExistingInfraClusterSpec, providerConfigMaps map[string]*v1.ConfigMap, authConfigMap *v1.ConfigMap, secretResources map[string]*secretResourceSpec, kubernetesVersion, kubernetesNamespace string) (*plan.Plan, error) {
+func (o OS) seedNodeSetupPlan(ctx context.Context, params SeedNodeParams, providerSpec *existinginfrav1.ExistingInfraClusterSpec, providerConfigMaps map[string]*v1.ConfigMap, authConfigMap *v1.ConfigMap, secretResources map[string]*secretResourceSpec, kubernetesVersion, kubernetesNamespace string) (*plan.Plan, error) {
 	secrets := map[string]resource.SecretData{}
 	for k, v := range secretResources {
 		secrets[k] = v.decrypted
@@ -585,17 +586,17 @@ func (o OS) seedNodeSetupPlan(params SeedNodeParams, providerSpec *existinginfra
 		AddonNamespaces:      params.AddonNamespaces,
 		ControlPlaneEndpoint: providerSpec.ControlPlaneEndpoint,
 	}
-	return o.CreateNodeSetupPlan(nodeParams)
+	return o.CreateNodeSetupPlan(ctx, nodeParams)
 }
 
-func (o OS) applySeedNodePlan(p *plan.Plan) error {
-	err := p.Undo(o.runner, plan.EmptyState)
+func (o OS) applySeedNodePlan(ctx context.Context, p *plan.Plan) error {
+	err := p.Undo(ctx, o.runner, plan.EmptyState)
 	if err != nil {
 		log.Infof("Pre-plan cleanup failed:\n%s\n", err)
 		return err
 	}
 
-	_, err = p.Apply(o.runner, plan.EmptyDiff())
+	_, err = p.Apply(ctx, o.runner, plan.EmptyDiff())
 	if err != nil {
 		log.Errorf("Apply of Plan failed:\n%s\n", err)
 		return err
@@ -1129,12 +1130,12 @@ func (params NodeParams) Validate() error {
 // SetupNode installs Kubernetes on this machine and configures it based on the
 // manifests stored during the initialization of the cluster, when
 // SetupSeedNode was called.
-func (o OS) SetupNode(p *plan.Plan) error {
+func (o OS) SetupNode(ctx context.Context, p *plan.Plan) error {
 	// We don't know the state of the machine so undo at the beginning
 	//nolint:errcheck
-	p.Undo(o.runner, plan.EmptyState) // TODO: Implement error checking
+	p.Undo(ctx, o.runner, plan.EmptyState) // TODO: Implement error checking
 
-	_, err := p.Apply(o.runner, plan.EmptyDiff())
+	_, err := p.Apply(ctx, o.runner, plan.EmptyDiff())
 	if err != nil {
 		log.Errorf("Apply of Plan failed:\n%s\n", err)
 	}
@@ -1142,12 +1143,12 @@ func (o OS) SetupNode(p *plan.Plan) error {
 }
 
 // CreateNodeSetupPlan creates the plan that will be used to set up a node.
-func (o OS) CreateNodeSetupPlan(params NodeParams) (*plan.Plan, error) {
+func (o OS) CreateNodeSetupPlan(ctx context.Context, params NodeParams) (*plan.Plan, error) {
 	if err := params.Validate(); err != nil {
 		return nil, err
 	}
 
-	cfg, err := envcfg.GetEnvSpecificConfig(o.PkgType, params.Namespace, params.KubeletConfig.CloudProvider, o.runner)
+	cfg, err := envcfg.GetEnvSpecificConfig(ctx, o.PkgType, params.Namespace, params.KubeletConfig.CloudProvider, o.runner)
 	if err != nil {
 		return nil, err
 	}
@@ -1172,7 +1173,7 @@ func (o OS) CreateNodeSetupPlan(params NodeParams) (*plan.Plan, error) {
 
 	configRes := recipe.BuildConfigPlan(configFileResources)
 	b.AddResource("install:config", configRes, plan.DependOn("install:base"))
-	instCriRsrc := recipe.BuildCRIPlan(&params.CRI, cfg, o.PkgType)
+	instCriRsrc := recipe.BuildCRIPlan(ctx, &params.CRI, cfg, o.PkgType)
 	b.AddResource("install.cri", instCriRsrc, plan.DependOn("install:config"))
 
 	instK8sRsrc := recipe.BuildK8SPlan(params.KubernetesVersion, params.KubeletConfig.NodeIP, cfg.SELinuxInstalled, cfg.SetSELinuxPermissive, cfg.DisableSwap, cfg.LockYUMPkgs, o.PkgType, params.KubeletConfig.CloudProvider, params.KubeletConfig.ExtraArguments)
@@ -1222,8 +1223,8 @@ const (
 
 // Identify uses the provided SSH client to identify the operating system of
 // the machine it is configured to talk to.
-func Identify(sshClient plan.Runner) (*OS, error) {
-	osID, err := fetchOSID(sshClient)
+func Identify(ctx context.Context, sshClient plan.Runner) (*OS, error) {
+	osID, err := fetchOSID(ctx, sshClient)
 	if err != nil {
 		return nil, err
 	}
@@ -1246,8 +1247,8 @@ const (
 	idxOSID            = 1
 )
 
-func fetchOSID(sshClient plan.Runner) (string, error) {
-	stdOut, err := sshClient.RunCommand("cat /etc/*release", nil)
+func fetchOSID(ctx context.Context, sshClient plan.Runner) (string, error) {
+	stdOut, err := sshClient.RunCommand(ctx, "cat /etc/*release", nil)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to fetch operating system ID")
 	}

@@ -2,6 +2,7 @@ package plan
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -21,7 +22,7 @@ import (
 type Runner interface {
 	// RunCommand runs a command in a shell. This means cmd can be more than one
 	// single command, it can be a full bourne shell script.
-	RunCommand(cmd string, stdin io.Reader) (stdouterr string, err error)
+	RunCommand(ctx context.Context, cmd string, stdin io.Reader) (stdouterr string, err error)
 }
 
 // Resource is an atomic step of the plan.
@@ -31,12 +32,12 @@ type Resource interface {
 	// QueryState returns the current state of this step. For instance, if the step
 	// describes the installation of a package, QueryState will return if the
 	// package is actually installed and its version.
-	QueryState(runner Runner) (State, error)
+	QueryState(ctx context.Context, runner Runner) (State, error)
 
 	// Apply this step and indicate whether downstream resources should be re-applied
-	Apply(runner Runner, diff Diff) (propagate bool, err error)
+	Apply(ctx context.Context, runner Runner, diff Diff) (propagate bool, err error)
 	// Undo this step.
-	Undo(runner Runner, current State) error
+	Undo(ctx context.Context, runner Runner, current State) error
 }
 
 type RunError struct {
@@ -684,8 +685,8 @@ func (p *Plan) endpoints() []string {
 //   1) either a state roll-up of contained resource states or nil
 //   2) a set of updated resources (of which only direct dependencies will be handed to
 //      individual resources
-func (p *Plan) Apply(r Runner, diff Diff) (bool, error) {
-	validity := p.ApplyResourceGraph(p.endpoints(), &diff, r)
+func (p *Plan) Apply(ctx context.Context, r Runner, diff Diff) (bool, error) {
+	validity := p.ApplyResourceGraph(ctx, p.endpoints(), &diff, r)
 	statusCheck := func(status Validity) bool {
 		return any(validity, func(vtree ValidityTree) bool { return vtree.ValidityStatus == status })
 	}
@@ -708,11 +709,11 @@ func (p *Plan) State() State {
 }
 
 // QueryState implements Resource
-func (p *Plan) QueryState(runner Runner) (State, error) {
+func (p *Plan) QueryState(ctx context.Context, runner Runner) (State, error) {
 	state := State(make(map[string]interface{}))
 	errors := make(map[string]error)
 	for rid, r := range p.resources {
-		s, err := r.QueryState(runner)
+		s, err := r.QueryState(ctx, runner)
 		if err != nil {
 			errors[rid] = err
 		} else {
@@ -728,7 +729,7 @@ func (p *Plan) QueryState(runner Runner) (State, error) {
 }
 
 // Undo implements Resource
-func (p *Plan) Undo(runner Runner, current State) error {
+func (p *Plan) Undo(ctx context.Context, runner Runner, current State) error {
 	if p.undoCondition != nil && !p.undoCondition(runner, current) {
 		return nil
 	}
@@ -737,7 +738,7 @@ func (p *Plan) Undo(runner Runner, current State) error {
 	for _, rid := range sorted {
 		logger := log.WithField("resource", rid)
 		logger.Debug("Undoing")
-		if err := p.resources[rid].Undo(runner, current); err != nil {
+		if err := p.resources[rid].Undo(ctx, runner, current); err != nil {
 			errors[rid] = err
 			logger.Error("Undo failed")
 		} else {
@@ -786,9 +787,9 @@ func selectPrerequisites(ids []string, g *graph) *graph {
 	return newg
 }
 
-func (p *Plan) ApplyResourceGraph(resourceIDs []string, diff *Diff, runner Runner) map[string]ValidityTree {
+func (p *Plan) ApplyResourceGraph(ctx context.Context, resourceIDs []string, diff *Diff, runner Runner) map[string]ValidityTree {
 	underlyingGraph := selectPrerequisites(resourceIDs, p.graph)
-	validity := p.applyResources(underlyingGraph, resourceIDs, diff, runner)
+	validity := p.applyResources(ctx, underlyingGraph, resourceIDs, diff, runner)
 	for resourceID, resourceValidity := range validity {
 		resourceValidityStatus := resourceValidity.ValidityStatus
 		if resourceValidityStatus != Valid {
@@ -804,18 +805,18 @@ func (p *Plan) ApplyResourceGraph(resourceIDs []string, diff *Diff, runner Runne
 // checking dependencies for validity and re-applying as necessary to
 // achieve it; returns only results for the top-level resources as results for underlying
 // resources will roll up
-func (p *Plan) EnsureResourcesValid(resourceIDs []string, runner Runner) map[string]ValidityTree {
-	return p.ApplyResourceGraph(resourceIDs, nil, runner)
+func (p *Plan) EnsureResourcesValid(ctx context.Context, resourceIDs []string, runner Runner) map[string]ValidityTree {
+	return p.ApplyResourceGraph(ctx, resourceIDs, nil, runner)
 }
 
 // EnsureResourceValid ensures that a resource is valid by recursively
 // checking dependencies for validity and re-applying as necessary to
 // achieve it
-func (p *Plan) EnsureResourceValid(resourceID string, runner Runner) ValidityTree {
-	return p.EnsureResourcesValid([]string{resourceID}, runner)[resourceID]
+func (p *Plan) EnsureResourceValid(ctx context.Context, resourceID string, runner Runner) ValidityTree {
+	return p.EnsureResourcesValid(ctx, []string{resourceID}, runner)[resourceID]
 }
 
-func (p *Plan) applyResources(g *graph, endpoints []string, diff *Diff, runner Runner) map[string]ValidityTree {
+func (p *Plan) applyResources(ctx context.Context, g *graph, endpoints []string, diff *Diff, runner Runner) map[string]ValidityTree {
 	// Get a reverse graph so we can use extractDependencies to get dependents
 	downwardGraph := g.Invert()
 	// Get all the dependencies for each resource
@@ -830,7 +831,7 @@ func (p *Plan) applyResources(g *graph, endpoints []string, diff *Diff, runner R
 	connectors := p.createChannels(sorted, dependencies, dependents, endpoints, top)
 	result := make(map[string]ValidityTree)
 	// ascend the graph propagating validity
-	if err := p.propagate(sorted, connectors, diff, runner); err != nil {
+	if err := p.propagate(ctx, sorted, connectors, diff, runner); err != nil {
 		result["top"] = ValidityTree{ResourceID: "top", ValidityStatus: Invalid}
 		return result
 	}
@@ -937,12 +938,13 @@ func (p *Plan) acceptDependencyInputs(
 
 // Start from independent resources and propagate validity status upward.
 func (p *Plan) propagate(
+	ctx context.Context,
 	sortedResources []string,
 	connectors map[string]*connectors,
 	diff *Diff,
 	runner Runner) error {
 	for _, res := range sortedResources {
-		if err := p.processResource(res, connectors, diff, runner); err != nil {
+		if err := p.processResource(ctx, res, connectors, diff, runner); err != nil {
 			return err
 		}
 	}
@@ -968,6 +970,7 @@ func (p *Plan) propagate(
 //     otherwise, send/set valid with 'false' for update
 //   otherwise, send/set invalid
 func (p *Plan) processResource(
+	ctx context.Context,
 	res string,
 	conns map[string]*connectors,
 	diff *Diff,
@@ -1001,7 +1004,7 @@ func (p *Plan) processResource(
 		stateRef = diff.CurrentState[res]
 	}
 	if stateRef == nil {
-		queriedState, err := r.QueryState(runner)
+		queriedState, err := r.QueryState(ctx, runner)
 		if err != nil {
 			output.ValidityStatus = Inconclusive
 			output.Reason = QueryError
@@ -1015,7 +1018,7 @@ func (p *Plan) processResource(
 		currentState = stateRef.(State)
 	}
 	if applyIfValid || !reflect.DeepEqual(r.State(), currentState) {
-		propagate, err := r.Apply(runner, Diff{currentState, updatedDependencies})
+		propagate, err := r.Apply(ctx, runner, Diff{currentState, updatedDependencies})
 		if err != nil {
 			// A failure to apply results in an 'Invalid' status
 			output.ValidityStatus = Invalid

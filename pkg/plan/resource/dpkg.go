@@ -2,6 +2,7 @@ package resource
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"strings"
 
@@ -20,14 +21,14 @@ type debPkgInfo struct {
 	Name, Version string
 }
 
-func (d *dpkgQuerier) ShowInstalled(name string) ([]debPkgInfo, error) {
+func (d *dpkgQuerier) ShowInstalled(ctx context.Context, name string) ([]debPkgInfo, error) {
 	// Run dpkg-query.
 	const sep = "\t"
 	formatFields := []string{"${Package}", "${Version}"}
 
 	cmd := fmt.Sprintf("'%s' --showformat '%s' -W '%s'",
 		d.CommandMaybeDefault(), strings.Join(formatFields, sep)+"\n", name)
-	out, err := d.Runner.RunCommand(cmd, nil)
+	out, err := d.Runner.RunCommand(ctx, cmd, nil)
 
 	// Handle "package not found".
 	if err != nil {

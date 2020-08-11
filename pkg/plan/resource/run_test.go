@@ -1,6 +1,7 @@
 package resource
 
 import (
+	"context"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -12,6 +13,7 @@ import (
 )
 
 func TestRunAndUndo(t *testing.T) {
+	ctx := context.Background()
 	dir, err := ioutil.TempDir("", "run-test")
 	assert.NoError(t, err)
 	filename := filepath.Join(dir, "foo")
@@ -24,12 +26,12 @@ func TestRunAndUndo(t *testing.T) {
 	_, err = os.Stat(filename)
 	assert.True(t, os.IsNotExist(err))
 
-	val, err := res.Apply(runner, plan.EmptyDiff())
+	val, err := res.Apply(ctx, runner, plan.EmptyDiff())
 	assert.True(t, val)
 	assert.NoError(t, err)
 	assert.FileExists(t, filename)
 
-	err = res.Undo(runner, plan.EmptyState)
+	err = res.Undo(ctx, runner, plan.EmptyState)
 	assert.NoError(t, err)
 	_, err = os.Stat(filename)
 	assert.True(t, os.IsNotExist(err))

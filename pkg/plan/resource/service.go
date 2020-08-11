@@ -1,6 +1,7 @@
 package resource
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -37,14 +38,14 @@ func (p *Service) State() plan.State {
 	return toState(p)
 }
 
-func systemd(r plan.Runner, format string, args ...interface{}) (string, error) {
-	return r.RunCommand(fmt.Sprintf("systemctl "+format, args...), nil)
+func systemd(ctx context.Context, r plan.Runner, format string, args ...interface{}) (string, error) {
+	return r.RunCommand(ctx, fmt.Sprintf("systemctl "+format, args...), nil)
 }
 
 // QueryState implements plan.Resource.
-func (p *Service) QueryState(r plan.Runner) (plan.State, error) {
+func (p *Service) QueryState(ctx context.Context, r plan.Runner) (plan.State, error) {
 	// See https://bugzilla.redhat.com/show_bug.cgi?id=1073481#c11
-	output, err := systemd(r, "show %s -p ActiveState", p.Name)
+	output, err := systemd(ctx, r, "show %s -p ActiveState", p.Name)
 	if err != nil {
 		return plan.EmptyState, err
 	}
@@ -53,7 +54,7 @@ func (p *Service) QueryState(r plan.Runner) (plan.State, error) {
 		return plan.EmptyState, errors.Wrapf(err, "service %s: query: could not query active state", p.Name)
 	}
 
-	output, err = systemd(r, "is-enabled %s", p.Name)
+	output, err = systemd(ctx, r, "is-enabled %s", p.Name)
 	// is-enabled exits with non-zero status when the unit is disabled.
 	if err != nil && line(output) != "disabled" {
 		return plan.EmptyState, errors.Wrapf(err, "service %s: query: could not query enabled state", p.Name)
@@ -69,7 +70,7 @@ func (p *Service) QueryState(r plan.Runner) (plan.State, error) {
 }
 
 // Apply implements plan.Resource.
-func (p *Service) Apply(r plan.Runner, diff plan.Diff) (bool, error) {
+func (p *Service) Apply(ctx context.Context, r plan.Runner, diff plan.Diff) (bool, error) {
 	var err error
 	var output string
 
@@ -77,9 +78,9 @@ func (p *Service) Apply(r plan.Runner, diff plan.Diff) (bool, error) {
 
 	// Enabled
 	if !current.Bool("enabled") && p.Enabled {
-		output, err = systemd(r, "enable %s", p.Name)
+		output, err = systemd(ctx, r, "enable %s", p.Name)
 	} else if current.Bool("enabled") && !p.Enabled {
-		output, err = systemd(r, "disable %s", p.Name)
+		output, err = systemd(ctx, r, "disable %s", p.Name)
 	}
 	if err != nil {
 		return false, fmt.Errorf("%s: %s", output, err.Error())
@@ -89,9 +90,9 @@ func (p *Service) Apply(r plan.Runner, diff plan.Diff) (bool, error) {
 	// XXX: We need to think about what happens when a unit is in failed status
 	// (current["status"] is "failed").
 	if p.Status == ServiceActive && current.String("status") == "inactive" {
-		output, err = systemd(r, "start %s", p.Name)
+		output, err = systemd(ctx, r, "start %s", p.Name)
 	} else if p.Status == ServiceInactive && current.String("status") != "inactive" {
-		output, err = systemd(r, "stop %s", p.Name)
+		output, err = systemd(ctx, r, "stop %s", p.Name)
 	}
 	if err != nil {
 		return false, fmt.Errorf("%s: %s", output, err.Error())
@@ -101,9 +102,9 @@ func (p *Service) Apply(r plan.Runner, diff plan.Diff) (bool, error) {
 }
 
 // Undo implements plan.Resource
-func (p *Service) Undo(r plan.Runner, current plan.State) error {
+func (p *Service) Undo(ctx context.Context, r plan.Runner, current plan.State) error {
 	if current.Bool("enabled") {
-		output, err := systemd(r, "disable %s", p.Name)
+		output, err := systemd(ctx, r, "disable %s", p.Name)
 		if err != nil {
 			if strings.Contains(output, "not loaded") {
 				return nil
@@ -113,7 +114,7 @@ func (p *Service) Undo(r plan.Runner, current plan.State) error {
 	}
 
 	if current.String("status") != "inactive" {
-		output, err := systemd(r, "stop %s", p.Name)
+		output, err := systemd(ctx, r, "stop %s", p.Name)
 		if err != nil {
 			if strings.Contains(output, "not loaded") {
 				return nil

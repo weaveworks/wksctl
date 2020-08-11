@@ -1,6 +1,9 @@
 package testutils
 
-import "io"
+import (
+	"context"
+	"io"
+)
 
 // MockRunner needed for testing plans
 type MockRunner struct {
@@ -29,6 +32,6 @@ func (r *MockRunner) ClearRunCommand() {
 }
 
 //RunCommand returns the test Output and Err values
-func (r *MockRunner) RunCommand(_ string, _ io.Reader) (string, error) {
+func (r *MockRunner) RunCommand(_ context.Context, _ string, _ io.Reader) (string, error) {
 	return r.Output, r.Err
 }

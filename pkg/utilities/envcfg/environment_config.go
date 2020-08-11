@@ -1,6 +1,8 @@
 package envcfg
 
 import (
+	"context"
+
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/weaveworks/wksctl/pkg/plan"
@@ -25,31 +27,31 @@ const (
 	SystemVerification         = `SystemVerification`
 )
 
-func getHostnameOverride(cloudProvider string, runner plan.Runner) (string, error) {
+func getHostnameOverride(ctx context.Context, cloudProvider string, runner plan.Runner) (string, error) {
 	switch cloudProvider {
 	case "aws":
-		return runner.RunCommand("curl -s http://169.254.169.254/latest/meta-data/local-hostname 2>/dev/null", nil)
+		return runner.RunCommand(ctx, "curl -s http://169.254.169.254/latest/meta-data/local-hostname 2>/dev/null", nil)
 	default:
 		return "", nil
 	}
 }
 
-func GetEnvSpecificConfig(pkgType resource.PkgType, namespace string, cloudProvider string, r plan.Runner) (*EnvSpecificConfig, error) {
-	osres, err := resource.NewOS(r)
+func GetEnvSpecificConfig(ctx context.Context, pkgType resource.PkgType, namespace string, cloudProvider string, r plan.Runner) (*EnvSpecificConfig, error) {
+	osres, err := resource.NewOS(ctx, r)
 	if err != nil {
 		return nil, errors.Wrap(err, "NewOS")
 	}
-	seLinuxStatus, seLinuxMode, err := osres.GetSELinuxStatus()
+	seLinuxStatus, seLinuxMode, err := osres.GetSELinuxStatus(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "GetSELinuxStatus")
 	}
 
-	inContainerVM, err := osres.IsOSInContainerVM()
+	inContainerVM, err := osres.IsOSInContainerVM(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "IsOSInContainerVM")
 	}
 
-	hostnameOverride, err := getHostnameOverride(cloudProvider, r)
+	hostnameOverride, err := getHostnameOverride(ctx, cloudProvider, r)
 	if err != nil {
 		return nil, err
 	}

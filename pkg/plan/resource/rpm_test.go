@@ -1,6 +1,7 @@
 package resource
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -121,30 +122,31 @@ func TestRevisionComparison(t *testing.T) {
 }
 
 func TestUndo(t *testing.T) {
+	ctx := context.Background()
 	// Test that we perform an Undo when passed an empty state
 	undid := false
-	undoAction = func(_ *RPM, _ plan.Runner, _ plan.State, _ string) error {
+	undoAction = func(_ context.Context, _ *RPM, _ plan.Runner, _ plan.State, _ string) error {
 		undid = true
 		return nil
 	}
 	res := &RPM{Name: "make", Version: "3.82", Release: "23.el7"}
-	err := res.Undo(&sudo.Runner{}, plan.EmptyState)
+	err := res.Undo(ctx, &sudo.Runner{}, plan.EmptyState)
 	assert.NoError(t, err)
 	assert.True(t, undid)
 
 	// Test that we can choose to remove ANY version
 	var description string
-	undoAction = func(_ *RPM, _ plan.Runner, _ plan.State, pkgDesc string) error {
+	undoAction = func(_ context.Context, _ *RPM, _ plan.Runner, _ plan.State, pkgDesc string) error {
 		description = pkgDesc
 		return nil
 	}
-	err = res.Undo(&sudo.Runner{}, plan.EmptyState)
+	err = res.Undo(ctx, &sudo.Runner{}, plan.EmptyState)
 	assert.NoError(t, err)
 	assert.Equal(t, description, "make")
 
 	// Test that we can choose to remove only the matching version
 	res = &RPM{Name: "make", Version: "3.82", Release: "23.el7", IgnoreOtherVersions: true}
-	err = res.Undo(&sudo.Runner{}, plan.EmptyState)
+	err = res.Undo(ctx, &sudo.Runner{}, plan.EmptyState)
 	assert.NoError(t, err)
 	assert.Equal(t, description, "make-3.82-23.el7")
 }

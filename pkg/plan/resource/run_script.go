@@ -1,6 +1,8 @@
 package resource
 
 import (
+	"context"
+
 	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/scripts"
 	"github.com/weaveworks/wksctl/pkg/plan"
 )
@@ -22,8 +24,8 @@ func (r *RunScript) State() plan.State {
 }
 
 // Apply implements plan.Resource.
-func (r *RunScript) Apply(runner plan.Runner, diff plan.Diff) (bool, error) {
-	_, err := scripts.Run(r.Path, r.Args, runner)
+func (r *RunScript) Apply(ctx context.Context, runner plan.Runner, diff plan.Diff) (bool, error) {
+	_, err := scripts.Run(ctx, r.Path, r.Args, runner)
 	if err != nil {
 		return false, err
 	}

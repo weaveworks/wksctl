@@ -1,6 +1,7 @@
 package plan
 
 import (
+	"context"
 	"regexp"
 	"testing"
 
@@ -9,14 +10,14 @@ import (
 
 func TestLocalRunnerRunCommand(t *testing.T) {
 	var r Runner = &LocalRunner{}
-	output, err := r.RunCommand(`echo "success"`, nil)
+	output, err := r.RunCommand(context.Background(), `echo "success"`, nil)
 	assert.NoError(t, err)
 	assert.Equal(t, "success\n", output)
 }
 
 func TestLocalRunnerCommandNotFound(t *testing.T) {
 	var r Runner = &LocalRunner{}
-	output, err := r.RunCommand(`foofoo`, nil)
+	output, err := r.RunCommand(context.Background(), `foofoo`, nil)
 	assert.Error(t, err)
 	assert.Regexp(t, regexp.MustCompile("foofoo:.*not found"), output)
 }
@@ -35,7 +36,7 @@ func TestLocalRunnerExitCode(t *testing.T) {
 
 		t.Run(tt.command, func(t *testing.T) {
 			var r Runner = &LocalRunner{}
-			_, gotErr := r.RunCommand(tt.command, nil)
+			_, gotErr := r.RunCommand(context.Background(), tt.command, nil)
 
 			assert.Equal(t, wantError, gotErr != nil)
 

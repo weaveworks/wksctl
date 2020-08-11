@@ -2,11 +2,13 @@ package ssh
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"net"
 	"os"
 
+	ot "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/weaveworks/wksctl/pkg/existinginfra/v1alpha3"
@@ -82,7 +84,12 @@ func NewClient(params ClientParams) (*Client, error) {
 // RunCommand executes the provided command on the remote machine configured in
 // this Client object. A new Session is created for each call to RunCommand.
 // A Client supports multiple interactive sessions.
-func (c *Client) RunCommand(command string, stdin io.Reader) (string, error) {
+func (c *Client) RunCommand(ctx context.Context, command string, stdin io.Reader) (string, error) {
+	// TODO: hold a human-readable name of the target machine in Client so we can log it here
+	sp, ctx := ot.StartSpanFromContext(ctx, "sshClient.RunCommand",
+		ot.Tag{Key: "target", Value: c.client.Conn.RemoteAddr()},
+		ot.Tag{Key: "command", Value: command})
+	defer sp.Finish()
 	log.Debugf("running command: %s", command)
 	return c.handleSessionIO(func(session *ssh.Session) error {
 		session.Stdin = stdin

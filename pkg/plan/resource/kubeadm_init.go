@@ -2,6 +2,7 @@ package resource
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io/ioutil"
 	"strings"
@@ -86,7 +87,7 @@ func (ki *KubeadmInit) State() plan.State {
 // Apply implements plan.Resource.
 // TODO: find a way to make this idempotent.
 // TODO: should such a resource be split into smaller resources?
-func (ki *KubeadmInit) Apply(runner plan.Runner, diff plan.Diff) (bool, error) {
+func (ki *KubeadmInit) Apply(ctx context.Context, runner plan.Runner, diff plan.Diff) (bool, error) {
 	log.Debug("Initializing Kubernetes cluster")
 
 	sshKey, err := ssh.ReadPrivateKey(ki.SSHKeyPath)
@@ -137,12 +138,12 @@ func (ki *KubeadmInit) Apply(runner plan.Runner, diff plan.Diff) (bool, error) {
 	configBytes := buf.Bytes()
 
 	remotePath := "/tmp/wks_kubeadm_init_config.yaml"
-	if err = scripts.WriteFile(configBytes, remotePath, 0660, runner); err != nil {
+	if err = scripts.WriteFile(ctx, configBytes, remotePath, 0660, runner); err != nil {
 		return false, errors.Wrap(err, "failed to upload kubeadm's configuration")
 	}
 	log.WithField("yaml", string(configBytes)).Debug("uploaded kubeadm's configuration")
 	//nolint:errcheck
-	defer removeFile(remotePath, runner) // TODO: Deferred error checking
+	defer removeFile(ctx, remotePath, runner) // TODO: Deferred error checking
 
 	var stdOutErr string
 	p := buildKubeadmInitPlan(
@@ -151,7 +152,7 @@ func (ki *KubeadmInit) Apply(runner plan.Runner, diff plan.Diff) (bool, error) {
 		ki.UseIPTables,
 		ki.KubernetesVersion,
 		&stdOutErr)
-	_, err = p.Apply(runner, plan.EmptyDiff())
+	_, err = p.Apply(ctx, runner, plan.EmptyDiff())
 	if err != nil {
 		return false, errors.Wrap(err, "failed to initialize Kubernetes cluster with kubeadm")
 	}
@@ -171,14 +172,14 @@ func (ki *KubeadmInit) Apply(runner plan.Runner, diff plan.Diff) (bool, error) {
 		return false, err
 	}
 
-	if err := ki.kubectlApply("01_namespace.yaml", namespace, runner); err != nil {
+	if err := ki.kubectlApply(ctx, "01_namespace.yaml", namespace, runner); err != nil {
 		return false, err
 	}
 
-	if err := ki.kubectlApply("02_rbac.yaml", namespace, runner); err != nil {
+	if err := ki.kubectlApply(ctx, "02_rbac.yaml", namespace, runner); err != nil {
 		return false, err
 	}
-	return true, ki.applySecretWith(sshKey, caCertHash, certKey, namespace, runner)
+	return true, ki.applySecretWith(ctx, sshKey, caCertHash, certKey, namespace, runner)
 }
 
 func (ki *KubeadmInit) updateManifestNamespace(fileName, namespace string) ([]byte, error) {
@@ -193,12 +194,12 @@ func (ki *KubeadmInit) updateManifestNamespace(fileName, namespace string) ([]by
 	return c, nil
 }
 
-func (ki *KubeadmInit) kubectlApply(fileName, namespace string, runner plan.Runner) error {
+func (ki *KubeadmInit) kubectlApply(ctx context.Context, fileName, namespace string, runner plan.Runner) error {
 	content, err := ki.updateManifestNamespace(fileName, namespace)
 	if err != nil {
 		return errors.Wrap(err, "Failed to upate manifest namespace")
 	}
-	return kubectlApply(runner, kubectlApplyArgs{Content: content}, fileName)
+	return kubectlApply(ctx, runner, kubectlApplyArgs{Content: content}, fileName)
 }
 
 func (ki *KubeadmInit) manifestContent(fileName string) ([]byte, error) {
@@ -213,7 +214,7 @@ func (ki *KubeadmInit) manifestContent(fileName string) ([]byte, error) {
 	return content, nil
 }
 
-func (ki *KubeadmInit) applySecretWith(sshKey []byte, discoveryTokenCaCertHash, certKey, namespace string, runner plan.Runner) error {
+func (ki *KubeadmInit) applySecretWith(ctx context.Context, sshKey []byte, discoveryTokenCaCertHash, certKey, namespace string, runner plan.Runner) error {
 	log.Info("adding SSH key to WKS secret and applying its manifest")
 	fileName := "03_secrets.yaml"
 	secret, err := ki.deserializeSecret(fileName, namespace)
@@ -231,7 +232,7 @@ func (ki *KubeadmInit) applySecretWith(sshKey []byte, discoveryTokenCaCertHash, 
 	if err != nil {
 		return errors.Wrap(err, "failed to serialize manifest")
 	}
-	return kubectlApply(runner, kubectlApplyArgs{Content: bytes}, fileName)
+	return kubectlApply(ctx, runner, kubectlApplyArgs{Content: bytes}, fileName)
 }
 
 func (ki *KubeadmInit) deserializeSecret(fileName, namespace string) (*corev1.Secret, error) {
@@ -247,14 +248,14 @@ func (ki *KubeadmInit) deserializeSecret(fileName, namespace string) (*corev1.Se
 }
 
 // Undo implements plan.Resource.
-func (ki *KubeadmInit) Undo(runner plan.Runner, current plan.State) error {
+func (ki *KubeadmInit) Undo(ctx context.Context, runner plan.Runner, current plan.State) error {
 	remotePath := "/tmp/wks_kubeadm_init_config.yaml"
 	var ignored string
 	return buildKubeadmInitPlan(
 		remotePath,
 		strings.Join(ki.IgnorePreflightErrors, ","),
 		ki.UseIPTables, ki.KubernetesVersion, &ignored).Undo(
-		runner, plan.EmptyState)
+		ctx, runner, plan.EmptyState)
 }
 
 // buildKubeadmInitPlan builds a plan for kubeadm init command.

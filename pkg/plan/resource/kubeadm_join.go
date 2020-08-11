@@ -1,6 +1,7 @@
 package resource
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -50,14 +51,14 @@ func (kj *KubeadmJoin) State() plan.State {
 // Apply implements plan.Resource.
 // TODO: find a way to make this idempotent.
 // TODO: should such a resource be splitted in smaller resources?
-func (kj *KubeadmJoin) Apply(runner plan.Runner, diff plan.Diff) (bool, error) {
+func (kj *KubeadmJoin) Apply(ctx context.Context, runner plan.Runner, diff plan.Diff) (bool, error) {
 	log.Info("joining Kubernetes cluster")
 	apiServerEndpoint := fmt.Sprintf("%s:%d", kj.MasterIP, kj.MasterPort)
 	if kj.ControlPlaneEndpoint != "" {
 		apiServerEndpoint = fmt.Sprintf("%s:%d", kj.ControlPlaneEndpoint, kj.MasterPort)
 	}
 	kubeadmJoinCmd := kj.kubeadmJoinCmd(apiServerEndpoint)
-	if stdouterr, err := runner.RunCommand(withoutProxy(kubeadmJoinCmd), nil); err != nil {
+	if stdouterr, err := runner.RunCommand(ctx, withoutProxy(kubeadmJoinCmd), nil); err != nil {
 		log.WithField("stdouterr", stdouterr).Error("failed to join cluster")
 		return false, errors.Wrap(err, "failed to join cluster")
 	}
@@ -93,6 +94,6 @@ func (kj *KubeadmJoin) kubeadmJoinCmd(apiServerEndpoint string) string {
 }
 
 // Undo implements plan.Resource.
-func (kj *KubeadmJoin) Undo(runner plan.Runner, current plan.State) error {
+func (kj *KubeadmJoin) Undo(ctx context.Context, runner plan.Runner, current plan.State) error {
 	return errors.New("not implemented")
 }

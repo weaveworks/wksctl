@@ -1,6 +1,7 @@
 package resource
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -33,13 +34,13 @@ func (d *Dir) State() plan.State {
 }
 
 // QueryState implements plan.Resource.
-func (d *Dir) QueryState(runner plan.Runner) (plan.State, error) {
+func (d *Dir) QueryState(ctx context.Context, runner plan.Runner) (plan.State, error) {
 	return plan.EmptyState, nil
 }
 
 // Apply implements plan.Resource.
-func (d *Dir) Apply(runner plan.Runner, diff plan.Diff) (bool, error) {
-	_, err := runner.RunCommand(fmt.Sprintf("mkdir -p %s", d.Path), nil)
+func (d *Dir) Apply(ctx context.Context, runner plan.Runner, diff plan.Diff) (bool, error) {
+	_, err := runner.RunCommand(ctx, fmt.Sprintf("mkdir -p %s", d.Path), nil)
 	if err != nil {
 		return false, err
 	}
@@ -47,7 +48,7 @@ func (d *Dir) Apply(runner plan.Runner, diff plan.Diff) (bool, error) {
 }
 
 // Undo implements plan.Resource.
-func (d *Dir) Undo(runner plan.Runner, current plan.State) error {
+func (d *Dir) Undo(ctx context.Context, runner plan.Runner, current plan.State) error {
 	path := strings.TrimRight(d.Path.String(), "/")
 	if _, ok := protectedDirs[path]; ok {
 		return fmt.Errorf("deletion aborted because dir is blacklisted for deletion: %s", path)
@@ -60,6 +61,6 @@ func (d *Dir) Undo(runner plan.Runner, current plan.State) error {
 		cmd = fmt.Sprintf("[ ! -e %q ] || rmdir -v --ignore-fail-on-non-empty -- %q", path, path)
 	}
 
-	_, err := runner.RunCommand(cmd, nil)
+	_, err := runner.RunCommand(ctx, cmd, nil)
 	return err
 }

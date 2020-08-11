@@ -1,6 +1,7 @@
 package config
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"regexp"
@@ -69,7 +70,7 @@ func Sanitize(configStr string, params Params) (string, error) {
 }
 
 // GetRemoteKubeconfig retrieves Kubernetes configuration from a master node of the cluster
-func GetRemoteKubeconfig(sp *specs.Specs, sshKeyPath string, verbose, skipTLSVerify bool) (string, error) {
+func GetRemoteKubeconfig(ctx context.Context, sp *specs.Specs, sshKeyPath string, verbose, skipTLSVerify bool) (string, error) {
 	sshClient, err := ssh.NewClientForMachine(sp.MasterSpec, sp.ClusterSpec.User, sshKeyPath, verbose)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to create SSH client: ")
@@ -77,7 +78,7 @@ func GetRemoteKubeconfig(sp *specs.Specs, sshKeyPath string, verbose, skipTLSVer
 	defer sshClient.Close()
 
 	runner := sudo.Runner{Runner: sshClient}
-	configStr, err := runner.RunCommand("cat /etc/kubernetes/admin.conf", nil)
+	configStr, err := runner.RunCommand(ctx, "cat /etc/kubernetes/admin.conf", nil)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to retrieve Kubernetes configuration")
 	}

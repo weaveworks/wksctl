@@ -1,6 +1,7 @@
 package resource
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/pkg/errors"
@@ -8,8 +9,8 @@ import (
 	"github.com/weaveworks/wksctl/pkg/plan"
 )
 
-func removeFile(remotePath string, runner plan.Runner) error {
-	if stdouterr, err := runner.RunCommand(fmt.Sprintf("rm -f %q", remotePath), nil); err != nil {
+func removeFile(ctx context.Context, remotePath string, runner plan.Runner) error {
+	if stdouterr, err := runner.RunCommand(ctx, fmt.Sprintf("rm -f %q", remotePath), nil); err != nil {
 		log.WithField("stdouterr", stdouterr).WithField("path", remotePath).Debugf("failed to delete file")
 		return errors.Wrapf(err, "failed to delete %q", remotePath)
 	}

@@ -1,6 +1,7 @@
 package resource
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -79,8 +80,8 @@ func (p *RPM) label() string {
 }
 
 // QueryState implements plan.Resource.
-func (p *RPM) QueryState(r plan.Runner) (plan.State, error) {
-	output, err := r.RunCommand(fmt.Sprintf("rpm -q --queryformat '%%{NAME} %%{VERSION} %%{RELEASE}\\n' %s", p.label()), nil)
+func (p *RPM) QueryState(ctx context.Context, r plan.Runner) (plan.State, error) {
+	output, err := r.RunCommand(ctx, fmt.Sprintf("rpm -q --queryformat '%%{NAME} %%{VERSION} %%{RELEASE}\\n' %s", p.label()), nil)
 	if err != nil && strings.Contains(output, "is not installed") {
 		// Package isn't installed.
 		return plan.EmptyState, nil
@@ -114,8 +115,8 @@ func (p *RPM) stateDifferent(current plan.State) bool {
 }
 
 // WouldChangeState returns false if a call to Apply() is guaranteed not to change the installed version of the package, and true otherwise.
-func (p *RPM) WouldChangeState(r plan.Runner) (bool, error) {
-	current, err := p.QueryState(r)
+func (p *RPM) WouldChangeState(ctx context.Context, r plan.Runner) (bool, error) {
+	current, err := p.QueryState(ctx, r)
 	if err != nil {
 		return false, err
 	}
@@ -123,7 +124,7 @@ func (p *RPM) WouldChangeState(r plan.Runner) (bool, error) {
 }
 
 // Apply implements plan.Resource.
-func (p *RPM) Apply(r plan.Runner, diff plan.Diff) (bool, error) {
+func (p *RPM) Apply(ctx context.Context, r plan.Runner, diff plan.Diff) (bool, error) {
 	if !p.stateDifferent(diff.CurrentState) {
 		return false, nil
 	}
@@ -141,21 +142,21 @@ func (p *RPM) Apply(r plan.Runner, diff plan.Diff) (bool, error) {
 	if p.DisableExcludes != "" {
 		cmd = fmt.Sprintf("%s --disableexcludes %s", cmd, p.DisableExcludes)
 	}
-	_, err := r.RunCommand(cmd, nil)
+	_, err := r.RunCommand(ctx, cmd, nil)
 	return err == nil, err
 }
 
 // Separate the action out so that it can be mocked
-var undoAction = func(p *RPM, r plan.Runner, current plan.State, pkgDescription string) error {
-	_, err := r.RunCommand(fmt.Sprintf("yum -y remove %s || true", pkgDescription), nil)
+var undoAction = func(ctx context.Context, p *RPM, r plan.Runner, current plan.State, pkgDescription string) error {
+	_, err := r.RunCommand(ctx, fmt.Sprintf("yum -y remove %s || true", pkgDescription), nil)
 	return err
 }
 
 // Undo implements plan.Resource
-func (p *RPM) Undo(r plan.Runner, current plan.State) error {
+func (p *RPM) Undo(ctx context.Context, r plan.Runner, current plan.State) error {
 	pkgDescription := p.Name
 	if p.IgnoreOtherVersions {
 		pkgDescription = p.label()
 	}
-	return undoAction(p, r, current, pkgDescription)
+	return undoAction(ctx, p, r, current, pkgDescription)
 }

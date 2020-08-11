@@ -1,6 +1,7 @@
 package resource
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"path/filepath"
@@ -59,18 +60,18 @@ func (ks *KubeSecret) State() plan.State {
 	return plan.State(map[string]interface{}{"checksum": ks.Checksum})
 }
 
-func (ks *KubeSecret) QueryState(runner plan.Runner) (plan.State, error) {
+func (ks *KubeSecret) QueryState(ctx context.Context, runner plan.Runner) (plan.State, error) {
 	data := ks.SecretData
 	for fname := range data {
 		path := filepath.Join(ks.DestinationDirectory, ks.FileNameTransform(fname))
-		exists, err := fileExists(runner, path)
+		exists, err := fileExists(ctx, runner, path)
 		if err != nil {
 			return nil, err
 		}
 		if !exists {
 			return plan.EmptyState, nil
 		}
-		contents, err := runner.RunCommand(fmt.Sprintf("cat %s", path), nil)
+		contents, err := runner.RunCommand(ctx, fmt.Sprintf("cat %s", path), nil)
 		if err != nil {
 			return nil, err
 		}
@@ -79,8 +80,8 @@ func (ks *KubeSecret) QueryState(runner plan.Runner) (plan.State, error) {
 	return plan.State(map[string]interface{}{"checksum": sha256.Sum256(flattenMap(data))}), nil
 }
 
-func fileExists(runner plan.Runner, path string) (bool, error) {
-	result, err := runner.RunCommand(fmt.Sprintf("[ -f %s ] && echo 'yes' || true", path), nil)
+func fileExists(ctx context.Context, runner plan.Runner, path string) (bool, error) {
+	result, err := runner.RunCommand(ctx, fmt.Sprintf("[ -f %s ] && echo 'yes' || true", path), nil)
 	if err != nil {
 		return false, err
 	}
@@ -88,9 +89,9 @@ func fileExists(runner plan.Runner, path string) (bool, error) {
 }
 
 // Apply implements plan.Resource.
-func (ks *KubeSecret) Apply(runner plan.Runner, diff plan.Diff) (bool, error) {
+func (ks *KubeSecret) Apply(ctx context.Context, runner plan.Runner, diff plan.Diff) (bool, error) {
 	for fname, contents := range ks.SecretData {
-		err := scripts.WriteFile(contents, filepath.Join(ks.DestinationDirectory, ks.FileNameTransform(fname)), 0600, runner)
+		err := scripts.WriteFile(ctx, contents, filepath.Join(ks.DestinationDirectory, ks.FileNameTransform(fname)), 0600, runner)
 		if err != nil {
 			return false, err
 		}
@@ -99,7 +100,7 @@ func (ks *KubeSecret) Apply(runner plan.Runner, diff plan.Diff) (bool, error) {
 }
 
 // Undo implements plan.Resource.
-func (ks *KubeSecret) Undo(runner plan.Runner, current plan.State) error {
+func (ks *KubeSecret) Undo(ctx context.Context, runner plan.Runner, current plan.State) error {
 	if len(ks.SecretData) == 0 {
 		return nil
 	}
@@ -115,6 +116,6 @@ func (ks *KubeSecret) Undo(runner plan.Runner, current plan.State) error {
 		sb.WriteString(ks.FileNameTransform(filename))
 	}
 	sb.WriteString("}")
-	_, err := runner.RunCommand(fmt.Sprintf("rm -f %s/%s", ks.DestinationDirectory, sb.String()), nil)
+	_, err := runner.RunCommand(ctx, fmt.Sprintf("rm -f %s/%s", ks.DestinationDirectory, sb.String()), nil)
 	return err
 }

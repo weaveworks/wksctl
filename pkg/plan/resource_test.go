@@ -1,6 +1,7 @@
 package plan
 
 import (
+	"context"
 	"errors"
 	"reflect"
 
@@ -39,7 +40,7 @@ func (r *testResource) State() State {
 }
 
 // QueryState implements Resource.
-func (r *testResource) QueryState(runner Runner) (State, error) {
+func (r *testResource) QueryState(_ context.Context, runner Runner) (State, error) {
 	if r.QueryShouldError {
 		return EmptyState, errors.New("Could not query state")
 	}
@@ -48,7 +49,7 @@ func (r *testResource) QueryState(runner Runner) (State, error) {
 }
 
 // Apply implements Resource.
-func (r *testResource) Apply(runner Runner, diff Diff) (bool, error) {
+func (r *testResource) Apply(_ context.Context, runner Runner, diff Diff) (bool, error) {
 	if r.ApplyShouldError {
 		return false, errors.New("Apply failed")
 	}
@@ -78,7 +79,7 @@ func (r *testResource) Apply(runner Runner, diff Diff) (bool, error) {
 }
 
 // Undo implements Resource.
-func (r *testResource) Undo(runner Runner, current State) error {
+func (r *testResource) Undo(_ context.Context, runner Runner, current State) error {
 	if r.UndoShouldError {
 		return errors.New("Undo failed")
 	}

@@ -1,6 +1,7 @@
 package resource
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -63,9 +64,9 @@ func (m SELinuxMode) IsDisabled() bool {
 	return m == SELinuxDisabled
 }
 
-func NewOS(r plan.Runner) (*OS, error) {
+func NewOS(ctx context.Context, r plan.Runner) (*OS, error) {
 	osr := &OS{runner: r}
-	_, err := osr.Apply(r, plan.EmptyDiff())
+	_, err := osr.Apply(ctx, r, plan.EmptyDiff())
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +75,7 @@ func NewOS(r plan.Runner) (*OS, error) {
 
 type ReadFileCmdFunc func(s ...string) string
 
-type GatherFactFunc func(o *OS, r plan.Runner) error
+type GatherFactFunc func(ctx context.Context, o *OS, r plan.Runner) error
 
 type factGatheringParams struct {
 	paramName   string `structs:"pname"`
@@ -118,9 +119,9 @@ var gatherFuncs []GatherFactFunc = []GatherFactFunc{
 	getSystemUUID,
 }
 
-func (p *OS) gatherFacts(r plan.Runner) error {
+func (p *OS) gatherFacts(ctx context.Context, r plan.Runner) error {
 	for _, f := range gatherFuncs {
-		err := f(p, r)
+		err := f(ctx, p, r)
 		if err != nil {
 			log.Errorf("error: %s\n", err.Error())
 			return err
@@ -129,8 +130,8 @@ func (p *OS) gatherFacts(r plan.Runner) error {
 	return nil
 }
 
-func (p *OS) query(r plan.Runner) error {
-	err := p.gatherFacts(r)
+func (p *OS) query(ctx context.Context, r plan.Runner) error {
+	err := p.gatherFacts(ctx, r)
 	if err != nil {
 		return err
 	}
@@ -138,8 +139,8 @@ func (p *OS) query(r plan.Runner) error {
 }
 
 // QueryState implements plan.Resource.
-func (p *OS) QueryState(r plan.Runner) (plan.State, error) {
-	err := p.query(r)
+func (p *OS) QueryState(ctx context.Context, r plan.Runner) (plan.State, error) {
+	err := p.query(ctx, r)
 	if err != nil {
 		return plan.EmptyState, err
 	}
@@ -147,21 +148,21 @@ func (p *OS) QueryState(r plan.Runner) (plan.State, error) {
 }
 
 // Apply implements plan.Resource.
-func (p *OS) Apply(r plan.Runner, _ plan.Diff) (bool, error) {
-	err := p.query(r)
+func (p *OS) Apply(ctx context.Context, r plan.Runner, _ plan.Diff) (bool, error) {
+	err := p.query(ctx, r)
 	if err != nil {
 		return false, err
 	}
 	return false, nil
 }
 
-func (p *OS) Undo(r plan.Runner, current plan.State) error {
+func (p *OS) Undo(ctx context.Context, r plan.Runner, current plan.State) error {
 	return nil
 }
 
-func (p *OS) HasCommand(cmd string) (bool, error) {
+func (p *OS) HasCommand(ctx context.Context, cmd string) (bool, error) {
 	// http://stackoverflow.com/questions/592620/how-to-check-if-a-program-exists-from-a-bash-script
-	_, err := p.runner.RunCommand(fmt.Sprintf("command -v -- %q >/dev/null 2>&1", cmd), nil)
+	_, err := p.runner.RunCommand(ctx, fmt.Sprintf("command -v -- %q >/dev/null 2>&1", cmd), nil)
 	if err == nil {
 		// Command found.
 		return true, nil
@@ -176,10 +177,10 @@ func (p *OS) HasCommand(cmd string) (bool, error) {
 	return false, err
 }
 
-func (p *OS) GetSELinuxStatus() (SELinuxStatus, SELinuxMode, error) {
+func (p *OS) GetSELinuxStatus(ctx context.Context) (SELinuxStatus, SELinuxMode, error) {
 	const cmd = "selinuxenabled"
 
-	if hasCmd, err := p.HasCommand(cmd); err != nil {
+	if hasCmd, err := p.HasCommand(ctx, cmd); err != nil {
 		// Inconclusive.
 		return SELinuxUnknown, SELinuxModeUnknown, err
 	} else if !hasCmd {
@@ -187,12 +188,12 @@ func (p *OS) GetSELinuxStatus() (SELinuxStatus, SELinuxMode, error) {
 		return SELinuxNotInstalled, SELinuxModeUnknown, nil
 	}
 
-	if _, err := p.runner.RunCommand(cmd, nil); err == nil {
+	if _, err := p.runner.RunCommand(ctx, cmd, nil); err == nil {
 		// SELinux not disabled (that is, enforcing or permissive).
 		// return SELinuxEnforcing, nil
-		if permissive, err := p.IsSELinuxMode("permissive"); err == nil && permissive {
+		if permissive, err := p.IsSELinuxMode(ctx, "permissive"); err == nil && permissive {
 			return SELinuxInstalled, SELinuxPermissive, nil
-		} else if enforcing, err := p.IsSELinuxMode("enforcing"); err == nil && enforcing {
+		} else if enforcing, err := p.IsSELinuxMode(ctx, "enforcing"); err == nil && enforcing {
 			return SELinuxInstalled, SELinuxEnforcing, nil
 		} else {
 			return SELinuxInstalled, SELinuxModeUnknown, err
@@ -206,8 +207,8 @@ func (p *OS) GetSELinuxStatus() (SELinuxStatus, SELinuxMode, error) {
 	}
 }
 
-func (p *OS) IsSELinuxMode(mode string) (bool, error) {
-	if _, err := p.runner.RunCommand("sestatus | grep 'Current mode' | grep "+mode, nil); err == nil {
+func (p *OS) IsSELinuxMode(ctx context.Context, mode string) (bool, error) {
+	if _, err := p.runner.RunCommand(ctx, "sestatus | grep 'Current mode' | grep "+mode, nil); err == nil {
 		return true, nil
 	} else if err, ok := err.(*plan.RunError); ok && err.ExitCode == 1 {
 		// selinux not in the permissive mode
@@ -217,22 +218,22 @@ func (p *OS) IsSELinuxMode(mode string) (bool, error) {
 	}
 }
 
-func (p *OS) IsOSInContainerVM() (bool, error) {
-	output, err := p.runner.RunCommand("cat /proc/1/environ", nil)
+func (p *OS) IsOSInContainerVM(ctx context.Context) (bool, error) {
+	output, err := p.runner.RunCommand(ctx, "cat /proc/1/environ", nil)
 	return strings.Contains(output, "container=docker"), err
 }
 
-func getMachineID(p *OS, r plan.Runner) error {
-	return p.getValueFromFileContents(machineIDParams, r)
+func getMachineID(ctx context.Context, p *OS, r plan.Runner) error {
+	return p.getValueFromFileContents(ctx, machineIDParams, r)
 }
 
-func getSystemUUID(p *OS, r plan.Runner) error {
-	return p.getValueFromFileContents(sysUuidParams, r)
+func getSystemUUID(ctx context.Context, p *OS, r plan.Runner) error {
+	return p.getValueFromFileContents(ctx, sysUuidParams, r)
 }
 
-func (p *OS) getValueFromFileContents(fgparams factGatheringParams, r plan.Runner) error {
+func (p *OS) getValueFromFileContents(ctx context.Context, fgparams factGatheringParams, r plan.Runner) error {
 	cmd := fgparams.readFileCmd
-	output, err := r.RunCommand(cmd, nil)
+	output, err := r.RunCommand(ctx, cmd, nil)
 	if err != nil {
 		return errors.New(fgparams.cmdErr)
 	}

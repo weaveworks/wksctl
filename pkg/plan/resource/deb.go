@@ -1,6 +1,7 @@
 package resource
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/weaveworks/wksctl/pkg/plan"
@@ -23,9 +24,9 @@ func (d *Deb) State() plan.State {
 	return toState(d)
 }
 
-func (d *Deb) QueryState(runner plan.Runner) (plan.State, error) {
+func (d *Deb) QueryState(ctx context.Context, runner plan.Runner) (plan.State, error) {
 	q := dpkgQuerier{Runner: runner}
-	installed, err := q.ShowInstalled(d.Name)
+	installed, err := q.ShowInstalled(ctx, d.Name)
 
 	if err != nil {
 		return nil, err
@@ -38,22 +39,22 @@ func (d *Deb) QueryState(runner plan.Runner) (plan.State, error) {
 	return DebResourceFromPackage(installed[0]).State(), nil
 }
 
-func (d *Deb) Apply(runner plan.Runner, diff plan.Diff) (propagate bool, err error) {
+func (d *Deb) Apply(ctx context.Context, runner plan.Runner, diff plan.Diff) (propagate bool, err error) {
 	a := aptInstaller{Runner: runner}
-	if err := a.UpdateCache(); err != nil {
+	if err := a.UpdateCache(ctx); err != nil {
 		return false, fmt.Errorf("update cache failed: %v", err)
 	}
 
-	if err := a.Install(d.Name, d.Suffix); err != nil {
+	if err := a.Install(ctx, d.Name, d.Suffix); err != nil {
 		return false, err
 	}
 
 	return true, nil
 }
 
-func (d *Deb) Undo(runner plan.Runner, current plan.State) error {
+func (d *Deb) Undo(ctx context.Context, runner plan.Runner, current plan.State) error {
 	a := aptInstaller{Runner: runner}
-	return a.Purge(d.Name)
+	return a.Purge(ctx, d.Name)
 }
 
 func DebResourceFromPackage(p debPkgInfo) *Deb {
@@ -64,8 +65,8 @@ func DebResourceFromPackage(p debPkgInfo) *Deb {
 }
 
 // WouldChangeState returns false if it's guaranteed that a call to Apply() wouldn't change the package installed, and true otherwise.
-func (d *Deb) WouldChangeState(r plan.Runner) (bool, error) {
-	current, err := d.QueryState(r)
+func (d *Deb) WouldChangeState(ctx context.Context, r plan.Runner) (bool, error) {
+	current, err := d.QueryState(ctx, r)
 	if err != nil {
 		return false, err
 	}

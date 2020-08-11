@@ -2,6 +2,7 @@ package scripts
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -18,7 +19,7 @@ import (
 type runner interface {
 	// RunCommand runs the provided command in a shell.
 	// cmd can be more than one single command, it can be a full shell script.
-	RunCommand(cmd string, stdin io.Reader) (stdouterr string, err error)
+	RunCommand(ctx context.Context, cmd string, stdin io.Reader) (stdouterr string, err error)
 }
 
 // Run applies the provided arguments to the provided script template,
@@ -27,7 +28,7 @@ type runner interface {
 // N.B.: this utility function is placed here so that 1) it is hopefully easier
 // to known how to run the scripts provided in this package and 2) its
 // implementation can be re-used by the various parts of WKS.
-func Run(path string, args interface{}, runner runner) (string, error) {
+func Run(ctx context.Context, path string, args interface{}, runner runner) (string, error) {
 	script, err := Scripts.Open(path)
 	if err != nil {
 		return "", err
@@ -46,7 +47,7 @@ func Run(path string, args interface{}, runner runner) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	stdOutErr, err := runner.RunCommand(body.String(), nil)
+	stdOutErr, err := runner.RunCommand(ctx, body.String(), nil)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"stdOutErr": stdOutErr,
@@ -58,9 +59,9 @@ func Run(path string, args interface{}, runner runner) (string, error) {
 	return stdOutErr, err
 }
 
-func WriteFile(content []byte, dstPath string, perm os.FileMode, runner runner) error {
+func WriteFile(ctx context.Context, content []byte, dstPath string, perm os.FileMode, runner runner) error {
 	input := bytes.NewReader(content)
 	cmd := fmt.Sprintf("mkdir -pv $(dirname %q) && sed -n 'w %s' && chmod 0%o %q", dstPath, dstPath, perm, dstPath)
-	_, err := runner.RunCommand(cmd, input)
+	_, err := runner.RunCommand(ctx, cmd, input)
 	return err
 }

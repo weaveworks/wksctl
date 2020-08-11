@@ -1,6 +1,7 @@
 package resource
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"math/rand"
@@ -20,28 +21,28 @@ type aptInstaller struct {
 
 const env = "LC_ALL=C DEBIAN_FRONTEND=noninteractive"
 
-func (a *aptInstaller) UpdateCache() error {
+func (a *aptInstaller) UpdateCache(ctx context.Context) error {
 	flags := "--yes --quiet"
 	cmd := fmt.Sprintf("%s '%s' %s update", env, a.CommandMaybeDefault(), flags)
-	if out, err := wrapRetry(a.Runner).RunCommand(cmd, nil); err != nil {
+	if out, err := wrapRetry(a.Runner).RunCommand(ctx, cmd, nil); err != nil {
 		return fmt.Errorf("command %q failed: %v; output: %s", cmd, err, out)
 	}
 	return nil
 }
 
-func (a *aptInstaller) Install(name, suffix string) error {
+func (a *aptInstaller) Install(ctx context.Context, name, suffix string) error {
 	flags := "--yes --quiet --verbose-versions --no-install-recommends --allow-downgrades"
 	cmd := fmt.Sprintf("%s '%s' %s install '%s%s'", env, a.CommandMaybeDefault(), flags, name, suffix)
-	if out, err := wrapRetry(a.Runner).RunCommand(cmd, nil); err != nil {
+	if out, err := wrapRetry(a.Runner).RunCommand(ctx, cmd, nil); err != nil {
 		return fmt.Errorf("command %q failed: %v; output: %s", cmd, err, out)
 	}
 	return nil
 }
 
-func (a *aptInstaller) Purge(name string) error {
+func (a *aptInstaller) Purge(ctx context.Context, name string) error {
 	flags := "--yes --quiet --verbose-versions --auto-remove"
 	cmd := fmt.Sprintf("%s '%s' %s purge '%s'", env, a.CommandMaybeDefault(), flags, name)
-	out, err := wrapRetry(a.Runner).RunCommand(cmd, nil)
+	out, err := wrapRetry(a.Runner).RunCommand(ctx, cmd, nil)
 
 	if _, ok := err.(*plan.RunError); ok {
 		if strings.Contains(out, "E: Unable to locate package "+name) {
@@ -73,8 +74,8 @@ func wrapRetry(r plan.Runner) plan.Runner {
 	}
 }
 
-func (r *retryingRunner) RunCommand(cmd string, stdin io.Reader) (string, error) {
-	return r.runOp(func() (string, error) { return r.Runner.RunCommand(cmd, stdin) })
+func (r *retryingRunner) RunCommand(ctx context.Context, cmd string, stdin io.Reader) (string, error) {
+	return r.runOp(func() (string, error) { return r.Runner.RunCommand(ctx, cmd, stdin) })
 }
 
 func (r *retryingRunner) runOp(op func() (string, error)) (string, error) {
