@@ -1,6 +1,7 @@
 package resource
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"time"
@@ -34,8 +35,8 @@ func (kw *KubectlWait) State() plan.State {
 }
 
 // Apply performs a "kubectl wait" as specified in the receiver.
-func (kw *KubectlWait) Apply(runner plan.Runner, diff plan.Diff) (bool, error) {
-	if err := kubectlWait(runner, kubectlWaitArgs{
+func (kw *KubectlWait) Apply(ctx context.Context, runner plan.Runner, diff plan.Diff) (bool, error) {
+	if err := kubectlWait(ctx, runner, kubectlWaitArgs{
 		WaitNamespace: kw.WaitNamespace,
 		WaitCondition: kw.WaitCondition,
 		WaitType:      kw.WaitType,
@@ -61,11 +62,11 @@ type kubectlWaitArgs struct {
 	WaitTimeout string
 }
 
-func kubectlWait(r plan.Runner, args kubectlWaitArgs) error {
+func kubectlWait(ctx context.Context, r plan.Runner, args kubectlWaitArgs) error {
 	// Assume the objects to wait for should/will exist. Don't start the timeout until they are present
 	for {
 		cmd := fmt.Sprintf("kubectl get %q %s%s", args.WaitType, waitOn(args), waitNamespace(args))
-		output, err := r.RunCommand(resource.WithoutProxy(cmd), nil)
+		output, err := r.RunCommand(ctx, resource.WithoutProxy(cmd), nil)
 		if err != nil || strings.Contains(output, "No resources found") {
 			time.Sleep(500 * time.Millisecond)
 		} else {
@@ -74,7 +75,7 @@ func kubectlWait(r plan.Runner, args kubectlWaitArgs) error {
 	}
 	cmd := fmt.Sprintf("kubectl wait %q --for=%q%s%s%s",
 		args.WaitType, args.WaitCondition, waitOn(args), waitTimeout(args), waitNamespace(args))
-	if _, err := r.RunCommand(resource.WithoutProxy(cmd), nil); err != nil {
+	if _, err := r.RunCommand(ctx, resource.WithoutProxy(cmd), nil); err != nil {
 		return errors.Wrap(err, "kubectl wait")
 	}
 	return nil

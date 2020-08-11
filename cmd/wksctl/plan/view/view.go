@@ -1,6 +1,7 @@
 package view
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 
@@ -79,10 +80,10 @@ func planRun(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	return displayPlan(clusterPath, machinesPath)
+	return displayPlan(cmd.Context(), clusterPath, machinesPath)
 }
 
-func displayPlan(clusterManifestPath, machinesManifestPath string) error {
+func displayPlan(ctx context.Context, clusterManifestPath, machinesManifestPath string) error {
 	// TODO: reuse the actual plan created by `wksctl apply`, rather than trying to construct a similar plan and printing it.
 	sp := specs.NewFromPaths(clusterManifestPath, machinesManifestPath)
 	sshClient, err := ssh.NewClientForMachine(sp.MasterSpec, sp.ClusterSpec.User, viewOptions.sshKeyPath, viewOptions.verbose)
@@ -90,7 +91,7 @@ func displayPlan(clusterManifestPath, machinesManifestPath string) error {
 		return errors.Wrap(err, "failed to create SSH client: ")
 	}
 	defer sshClient.Close()
-	installer, err := capeios.Identify(sshClient)
+	installer, err := capeios.Identify(ctx, sshClient)
 	if err != nil {
 		return errors.Wrapf(err, "failed to identify operating system for seed node (%s)", sp.GetMasterPublicAddress())
 	}
@@ -125,7 +126,7 @@ func displayPlan(clusterManifestPath, machinesManifestPath string) error {
 		AddonNamespaces:      manifest.DefaultAddonNamespaces,
 		ConfigDirectory:      configDir,
 	}
-	plan, err := wksos.CreateSeedNodeSetupPlan(installer, params)
+	plan, err := wksos.CreateSeedNodeSetupPlan(ctx, installer, params)
 	if err != nil {
 		return errors.Wrap(err, "could not generate plan")
 	}

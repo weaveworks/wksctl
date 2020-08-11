@@ -1,6 +1,7 @@
 package kubeconfig
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 
@@ -95,10 +96,10 @@ func kubeconfigRun(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	return writeKubeconfig(clusterPath, machinesPath)
+	return writeKubeconfig(cmd.Context(), clusterPath, machinesPath)
 }
 
-func writeKubeconfig(cpath, mpath string) error {
+func writeKubeconfig(ctx context.Context, cpath, mpath string) error {
 	var wksHome string
 	var err error
 	var configPath string
@@ -120,7 +121,7 @@ func writeKubeconfig(cpath, mpath string) error {
 		configPath = clientcmd.RecommendedHomeFile
 	}
 
-	configStr, err := config.GetRemoteKubeconfig(sp, kubeconfigOptions.sshKeyPath, kubeconfigOptions.verbose, kubeconfigOptions.skipTLSVerify)
+	configStr, err := config.GetRemoteKubeconfig(ctx, sp, kubeconfigOptions.sshKeyPath, kubeconfigOptions.verbose, kubeconfigOptions.skipTLSVerify)
 	if err != nil {
 		return errors.Wrapf(err, "failed to get remote kubeconfig")
 	}

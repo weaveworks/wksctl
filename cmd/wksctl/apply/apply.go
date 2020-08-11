@@ -1,6 +1,7 @@
 package apply
 
 import (
+	"context"
 	"path/filepath"
 	"strings"
 
@@ -22,7 +23,7 @@ import (
 var Cmd = &cobra.Command{
 	Use:   "apply",
 	Short: "Create or update a Kubernetes cluster",
-	RunE:  func(_ *cobra.Command, _ []string) error { a := Applier{&globalParams}; return a.Apply() },
+	RunE:  func(cmd *cobra.Command, _ []string) error { a := Applier{&globalParams}; return a.Apply(cmd.Context()) },
 }
 
 type Params struct {
@@ -68,7 +69,7 @@ type Applier struct {
 	Params *Params
 }
 
-func (a *Applier) Apply() error {
+func (a *Applier) Apply(ctx context.Context) error {
 	var clusterPath, machinesPath string
 
 	// TODO: deduplicate clusterPath/machinesPath evaluation between here and other places
@@ -92,10 +93,10 @@ func (a *Applier) Apply() error {
 		}
 	}
 
-	return a.initiateCluster(clusterPath, machinesPath)
+	return a.initiateCluster(ctx, clusterPath, machinesPath)
 }
 
-func (a *Applier) initiateCluster(clusterManifestPath, machinesManifestPath string) error {
+func (a *Applier) initiateCluster(ctx context.Context, clusterManifestPath, machinesManifestPath string) error {
 	sp := specs.NewFromPaths(clusterManifestPath, machinesManifestPath)
 	sshClient, err := ssh.NewClientForMachine(sp.MasterSpec, sp.ClusterSpec.User, a.Params.sshKeyPath, log.GetLevel() > log.InfoLevel)
 
@@ -103,7 +104,7 @@ func (a *Applier) initiateCluster(clusterManifestPath, machinesManifestPath stri
 		return errors.Wrap(err, "failed to create SSH client")
 	}
 	defer sshClient.Close()
-	installer, err := capeios.Identify(sshClient)
+	installer, err := capeios.Identify(ctx, sshClient)
 	if err != nil {
 		return errors.Wrapf(err, "failed to identify operating system for seed node (%s)", sp.GetMasterPublicAddress())
 	}
@@ -155,7 +156,7 @@ func (a *Applier) initiateCluster(clusterManifestPath, machinesManifestPath stri
 		}
 	}
 
-	if err := wksos.SetupSeedNode(installer, wksos.SeedNodeParams{
+	if err := wksos.SetupSeedNode(ctx, installer, wksos.SeedNodeParams{
 		PublicIP:             sp.GetMasterPublicAddress(),
 		PrivateIP:            sp.GetMasterPrivateAddress(),
 		ServicesCIDRBlocks:   sp.Cluster.Spec.ClusterNetwork.Services.CIDRBlocks,
