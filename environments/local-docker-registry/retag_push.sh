@@ -23,8 +23,8 @@ k8s.gcr.io/kube-proxy:v1.16.11
 k8s.gcr.io/pause:3.1
 k8s.gcr.io/etcd:3.3.15-0
 k8s.gcr.io/coredns:1.6.2
-docker.io/weaveworks/weave-npc:2.5.1
-docker.io/weaveworks/weave-kube:2.5.1
+docker.io/weaveworks/weave-npc:2.7.0
+docker.io/weaveworks/weave-kube:2.7.0
 )
 
 # Default host for the local Docker registry:
