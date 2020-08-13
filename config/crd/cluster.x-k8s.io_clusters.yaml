@@ -8,6 +8,7 @@ metadata:
   creationTimestamp: null
   name: clusters.cluster.x-k8s.io
 spec:
+  preserveUnknownFields: false
   additionalPrinterColumns:
   - JSONPath: .status.phase
     description: Cluster status such as Pending/Provisioning/Provisioned/Deleting/Failed

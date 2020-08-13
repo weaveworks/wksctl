@@ -8,6 +8,7 @@ metadata:
   creationTimestamp: null
   name: machinehealthchecks.cluster.x-k8s.io
 spec:
+  preserveUnknownFields: false
   additionalPrinterColumns:
   - JSONPath: .spec.maxUnhealthy
     description: Maximum number of unhealthy machines allowed
@@ -60,6 +61,7 @@ spec:
               minLength: 1
               type: string
             maxUnhealthy:
+              x-kubernetes-int-or-string: true
               anyOf:
               - type: integer
               - type: string

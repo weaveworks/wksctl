@@ -8,6 +8,7 @@ metadata:
   creationTimestamp: null
   name: machinesets.cluster.x-k8s.io
 spec:
+  preserveUnknownFields: false
   additionalPrinterColumns:
   - JSONPath: .status.replicas
     description: Total number of non-terminated machines targeted by this machineset
