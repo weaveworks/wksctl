@@ -8,6 +8,7 @@ metadata:
   creationTimestamp: null
   name: machines.cluster.x-k8s.io
 spec:
+  preserveUnknownFields: false
   additionalPrinterColumns:
   - JSONPath: .spec.providerID
     description: Provider ID

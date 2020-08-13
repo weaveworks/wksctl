@@ -8,6 +8,7 @@ metadata:
   creationTimestamp: null
   name: machinedeployments.cluster.x-k8s.io
 spec:
+  preserveUnknownFields: false
   additionalPrinterColumns:
   - JSONPath: .status.phase
     description: MachineDeployment status such as ScalingUp/ScalingDown/Running/Failed/Unknown
@@ -149,6 +150,7 @@ spec:
                     = RollingUpdate.
                   properties:
                     maxSurge:
+                      x-kubernetes-int-or-string: true
                       anyOf:
                       - type: integer
                       - type: string
@@ -165,6 +167,7 @@ spec:
                         number of machines running at any time during the update is
                         at most 130% of desired machines.'
                     maxUnavailable:
+                      x-kubernetes-int-or-string: true
                       anyOf:
                       - type: integer
                       - type: string
