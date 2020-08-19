@@ -3,19 +3,15 @@ module github.com/weaveworks/wksctl
 go 1.14
 
 require (
-	github.com/bitnami-labs/sealed-secrets v0.12.4
+	github.com/bitnami-labs/sealed-secrets v0.12.5
 	github.com/blang/semver v3.5.1+incompatible
-	github.com/cavaliercoder/go-rpm v0.0.0-20200122174316-8cb9fd9c31a8
-	github.com/chanwit/plandiff v1.0.0
 	github.com/dlespiau/kube-test-harness v0.0.0-20200706152414-7c811932d687
-	github.com/fatih/structs v1.1.0
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-logr/zapr v0.1.1 // indirect
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
 	github.com/google/go-jsonnet v0.16.0
 	github.com/googleapis/gnostic v0.4.1 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.1 // indirect
-	github.com/oleiade/reflections v1.0.0 // indirect
 	github.com/pelletier/go-toml v1.8.0
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.5.1 // indirect
@@ -26,6 +22,7 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.6.1
 	github.com/thanhpk/randstr v1.0.4
+	github.com/weaveworks/cluster-api-provider-existinginfra v0.0.1
 	github.com/weaveworks/footloose v0.0.0-20200609124411-8f3df89ea188
 	github.com/weaveworks/go-checkpoint v0.0.0-20170503165305-ebbb8b0518ab
 	github.com/weaveworks/launcher v0.0.0-20180824102238-59a4fcc32c9c
@@ -36,19 +33,15 @@ require (
 	golang.org/x/tools v0.0.0-20200708003708-134513de8882 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.1.0 // indirect
 	google.golang.org/appengine v1.6.5 // indirect
-	gopkg.in/oleiade/reflections.v1 v1.0.0
 	gopkg.in/src-d/go-git.v4 v4.13.1
-	k8s.io/api v0.18.5
-	k8s.io/apimachinery v0.18.5
-	k8s.io/client-go v0.18.5
-	k8s.io/cluster-bootstrap v0.18.5
+	k8s.io/api v0.18.6
+	k8s.io/apimachinery v0.18.6
+	k8s.io/client-go v0.18.6
 	k8s.io/kube-proxy v0.0.0
-	k8s.io/kubectl v0.18.5
-	k8s.io/kubernetes v1.18.5
+	k8s.io/kubernetes v1.18.6
 	k8s.io/utils v0.0.0-20200619165400-6e3d28b6ed19
 	sigs.k8s.io/cluster-api v0.3.6
 	sigs.k8s.io/controller-runtime v0.6.0
-	sigs.k8s.io/kustomize/kyaml v0.1.11
 	sigs.k8s.io/yaml v1.2.0
 )
 
