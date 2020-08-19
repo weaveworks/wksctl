@@ -5,9 +5,9 @@ import (
 	"io/ioutil"
 
 	log "github.com/sirupsen/logrus"
+	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/plan"
+	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/utilities/object"
 	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/controller/manifests"
-	existinginfrav1 "github.com/weaveworks/wksctl/pkg/existinginfra/v1alpha3"
-	"github.com/weaveworks/wksctl/pkg/plan"
 	"github.com/weaveworks/wksctl/pkg/plan/resource"
 )
 

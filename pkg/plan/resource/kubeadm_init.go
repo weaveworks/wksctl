@@ -8,18 +8,21 @@ import (
 
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/apis/wksprovider/machine/config"
+	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/apis/wksprovider/machine/scripts"
+	capeiplan "github.com/weaveworks/cluster-api-provider-existinginfra/pkg/plan"
+	capeiresource "github.com/weaveworks/cluster-api-provider-existinginfra/pkg/plan/resource"
+	capeimanifest "github.com/weaveworks/cluster-api-provider-existinginfra/pkg/utilities/manifest"
+	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/utilities/object"
+	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/utilities/ssh"
+	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/utilities/version"
 	"github.com/weaveworks/libgitops/pkg/serializer"
 	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/controller/manifests"
-	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/config"
 	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/config/kubeadm"
 	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/config/kubeproxy"
-	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/scripts"
 	"github.com/weaveworks/wksctl/pkg/plan"
 	kubeadmutil "github.com/weaveworks/wksctl/pkg/utilities/kubeadm"
 	"github.com/weaveworks/wksctl/pkg/utilities/manifest"
-	"github.com/weaveworks/wksctl/pkg/utilities/object"
-	"github.com/weaveworks/wksctl/pkg/utilities/ssh"
-	"github.com/weaveworks/wksctl/pkg/utilities/version"
 	corev1 "k8s.io/api/core/v1"
 	kubeadmapi "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm/v1beta1"
 	"sigs.k8s.io/yaml"
@@ -27,7 +30,7 @@ import (
 
 // KubeadmInit represents an attempt to init a Kubernetes node via kubeadm.
 type KubeadmInit struct {
-	base
+	capeiresource.Base
 
 	// PublicIP is public IP of the master node we are trying to setup here.
 	PublicIP string `structs:"publicIP"`
@@ -76,17 +79,17 @@ type KubeadmInit struct {
 	PodCIDRBlock string
 }
 
-var _ plan.Resource = plan.RegisterResource(&KubeadmInit{})
+var _ capeiplan.Resource = capeiplan.RegisterResource(&KubeadmInit{})
 
 // State implements plan.Resource.
-func (ki *KubeadmInit) State() plan.State {
-	return toState(ki)
+func (ki *KubeadmInit) State() capeiplan.State {
+	return capeiresource.ToState(ki)
 }
 
 // Apply implements plan.Resource.
 // TODO: find a way to make this idempotent.
 // TODO: should such a resource be split into smaller resources?
-func (ki *KubeadmInit) Apply(runner plan.Runner, diff plan.Diff) (bool, error) {
+func (ki *KubeadmInit) Apply(runner capeiplan.Runner, diff capeiplan.Diff) (bool, error) {
 	log.Debug("Initializing Kubernetes cluster")
 
 	sshKey, err := ssh.ReadPrivateKey(ki.SSHKeyPath)
@@ -151,7 +154,7 @@ func (ki *KubeadmInit) Apply(runner plan.Runner, diff plan.Diff) (bool, error) {
 		ki.UseIPTables,
 		ki.KubernetesVersion,
 		&stdOutErr)
-	_, err = p.Apply(runner, plan.EmptyDiff())
+	_, err = p.Apply(runner, capeiplan.EmptyDiff())
 	if err != nil {
 		return false, errors.Wrap(err, "failed to initialize Kubernetes cluster with kubeadm")
 	}
@@ -186,14 +189,14 @@ func (ki *KubeadmInit) updateManifestNamespace(fileName, namespace string) ([]by
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to open manifest")
 	}
-	c, err := manifest.WithNamespace(serializer.FromBytes(content), namespace)
+	c, err := capeimanifest.WithNamespace(serializer.FromBytes(content), namespace)
 	if err != nil {
 		return nil, err
 	}
 	return c, nil
 }
 
-func (ki *KubeadmInit) kubectlApply(fileName, namespace string, runner plan.Runner) error {
+func (ki *KubeadmInit) kubectlApply(fileName, namespace string, runner capeiplan.Runner) error {
 	content, err := ki.updateManifestNamespace(fileName, namespace)
 	if err != nil {
 		return errors.Wrap(err, "Failed to upate manifest namespace")
@@ -213,7 +216,7 @@ func (ki *KubeadmInit) manifestContent(fileName string) ([]byte, error) {
 	return content, nil
 }
 
-func (ki *KubeadmInit) applySecretWith(sshKey []byte, discoveryTokenCaCertHash, certKey, namespace string, runner plan.Runner) error {
+func (ki *KubeadmInit) applySecretWith(sshKey []byte, discoveryTokenCaCertHash, certKey, namespace string, runner capeiplan.Runner) error {
 	log.Info("adding SSH key to WKS secret and applying its manifest")
 	fileName := "03_secrets.yaml"
 	secret, err := ki.deserializeSecret(fileName, namespace)
@@ -247,19 +250,19 @@ func (ki *KubeadmInit) deserializeSecret(fileName, namespace string) (*corev1.Se
 }
 
 // Undo implements plan.Resource.
-func (ki *KubeadmInit) Undo(runner plan.Runner, current plan.State) error {
+func (ki *KubeadmInit) Undo(runner capeiplan.Runner, current capeiplan.State) error {
 	remotePath := "/tmp/wks_kubeadm_init_config.yaml"
 	var ignored string
 	return buildKubeadmInitPlan(
 		remotePath,
 		strings.Join(ki.IgnorePreflightErrors, ","),
 		ki.UseIPTables, ki.KubernetesVersion, &ignored).Undo(
-		runner, plan.EmptyState)
+		runner, capeiplan.EmptyState)
 }
 
 // buildKubeadmInitPlan builds a plan for kubeadm init command.
 // Parameter k8sversion specified here represents the version of both Kubernetes and Kubeadm.
-func buildKubeadmInitPlan(path string, ignorePreflightErrors string, useIPTables bool, k8sVersion string, output *string) plan.Resource {
+func buildKubeadmInitPlan(path string, ignorePreflightErrors string, useIPTables bool, k8sVersion string, output *string) capeiplan.Resource {
 	// Detect version for --upload-cert-flags
 	uploadCertsFlag := "--upload-certs"
 	if lt, err := version.LessThan(k8sVersion, "v1.15.0"); err == nil && lt {
@@ -276,70 +279,70 @@ func buildKubeadmInitPlan(path string, ignorePreflightErrors string, useIPTables
 	// We add resources to the plan graph for both "if" and "else" paths to make all resources deterministically connected.
 	// The graph resources will be easier to reason about when we execute them in parallel in the future.
 	//
-	b := plan.NewBuilder()
+	b := capeiplan.NewBuilder()
 	if useIPTables {
 		b.AddResource(
-			"configure:iptables",
-			&Run{Script: object.String("sysctl net.bridge.bridge-nf-call-iptables=1")}) // TODO: undo?
+			"configrure:iptables",
+			&capeiresource.Run{Script: object.String("sysctl net.bridge.bridge-nf-call-iptables=1")}) // TODO: undo?
 	} else {
 		b.AddResource(
 			"configure:iptables",
-			&Run{Script: object.String("echo no operation")})
+			&capeiresource.Run{Script: object.String("echo no operation")})
 	}
 
 	if upgradeKubeadmConfig {
 		b.AddResource(
 			"kubeadm:config:upgrade",
-			&Run{Script: plan.ParamString(
-				withoutProxy("kubeadm config migrate --old-config %s --new-config %s_upgraded && mv %s_upgraded %s"), &path, &path, &path, &path),
+			&capeiresource.Run{Script: plan.ParamString(
+				capeiresource.WithoutProxy("kubeadm config migrate --old-config %s --new-config %s_upgraded && mv %s_upgraded %s"), &path, &path, &path, &path),
 			},
-			plan.DependOn("configure:iptables"),
+			capeiplan.DependOn("configure:iptables"),
 		)
 	} else {
 		b.AddResource(
 			"kubeadm:config:upgrade",
-			&Run{Script: object.String("echo no upgrade is required")},
-			plan.DependOn("configure:iptables"),
+			&capeiresource.Run{Script: object.String("echo no upgrade is required")},
+			capeiplan.DependOn("configure:iptables"),
 		)
 	}
 
 	b.AddResource(
 		"kubeadm:reset",
-		&Run{Script: object.String("kubeadm reset --force")},
-		plan.DependOn("kubeadm:config:upgrade"),
+		&capeiresource.Run{Script: object.String("kubeadm reset --force")},
+		capeiplan.DependOn("kubeadm:config:upgrade"),
 	).AddResource(
 		"kubeadm:config:images",
-		&Run{Script: plan.ParamString("kubeadm config images pull --config=%s", &path)},
-		plan.DependOn("kubeadm:reset"),
+		&capeiresource.Run{Script: plan.ParamString("kubeadm config images pull --config=%s", &path)},
+		capeiplan.DependOn("kubeadm:reset"),
 	).AddResource(
 		"kubeadm:run-init",
 		// N.B.: --experimental-upload-certs encrypts & uploads
 		// certificates of the primary control plane in the kubeadm-certs
 		// Secret, and prints the value for --certificate-key to STDOUT.
-		&Run{Script: plan.ParamString("kubeadm init --config=%s --ignore-preflight-errors=%s %s", &path, &ignorePreflightErrors, &uploadCertsFlag),
+		&capeiresource.Run{Script: plan.ParamString("kubeadm init --config=%s --ignore-preflight-errors=%s %s", &path, &ignorePreflightErrors, &uploadCertsFlag),
 			UndoResource: buildKubeadmRunInitUndoPlan(),
 			Output:       output,
 		},
-		plan.DependOn("kubeadm:config:images"),
+		capeiplan.DependOn("kubeadm:config:images"),
 	)
 
 	var homedir string
 
 	b.AddResource(
 		"kubeadm:get-homedir",
-		&Run{Script: object.String("echo -n $HOME"), Output: &homedir},
+		&capeiresource.Run{Script: object.String("echo -n $HOME"), Output: &homedir},
 	).AddResource(
 		"kubeadm:config:kubectl-dir",
-		&Dir{Path: plan.ParamString("%s/.kube", &homedir)},
-		plan.DependOn("kubeadm:get-homedir"),
+		&capeiresource.Dir{Path: plan.ParamString("%s/.kube", &homedir)},
+		capeiplan.DependOn("kubeadm:get-homedir"),
 	).AddResource(
 		"kubeadm:config:copy",
-		&Run{Script: plan.ParamString("cp /etc/kubernetes/admin.conf %s/.kube/config", &homedir)},
-		plan.DependOn("kubeadm:run-init", "kubeadm:config:kubectl-dir"),
+		&capeiresource.Run{Script: plan.ParamString("cp /etc/kubernetes/admin.conf %s/.kube/config", &homedir)},
+		capeiplan.DependOn("kubeadm:run-init", "kubeadm:config:kubectl-dir"),
 	).AddResource(
 		"kubeadm:config:set-ownership",
-		&Run{Script: plan.ParamString("chown -R $(id -u):$(id -g) %s/.kube", &homedir)},
-		plan.DependOn("kubeadm:config:copy"),
+		&capeiresource.Run{Script: plan.ParamString("chown -R $(id -u):$(id -g) %s/.kube", &homedir)},
+		capeiplan.DependOn("kubeadm:config:copy"),
 	)
 
 	p, err := b.Plan()
@@ -349,23 +352,23 @@ func buildKubeadmInitPlan(path string, ignorePreflightErrors string, useIPTables
 	return &p
 }
 
-func buildKubeadmRunInitUndoPlan() plan.Resource {
-	b := plan.NewBuilder()
+func buildKubeadmRunInitUndoPlan() capeiplan.Resource {
+	b := capeiplan.NewBuilder()
 	b.AddResource(
 		"file:kube-apiserver.yaml",
-		&File{Destination: "/etc/kubernetes/manifests/kube-apiserver.yaml"},
+		&capeiresource.File{Destination: "/etc/kubernetes/manifests/kube-apiserver.yaml"},
 	).AddResource(
 		"file:kube-controller-manager.yaml",
-		&File{Destination: "/etc/kubernetes/manifests/kube-controller-manager.yaml"},
+		&capeiresource.File{Destination: "/etc/kubernetes/manifests/kube-controller-manager.yaml"},
 	).AddResource(
 		"file:kube-scheduler.yaml",
-		&File{Destination: "/etc/kubernetes/manifests/kube-scheduler.yaml"},
+		&capeiresource.File{Destination: "/etc/kubernetes/manifests/kube-scheduler.yaml"},
 	).AddResource(
 		"file:etcd.yaml",
-		&File{Destination: "/etc/kubernetes/manifests/etcd.yaml"},
+		&capeiresource.File{Destination: "/etc/kubernetes/manifests/etcd.yaml"},
 	).AddResource(
 		"dir:etcd",
-		&Dir{Path: object.String("/var/lib/etcd"), RecursiveDelete: true},
+		&capeiresource.Dir{Path: object.String("/var/lib/etcd"), RecursiveDelete: true},
 	)
 	p, err := b.Plan()
 	if err != nil {

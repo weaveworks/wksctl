@@ -7,13 +7,14 @@ import (
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/apis/wksprovider/machine/config"
+	capeios "github.com/weaveworks/cluster-api-provider-existinginfra/pkg/apis/wksprovider/machine/os"
+	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/utilities/kubeadm"
 	"github.com/weaveworks/wksctl/pkg/addons"
-	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/config"
 	wksos "github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/os"
 	"github.com/weaveworks/wksctl/pkg/manifests"
 	"github.com/weaveworks/wksctl/pkg/plan/runners/ssh"
 	"github.com/weaveworks/wksctl/pkg/specs"
-	"github.com/weaveworks/wksctl/pkg/utilities/kubeadm"
 	"github.com/weaveworks/wksctl/pkg/utilities/manifest"
 	"github.com/weaveworks/wksctl/pkg/version"
 )
@@ -103,7 +104,7 @@ func (a *Applier) initiateCluster(clusterManifestPath, machinesManifestPath stri
 		return errors.Wrap(err, "failed to create SSH client")
 	}
 	defer sshClient.Close()
-	installer, err := wksos.Identify(sshClient)
+	installer, err := capeios.Identify(sshClient)
 	if err != nil {
 		return errors.Wrapf(err, "failed to identify operating system for seed node (%s)", sp.GetMasterPublicAddress())
 	}
@@ -155,7 +156,7 @@ func (a *Applier) initiateCluster(clusterManifestPath, machinesManifestPath stri
 		}
 	}
 
-	if err := installer.SetupSeedNode(wksos.SeedNodeParams{
+	if err := wksos.SetupSeedNode(installer, wksos.SeedNodeParams{
 		PublicIP:             sp.GetMasterPublicAddress(),
 		PrivateIP:            sp.GetMasterPrivateAddress(),
 		ServicesCIDRBlocks:   sp.Cluster.Spec.ClusterNetwork.Services.CIDRBlocks,

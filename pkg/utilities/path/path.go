@@ -5,25 +5,14 @@ import (
 	"os"
 	"path/filepath"
 
-// Expand expands the provided path, evaluating all symlinks (including "~").
-func Expand(path string) (string, error) {
-	path = ExpandHome(path)
-	return filepath.EvalSymlinks(path)
-}
-
-func ExpandHome(s string) string {
-	home, _ := os.UserHomeDir()
-	if strings.HasPrefix(s, "~/") {
-		return filepath.Join(home, s[2:])
-	}
-	return s
-}
+	capeipath "github.com/weaveworks/cluster-api-provider-existinginfra/pkg/utilities/path"
+)
 
 // WKSHome sanitises the provided (optional) artifact directory or defaults it.
 func WKSHome(artifactDirectory string) string {
 	// Command line option overrides the default home directory.
 	if artifactDirectory != "" {
-		return ExpandHome(artifactDirectory)
+		return capeipath.ExpandHome(artifactDirectory)
 	}
 	if userHome, err := os.UserHomeDir(); err == nil {
 		return filepath.Join(userHome, ".wks")

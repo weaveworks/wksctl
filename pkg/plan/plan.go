@@ -1,63 +1,9 @@
 package plan
 
 import (
-	"bytes"
-	"encoding/json"
-	"errors"
 	"fmt"
-	"io"
-	"os"
-	"path/filepath"
-	"reflect"
-	"sort"
-	"strings"
 
-	"github.com/fatih/structs"
-	log "github.com/sirupsen/logrus"
-	"github.com/weaveworks/wksctl/pkg/utilities/object"
-)
-
-// Runner is something that can realise a step.
-type Runner interface {
-	// RunCommand runs a command in a shell. This means cmd can be more than one
-	// single command, it can be a full bourne shell script.
-	RunCommand(cmd string, stdin io.Reader) (stdouterr string, err error)
-}
-
-// Resource is an atomic step of the plan.
-type Resource interface {
-	// State returns the state that this step will realize when applied.
-	State() State
-	// QueryState returns the current state of this step. For instance, if the step
-	// describes the installation of a package, QueryState will return if the
-	// package is actually installed and its version.
-	QueryState(runner Runner) (State, error)
-
-	// Apply this step and indicate whether downstream resources should be re-applied
-	Apply(runner Runner, diff Diff) (propagate bool, err error)
-	// Undo this step.
-	Undo(runner Runner, current State) error
-}
-
-type RunError struct {
-	ExitCode int
-}
-
-func (e *RunError) Error() string {
-	return fmt.Sprintf("command exited with %d", e.ExitCode)
-}
-
-// Plan is a succession of Steps to produce a desired outcome.
-type Plan struct {
-	id            string
-	resources     map[string]Resource
-	graph         *graph
-	undoCondition func(Runner, State) bool
-}
-
-var (
-	dummyPlan    Resource = RegisterResource(&Plan{})
-	planTypeName          = extractResourceTypeName(dummyPlan)
+	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/utilities/object"
 )
 
 // ParamString is a parameterizable string for passing output from one resource

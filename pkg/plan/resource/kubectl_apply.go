@@ -8,16 +8,17 @@ import (
 
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/apis/wksprovider/machine/scripts"
+	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/plan"
+	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/plan/resource"
+	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/utilities/manifest"
 	"github.com/weaveworks/libgitops/pkg/serializer"
-	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/scripts"
-	"github.com/weaveworks/wksctl/pkg/plan"
-	"github.com/weaveworks/wksctl/pkg/utilities/manifest"
 )
 
 // KubectlApply is a resource applying the provided manifest.
 // It doesn't realise any state, Apply will always apply the manifest.
 type KubectlApply struct {
-	base
+	resource.Base
 
 	// Filename is the remote manifest file name.
 	// Only provide this if you do NOT provide ManifestPath or ManifestURL.
@@ -57,7 +58,7 @@ var _ plan.Resource = plan.RegisterResource(&KubectlApply{})
 
 // State implements plan.Resource.
 func (ka *KubectlApply) State() plan.State {
-	return toState(ka)
+	return resource.ToState(ka)
 }
 
 func (ka *KubectlApply) content() ([]byte, error) {
@@ -157,7 +158,7 @@ func RunKubectlApply(r plan.Runner, args KubectlApplyArgs, fname string) error {
 	// Run kubectl wait, if requested.
 	if args.WaitCondition != "" {
 		cmd := fmt.Sprintf("kubectl wait --for=%q -f %q", args.WaitCondition, path)
-		if _, err := r.RunCommand(withoutProxy(cmd), nil); err != nil {
+		if _, err := r.RunCommand(resource.WithoutProxy(cmd), nil); err != nil {
 			return errors.Wrap(err, "kubectl wait")
 		}
 	}
@@ -169,7 +170,7 @@ func RunKubectlApply(r plan.Runner, args KubectlApplyArgs, fname string) error {
 func RunKubectlRemoteApply(remoteURL string, runner plan.Runner) error {
 	cmd := fmt.Sprintf("kubectl apply -f %q", remoteURL)
 
-	if stdouterr, err := runner.RunCommand(withoutProxy(cmd), nil); err != nil {
+	if stdouterr, err := runner.RunCommand(resource.WithoutProxy(cmd), nil); err != nil {
 		log.WithField("stdouterr", stdouterr).WithField("URL", remoteURL).Debug("failed to apply Kubernetes manifest")
 		return errors.Wrapf(err, "failed to apply manifest %s; output %s", remoteURL, stdouterr)
 	}

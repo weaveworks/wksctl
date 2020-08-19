@@ -16,22 +16,24 @@ import (
 	"github.com/bitnami-labs/sealed-secrets/pkg/crypto"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	capeiv1alpha3 "github.com/weaveworks/cluster-api-provider-existinginfra/apis/cluster.weave.works/v1alpha3"
+	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/apis/wksprovider/machine/config"
+	capeios "github.com/weaveworks/cluster-api-provider-existinginfra/pkg/apis/wksprovider/machine/os"
+	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/plan"
+	capeirecipe "github.com/weaveworks/cluster-api-provider-existinginfra/pkg/plan/recipe"
+	capeiresource "github.com/weaveworks/cluster-api-provider-existinginfra/pkg/plan/resource"
+	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/utilities/envcfg"
+	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/utilities/manifest"
+	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/utilities/object"
 	"github.com/weaveworks/libgitops/pkg/serializer"
 	"github.com/weaveworks/wksctl/pkg/addons"
 	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/controller/manifests"
-	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/config"
 	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/crds"
 	"github.com/weaveworks/wksctl/pkg/cluster/machine"
-	existinginfrav1 "github.com/weaveworks/wksctl/pkg/existinginfra/v1alpha3"
-	"github.com/weaveworks/wksctl/pkg/plan"
 	"github.com/weaveworks/wksctl/pkg/plan/recipe"
 	"github.com/weaveworks/wksctl/pkg/plan/resource"
-	"github.com/weaveworks/wksctl/pkg/plan/runners/sudo"
 	"github.com/weaveworks/wksctl/pkg/scheme"
 	"github.com/weaveworks/wksctl/pkg/specs"
-	"github.com/weaveworks/wksctl/pkg/utilities/envcfg"
-	"github.com/weaveworks/wksctl/pkg/utilities/manifest"
-	"github.com/weaveworks/wksctl/pkg/utilities/object"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/api/apps/v1beta2"
 	v1 "k8s.io/api/core/v1"
@@ -166,7 +168,7 @@ func (params SeedNodeParams) GetAddonNamespace(name string) string {
 // SetupSeedNode installs Kubernetes on this machine, and store the provided
 // manifests in the API server, so that the rest of the cluster can then be
 // set up by the WKS controller.
-func SetupSeedNode(o *capios.OS, params SeedNodeParams) error {
+func SetupSeedNode(o *capeios.OS, params SeedNodeParams) error {
 	p, err := CreateSeedNodeSetupPlan(o, params)
 	if err != nil {
 		return err
@@ -176,7 +178,7 @@ func SetupSeedNode(o *capios.OS, params SeedNodeParams) error {
 
 // CreateSeedNodeSetupPlan constructs the seed node plan used to setup the initial node
 // prior to turning control over to wks-controller
-func CreateSeedNodeSetupPlan(o *capios.OS, params SeedNodeParams) (*plan.Plan, error) {
+func CreateSeedNodeSetupPlan(o *capeios.OS, params SeedNodeParams) (*plan.Plan, error) {
 	if err := params.Validate(); err != nil {
 		return nil, err
 	}
@@ -200,10 +202,10 @@ func CreateSeedNodeSetupPlan(o *capios.OS, params SeedNodeParams) (*plan.Plan, e
 
 	b := plan.NewBuilder()
 
-	baseRes := capirecipe.BuildBasePlan(o.PkgType)
+	baseRes := capeirecipe.BuildBasePlan(o.PkgType)
 	b.AddResource("install:base", baseRes)
 
-	configRes := capirecipe.BuildConfigPlan(configFileResources)
+	configRes := capeirecipe.BuildConfigPlan(configFileResources)
 	b.AddResource("install:config", configRes, plan.DependOn("install:base"))
 
 	pemSecretResources, authConfigMap, authConfigManifest, err := processPemFilesIfAny(b, &cluster.Spec, params.ConfigDirectory, params.Namespace, params.SealedSecretKeyPath, params.SealedSecretCertPath)
@@ -211,10 +213,10 @@ func CreateSeedNodeSetupPlan(o *capios.OS, params SeedNodeParams) (*plan.Plan, e
 		return nil, err
 	}
 
-	criRes := capirecipe.BuildCRIPlan(&cluster.Spec.CRI, cfg, o.PkgType)
+	criRes := capeirecipe.BuildCRIPlan(&cluster.Spec.CRI, cfg, o.PkgType)
 	b.AddResource("install:cri", criRes, plan.DependOn("install:config"))
 
-	k8sRes := capirecipe.BuildK8SPlan(kubernetesVersion, params.KubeletConfig.NodeIP, cfg.SELinuxInstalled, cfg.SetSELinuxPermissive, cfg.DisableSwap, cfg.LockYUMPkgs, o.PkgType, params.KubeletConfig.CloudProvider, params.KubeletConfig.ExtraArguments)
+	k8sRes := capeirecipe.BuildK8SPlan(kubernetesVersion, params.KubeletConfig.NodeIP, cfg.SELinuxInstalled, cfg.SetSELinuxPermissive, cfg.DisableSwap, cfg.LockYUMPkgs, o.PkgType, params.KubeletConfig.CloudProvider, params.KubeletConfig.ExtraArguments)
 	b.AddResource("install:k8s", k8sRes, plan.DependOn("install:cri"))
 
 	apiServerArgs := getAPIServerArgs(&cluster.Spec, pemSecretResources)
@@ -255,7 +257,7 @@ func CreateSeedNodeSetupPlan(o *capios.OS, params SeedNodeParams) (*plan.Plan, e
 	// TODO(damien): Add a CNI section in cluster.yaml once we support more than one CNI plugin.
 	const cni = "weave-net"
 
-	cniAdddon := existinginfrav1.Addon{Name: cni}
+	cniAdddon := capeiv1alpha3.Addon{Name: cni}
 
 	// we use the namespace defined in addon-namespace map to make weave-net run in kube-system
 	// as weave-net requires to run in the kube-system namespace *only*.
@@ -298,7 +300,7 @@ func CreateSeedNodeSetupPlan(o *capios.OS, params SeedNodeParams) (*plan.Plan, e
 	if err != nil {
 		return nil, err
 	}
-	b.AddResource("node:plan", &resource.KubectlAnnotateSingleNode{Key: capirecipe.PlanKey, Value: seedNodePlan.ToJSON()}, plan.DependOn("kubeadm:init"))
+	b.AddResource("node:plan", &resource.KubectlAnnotateSingleNode{Key: capeirecipe.PlanKey, Value: seedNodePlan.ToJSON()}, plan.DependOn("kubeadm:init"))
 
 	addAuthConfigMapIfNecessary(configMapManifests, authConfigManifest)
 
@@ -350,7 +352,7 @@ func CreateSeedNodeSetupPlan(o *capios.OS, params SeedNodeParams) (*plan.Plan, e
 	addonRsc := recipe.BuildAddonPlan(params.ClusterManifestPath, addons)
 	b.AddResource("install:addons", addonRsc, plan.DependOn("kubectl:apply:cluster", "kubectl:apply:machines"))
 
-	return capios.CreatePlan(b)
+	return capeios.CreatePlan(b)
 }
 
 // Sets the pod CIDR block in the weave-net manifest
@@ -500,17 +502,17 @@ func storeIfNotEmpty(vals map[string]string, key, value string) {
 	}
 }
 
-func getAPIServerArgs(providerSpec *existinginfrav1.ClusterSpec, pemSecretResources map[string]*secretResourceSpec) map[string]string {
+func getAPIServerArgs(providerSpec *capeiv1alpha3.ClusterSpec, pemSecretResources map[string]*secretResourceSpec) map[string]string {
 	result := map[string]string{}
 	authnResourceSpec := pemSecretResources["authentication"]
 	if authnResourceSpec != nil {
-		storeIfNotEmpty(result, "authentication-token-webhook-config-file", filepath.Join(capios.ConfigDestDir, authnResourceSpec.secretName+".yaml"))
+		storeIfNotEmpty(result, "authentication-token-webhook-config-file", filepath.Join(capeios.ConfigDestDir, authnResourceSpec.secretName+".yaml"))
 		storeIfNotEmpty(result, "authentication-token-webhook-cache-ttl", providerSpec.Authentication.CacheTTL)
 	}
 	authzResourceSpec := pemSecretResources["authorization"]
 	if authzResourceSpec != nil {
 		result["authorization-mode"] = "Webhook"
-		storeIfNotEmpty(result, "authorization-webhook-config-file", filepath.Join(capios.ConfigDestDir, authzResourceSpec.secretName+".yaml"))
+		storeIfNotEmpty(result, "authorization-webhook-config-file", filepath.Join(capeios.ConfigDestDir, authzResourceSpec.secretName+".yaml"))
 		storeIfNotEmpty(result, "authorization-webhook-cache-unauthorized-ttl", providerSpec.Authorization.CacheUnauthorizedTTL)
 		storeIfNotEmpty(result, "authorization-webhook-cache-authorized-ttl", providerSpec.Authorization.CacheAuthorizedTTL)
 	}
@@ -537,12 +539,12 @@ func addClusterAPICRDs(b *plan.Builder) ([]string, error) {
 	return crdIDs, nil
 }
 
-func seedNodeSetupPlan(o *capios.OS, params SeedNodeParams, providerSpec *existinginfrav1.ClusterSpec, providerConfigMaps map[string]*v1.ConfigMap, authConfigMap *v1.ConfigMap, secretResources map[string]*secretResourceSpec, kubernetesVersion, kubernetesNamespace string) (*plan.Plan, error) {
-	secrets := map[string]capiresource.SecretData{}
+func seedNodeSetupPlan(o *capeios.OS, params SeedNodeParams, providerSpec *capeiv1alpha3.ClusterSpec, providerConfigMaps map[string]*v1.ConfigMap, authConfigMap *v1.ConfigMap, secretResources map[string]*secretResourceSpec, kubernetesVersion, kubernetesNamespace string) (*plan.Plan, error) {
+	secrets := map[string]capeiresource.SecretData{}
 	for k, v := range secretResources {
 		secrets[k] = v.decrypted
 	}
-	nodeParams := capios.NodeParams{
+	nodeParams := capeios.NodeParams{
 		IsMaster:             true,
 		MasterIP:             params.PrivateIP,
 		MasterPort:           6443, // See TODO in machine_actuator.go
@@ -560,7 +562,7 @@ func seedNodeSetupPlan(o *capios.OS, params SeedNodeParams, providerSpec *existi
 	return o.CreateNodeSetupPlan(nodeParams)
 }
 
-func applySeedNodePlan(o *capios.OS, p *plan.Plan) error {
+func applySeedNodePlan(o *capeios.OS, p *plan.Plan) error {
 	err := p.Undo(o.Runner, plan.EmptyState)
 	if err != nil {
 		log.Infof("Pre-plan cleanup failed:\n%s\n", err)
@@ -575,7 +577,7 @@ func applySeedNodePlan(o *capios.OS, p *plan.Plan) error {
 	return err
 }
 
-func createConfigFileResourcesFromFiles(providerSpec *existinginfrav1.ClusterSpec, configDir, namespace string) (map[string][]byte, map[string]*v1.ConfigMap, []*capiresource.File, error) {
+func createConfigFileResourcesFromFiles(providerSpec *capeiv1alpha3.ClusterSpec, configDir, namespace string) (map[string][]byte, map[string]*v1.ConfigMap, []*capeiresource.File, error) {
 	fileSpecs := providerSpec.OS.Files
 	configMapManifests, err := getConfigMapManifests(fileSpecs, configDir, namespace)
 	if err != nil {
@@ -589,14 +591,14 @@ func createConfigFileResourcesFromFiles(providerSpec *existinginfrav1.ClusterSpe
 		}
 		configMaps[name] = cmap
 	}
-	resources, err := capios.CreateConfigFileResourcesFromConfigMaps(fileSpecs, configMaps)
+	resources, err := capeios.CreateConfigFileResourcesFromConfigMaps(fileSpecs, configMaps)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 	return configMapManifests, configMaps, resources, nil
 }
 
-func getConfigMapManifests(fileSpecs []existinginfrav1.FileSpec, configDir, namespace string) (map[string][]byte, error) {
+func getConfigMapManifests(fileSpecs []capeiv1alpha3.FileSpec, configDir, namespace string) (map[string][]byte, error) {
 	configMapManifests := map[string][]byte{}
 	for _, fileSpec := range fileSpecs {
 		mapName := fileSpec.Source.ConfigMap
@@ -640,7 +642,7 @@ func getConfigFileContents(fileNameComponent ...string) ([]byte, error) {
 
 type secretResourceSpec struct {
 	secretName string
-	decrypted  capiresource.SecretData
+	decrypted  capeiresource.SecretData
 	resource   plan.Resource
 }
 
@@ -648,7 +650,7 @@ type secretResourceSpec struct {
 // directory, decrypts it using the GitHub deploy key, creates file
 // resources for .pem files stored in the secret, and creates a SealedSecret resource
 // for them that can be used by the machine actuator
-func processPemFilesIfAny(builder *plan.Builder, providerSpec *existinginfrav1.ClusterSpec, configDir string, ns, privateKeyPath, certPath string) (map[string]*secretResourceSpec, *v1.ConfigMap, []byte, error) {
+func processPemFilesIfAny(builder *plan.Builder, providerSpec *capeiv1alpha3.ClusterSpec, configDir string, ns, privateKeyPath, certPath string) (map[string]*secretResourceSpec, *v1.ConfigMap, []byte, error) {
 	if err := checkPemValues(providerSpec, privateKeyPath, certPath); err != nil {
 		return nil, nil, nil, err
 	}
@@ -657,8 +659,8 @@ func processPemFilesIfAny(builder *plan.Builder, providerSpec *existinginfrav1.C
 		return nil, nil, nil, nil
 	}
 	b := plan.NewBuilder()
-	b.AddResource("create:pem-dir", &capiresource.Dir{Path: object.String(capios.PemDestDir)})
-	b.AddResource("set-perms:pem-dir", &capiresource.Run{Script: object.String(fmt.Sprintf("chmod 600 %s", capios.PemDestDir))}, plan.DependOn("create:pem-dir"))
+	b.AddResource("create:pem-dir", &capeiresource.Dir{Path: object.String(capeios.PemDestDir)})
+	b.AddResource("set-perms:pem-dir", &capeiresource.Run{Script: object.String(fmt.Sprintf("chmod 600 %s", capeios.PemDestDir))}, plan.DependOn("create:pem-dir"))
 	privateKey, err := getPrivateKey(privateKeyPath)
 	if err != nil {
 		return nil, nil, nil, err
@@ -721,7 +723,7 @@ func getPrivateKey(privateKeyPath string) (*rsa.PrivateKey, error) {
 	return privateKey, nil
 }
 
-func checkPemValues(providerSpec *existinginfrav1.ClusterSpec, privateKeyPath, certPath string) error {
+func checkPemValues(providerSpec *capeiv1alpha3.ClusterSpec, privateKeyPath, certPath string) error {
 	if privateKeyPath == "" || certPath == "" {
 		if providerSpec.Authentication != nil || providerSpec.Authorization != nil {
 			return errors.New("Encryption keys not specified; cannot process authentication and authorization specifications.")
@@ -794,8 +796,8 @@ func processSecret(b *plan.Builder, key *rsa.PrivateKey, configDir, secretFileNa
 			return nil, nil, "", nil, fmt.Errorf("Missing auth config value for: %q in secret %q", key, secretName)
 		}
 		resName := secretName + "-" + key
-		fileName := filepath.Join(capios.PemDestDir, secretName, key+".pem")
-		b.AddResource("install:"+resName, &capiresource.File{Content: string(fileContents), Destination: fileName}, plan.DependOn("set-perms:pem-dir"))
+		fileName := filepath.Join(capeios.PemDestDir, secretName, key+".pem")
+		b.AddResource("install:"+resName, &capeiresource.File{Content: string(fileContents), Destination: fileName}, plan.DependOn("set-perms:pem-dir"))
 		decrypted[key] = fileContents
 	}
 	contextName := secretName + "-webhook"
@@ -805,14 +807,14 @@ func processSecret(b *plan.Builder, key *rsa.PrivateKey, configDir, secretFileNa
 		APIVersion: "v1",
 		Clusters: map[string]*clientcmdapi.Cluster{
 			secretName: {
-				CertificateAuthority: filepath.Join(capios.PemDestDir, secretName, "certificate-authority.pem"),
+				CertificateAuthority: filepath.Join(capeios.PemDestDir, secretName, "certificate-authority.pem"),
 				Server:               URL,
 			},
 		},
 		AuthInfos: map[string]*clientcmdapi.AuthInfo{
 			userName: {
-				ClientCertificate: filepath.Join(capios.PemDestDir, secretName, "client-certificate.pem"),
-				ClientKey:         filepath.Join(capios.PemDestDir, secretName, "client-key.pem"),
+				ClientCertificate: filepath.Join(capeios.PemDestDir, secretName, "client-certificate.pem"),
+				ClientKey:         filepath.Join(capeios.PemDestDir, secretName, "client-key.pem"),
 			},
 		},
 		CurrentContext: contextName,
@@ -827,7 +829,7 @@ func processSecret(b *plan.Builder, key *rsa.PrivateKey, configDir, secretFileNa
 	if err != nil {
 		return nil, nil, "", nil, err
 	}
-	configResource := &capiresource.File{Content: string(authConfig), Destination: filepath.Join(capios.ConfigDestDir, secretName+".yaml")}
+	configResource := &capeiresource.File{Content: string(authConfig), Destination: filepath.Join(capeios.ConfigDestDir, secretName+".yaml")}
 	b.AddResource("install:"+secretName, configResource, plan.DependOn("set-perms:pem-dir"))
 
 	return contents, decrypted, secretName, authConfig, nil
@@ -880,7 +882,7 @@ func configureFlux(b *plan.Builder, params SeedNodeParams) error {
 		if err != nil {
 			return errors.Wrap(err, "failed to process the git deploy key")
 		}
-		fluxAddon := existinginfrav1.Addon{Name: "flux", Params: gitParams}
+		fluxAddon := capeiv1alpha3.Addon{Name: "flux", Params: gitParams}
 		manifests, err := buildAddon(fluxAddon, params.ImageRepository, params.ClusterManifestPath, params.GetAddonNamespace("flux"))
 		if err != nil {
 			return errors.Wrap(err, "failed to generate manifests for flux")
@@ -1048,7 +1050,7 @@ func updateControllerImage(manifest []byte, controllerImageOverride string) ([]b
 }
 
 // parseCluster converts the manifest file into a Cluster
-func parseCluster(clusterManifestPath string) (eic *existinginfrav1.ExistingInfraCluster, err error) {
+func parseCluster(clusterManifestPath string) (eic *capeiv1alpha3.ExistingInfraCluster, err error) {
 	f, err := os.Open(clusterManifestPath)
 	if err != nil {
 		return nil, err
@@ -1082,7 +1084,7 @@ func parseAddons(ClusterManifestPath, namespace string, addonNamespaces map[stri
 	return ret, nil
 }
 
-func buildAddon(addonDefn existinginfrav1.Addon, imageRepository string, ClusterManifestPath, namespace string) ([][]byte, error) {
+func buildAddon(addonDefn capeiv1alpha3.Addon, imageRepository string, ClusterManifestPath, namespace string) ([][]byte, error) {
 	log.WithField("addon", addonDefn.Name).Debug("building addon")
 	// Generate the addon manifest.
 	addon, err := addons.Get(addonDefn.Name)

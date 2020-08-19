@@ -8,10 +8,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/weaveworks/wksctl/pkg/plan"
+	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/plan"
+	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/utilities/object"
 	"github.com/weaveworks/wksctl/pkg/plan/resource"
-	"github.com/weaveworks/wksctl/pkg/utilities/object"
-	"github.com/weaveworks/wksctl/test/plan/testutils"
 	appsv1 "k8s.io/api/apps/v1"
 	v1beta2 "k8s.io/api/apps/v1beta2"
 	v1 "k8s.io/api/core/v1"

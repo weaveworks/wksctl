@@ -9,10 +9,10 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/plan"
+	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/plan/runners/ssh"
 	"github.com/weaveworks/footloose/pkg/cluster"
 	"github.com/weaveworks/footloose/pkg/config"
-	"github.com/weaveworks/wksctl/pkg/plan"
-	"github.com/weaveworks/wksctl/pkg/plan/runners/ssh"
 )
 
 type Operation struct {
