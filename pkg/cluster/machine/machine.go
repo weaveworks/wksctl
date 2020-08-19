@@ -322,23 +322,6 @@ func GetKubernetesVersionFromMasterIn(machines []*clusterv1.Machine, bl []*exist
 	return version, ns, nil
 }
 
-// GetKubernetesVersion reads the Kubernetes version of the provided machine,
-// or if missing, returns the default version.
-func GetKubernetesVersion(machine *clusterv1.Machine) string {
-	if machine == nil {
-		return kubernetes.DefaultVersion
-	}
-	return getKubernetesVersion(machine)
-}
-
-func getKubernetesVersion(machine *clusterv1.Machine) string {
-	if machine.Spec.Version != nil {
-		return *machine.Spec.Version
-	}
-	log.WithField("machine", machine.Name).WithField("defaultVersion", kubernetes.DefaultVersion).Debug("No kubernetes version configured in manifest, falling back to default")
-	return kubernetes.DefaultVersion
-}
-
 // GetKubernetesNamespaceFromMachines reads the namespace of the Kubernetes control
 // plane from the applied machines. If no namespace is found, the
 // default Kubernetes namespace will be returned.

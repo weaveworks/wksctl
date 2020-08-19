@@ -15,7 +15,6 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	v1beta2 "k8s.io/api/apps/v1beta2"
 	v1 "k8s.io/api/core/v1"
-
 	"sigs.k8s.io/yaml"
 )
 
@@ -116,18 +115,12 @@ func TestFlux(t *testing.T) {
 	}
 
 	for _, test := range tests {
-
 		b := plan.NewBuilder()
-		o := &OS{
-			Name:    centOS,
-			runner:  &testutils.MockRunner{Output: "ID=\"centos\"\nVERSION=\"7 (Core)\"\nVERSION_ID=\"7\"", Err: nil},
-			PkgType: resource.PkgTypeRPM,
-		}
 		applyClstrRsc := &resource.KubectlApply{ManifestPath: object.String("")}
 		b.AddResource("kubectl:apply:cluster", applyClstrRsc)
 		applyMachinesRsc := &resource.KubectlApply{ManifestPath: object.String("")}
 		b.AddResource("kubectl:apply:machines", applyMachinesRsc)
-		err = o.configureFlux(b, SeedNodeParams{GitData: GitParams{GitURL: test.URL, GitBranch: test.branch, GitDeployKeyPath: test.deployKeyPath},
+		err = configureFlux(b, SeedNodeParams{GitData: GitParams{GitURL: test.URL, GitBranch: test.branch, GitDeployKeyPath: test.deployKeyPath},
 			Namespace: "system"})
 		assert.NoError(t, err)
 		p, err := b.Plan()

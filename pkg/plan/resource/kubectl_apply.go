@@ -123,7 +123,7 @@ func (ka *KubectlApply) Apply(runner plan.Runner, diff plan.Diff) (bool, error) 
 		}
 	}
 
-	if err := kubectlApply(runner, kubectlApplyArgs{
+	if err := RunKubectlApply(runner, KubectlApplyArgs{
 		Content:       c,
 		WaitCondition: ka.WaitCondition,
 	}, str(ka.Filename)); err != nil {
@@ -133,14 +133,14 @@ func (ka *KubectlApply) Apply(runner plan.Runner, diff plan.Diff) (bool, error) 
 	return true, nil
 }
 
-type kubectlApplyArgs struct {
+type KubectlApplyArgs struct {
 	// Content is the YAML manifest to be applied. Must be non-empty.
 	Content []byte
-	// WaitCondition, if non-empty, makes kubectlApply do "kubectl wait --for=<value>" on the applied resource.
+	// WaitCondition, if non-empty, makes RunKubectlApply do "kubectl wait --for=<value>" on the applied resource.
 	WaitCondition string
 }
 
-func kubectlApply(r plan.Runner, args kubectlApplyArgs, fname string) error {
+func RunKubectlApply(r plan.Runner, args KubectlApplyArgs, fname string) error {
 	// Write the manifest content to the remote filesystem.
 	path, err := writeTempFile(r, args.Content, fname)
 	if err != nil {
@@ -150,7 +150,7 @@ func kubectlApply(r plan.Runner, args kubectlApplyArgs, fname string) error {
 	defer r.RunCommand(fmt.Sprintf("rm -vf %q", path), nil) // TODO: Deferred error checking
 
 	// Run kubectl apply.
-	if err := kubectlRemoteApply(path, r); err != nil {
+	if err := RunKubectlRemoteApply(path, r); err != nil {
 		return errors.Wrap(err, "kubectl apply")
 	}
 
@@ -166,7 +166,7 @@ func kubectlApply(r plan.Runner, args kubectlApplyArgs, fname string) error {
 	return nil
 }
 
-func kubectlRemoteApply(remoteURL string, runner plan.Runner) error {
+func RunKubectlRemoteApply(remoteURL string, runner plan.Runner) error {
 	cmd := fmt.Sprintf("kubectl apply -f %q", remoteURL)
 
 	if stdouterr, err := runner.RunCommand(withoutProxy(cmd), nil); err != nil {

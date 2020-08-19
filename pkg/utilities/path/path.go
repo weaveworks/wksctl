@@ -1,28 +1,9 @@
 package path
 
 import (
-	"errors"
 	"fmt"
 	"os"
-	"os/user"
 	"path/filepath"
-	"strings"
-)
-
-// UserHomeDirectory returns the user directory.
-func UserHomeDirectory() (string, error) {
-	currentUser, err := user.Current()
-	if err == nil {
-		return currentUser.HomeDir, nil
-	}
-
-	home := os.Getenv("HOME")
-	if home != "" {
-		return home, nil
-	}
-
-	return "", errors.New("failed to find user home directly")
-}
 
 // Expand expands the provided path, evaluating all symlinks (including "~").
 func Expand(path string) (string, error) {

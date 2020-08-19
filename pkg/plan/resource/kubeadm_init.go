@@ -198,7 +198,7 @@ func (ki *KubeadmInit) kubectlApply(fileName, namespace string, runner plan.Runn
 	if err != nil {
 		return errors.Wrap(err, "Failed to upate manifest namespace")
 	}
-	return kubectlApply(runner, kubectlApplyArgs{Content: content}, fileName)
+	return RunKubectlApply(runner, KubectlApplyArgs{Content: content}, fileName)
 }
 
 func (ki *KubeadmInit) manifestContent(fileName string) ([]byte, error) {
@@ -231,7 +231,7 @@ func (ki *KubeadmInit) applySecretWith(sshKey []byte, discoveryTokenCaCertHash, 
 	if err != nil {
 		return errors.Wrap(err, "failed to serialize manifest")
 	}
-	return kubectlApply(runner, kubectlApplyArgs{Content: bytes}, fileName)
+	return RunKubectlApply(runner, KubectlApplyArgs{Content: bytes}, fileName)
 }
 
 func (ki *KubeadmInit) deserializeSecret(fileName, namespace string) (*corev1.Secret, error) {

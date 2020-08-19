@@ -134,14 +134,6 @@ func ParseClusterManifest(file string) (*clusterv1.Cluster, *existinginfrav1.Exi
 	return ParseCluster(f)
 }
 
-func TranslateServerArgumentsToStringMap(args []existinginfrav1.ServerArgument) map[string]string {
-	result := map[string]string{}
-	for _, arg := range args {
-		result[arg.Name] = arg.Value
-	}
-	return result
-}
-
 // Getters for nested fields needed externally
 func (s *Specs) GetClusterName() string {
 	return s.Cluster.ObjectMeta.Name
