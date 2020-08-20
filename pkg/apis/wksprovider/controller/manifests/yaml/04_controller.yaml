@@ -43,8 +43,7 @@ spec:
       containers:
       - name: controller
         image: docker.io/weaveworks/wksctl-controller:latest
-        command:
-        - /bin/controller
+        args:
         - --verbose
         resources:
           limits:
