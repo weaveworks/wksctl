@@ -19,7 +19,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-const clusterYAML = `apiVersion: cluster.x-k8s.io/v1alpha3
+var clusterYAML = `
+apiVersion: cluster.x-k8s.io/v1alpha3
 kind: Cluster
 metadata:
   name: test-multimaster
@@ -52,6 +53,10 @@ spec:
       source:
         configmap: repo
         key: local.repo
+    - destination: /tmp/cloud-google-com.gpg.b64
+      source:
+        configmap: repo
+        key: cloud-google-com.gpg.b64
   cri:
     kind: docker
     package: docker-ce
@@ -71,7 +76,7 @@ spec:
       value: "10000"
 `
 
-const machinesYAML = `
+var machinesYAML = `
   apiVersion: cluster.x-k8s.io/v1alpha3
   kind: Machine
   metadata:
@@ -208,11 +213,56 @@ data:
     baseurl=http://%s
     enabled=1
     gpgcheck=0
+
+  cloud-google-com.gpg.b64: |
+    mQENBFUd6rIBCAD6mhKRHDn3UrCeLDp7U5IE7AhhrOCPpqGF7mfTemZYHf/5JdjxcOxoSFlK7zwm
+    Fr3lVqJ+tJ9L1wd1K6P7RrtaNwCiZyeNPf/Y86AJ5NJwBe0VD0xHTXzPNTqRSByVYtdN94NoltXU
+    YFAAPZYQls0x0nUD1hLMlOlC2HdTPrD1PMCnYq/NuL/Vk8sWrcUt4DIS+0RDQ8tKKe5PSV0+Pnma
+    JvdF5CKawhh0qGTklS2MXTyKFoqjXgYDfY2EodI9ogT/LGr9Lm/+u4OFPvmN9VN6UG+s0DgJjWvp
+    bmuHL/ZIRwMEn/tpuneaLTO7h1dCrXC849PiJ8wSkGzBnuJQUbXnABEBAAG0QEdvb2dsZSBDbG91
+    ZCBQYWNrYWdlcyBBdXRvbWF0aWMgU2lnbmluZyBLZXkgPGdjLXRlYW1AZ29vZ2xlLmNvbT6JAT4E
+    EwECACgFAlUd6rICGy8FCQWjmoAGCwkIBwMCBhUIAgkKCwQWAgMBAh4BAheAAAoJEDdGwginMXsP
+    cLcIAKi2yNhJMbu4zWQ2tM/rJFovazcY28MF2rDWGOnc9giHXOH0/BoMBcd8rw0lgjmOosBdM2JT
+    0HWZIxC/Gdt7NSRA0WOlJe04u82/o3OHWDgTdm9MS42noSP0mvNzNALBbQnlZHU0kvt3sV1Ysnrx
+    ljoIuvxKWLLwren/GVshFLPwONjw3f9Fan6GWxJyn/dkX3OSUGaduzcygw51vksBQiUZLCD2Tlxy
+    r9NvkZYTqiaWW78L6regvATsLc9L/dQUiSMQZIK6NglmHE+cuSaoK0H4ruNKeTiQUw/EGFaLecay
+    6Qy/s3Hk7K0QLd+gl0hZ1w1VzIeXLo2BRlqnjOYFX4CwAgADmQENBFrBaNsBCADrF18KCbsZlo4N
+    jAvVecTBCnp6WcBQJ5oSh7+E98jX9YznUCrNrgmeCcCMUvTDRDxfTaDJybaHugfba43nqhkbNpJ4
+    7YXsIa+YL6eEE9emSmQtjrSWIiY+2YJYwsDgsgckF3duqkb02OdBQlh6IbHPoXB6H//b1PgZYsom
+    B+841XW1LSJPYlYbIrWfwDfQvtkFQI90r6NknVTQlpqQh5GLNWNYqRNrGQPmsB+NrUYrkl1nUt1L
+    RGu+rCe4bSaSmNbwKMQKkROE4kTiB72DPk7zH4Lm0uo0YFFWG4qsMIuqEihJ/9KNX8GYBr+tWgyL
+    ooLlsdK3l+4dVqd8cjkJM1ExABEBAAG0QEdvb2dsZSBDbG91ZCBQYWNrYWdlcyBBdXRvbWF0aWMg
+    U2lnbmluZyBLZXkgPGdjLXRlYW1AZ29vZ2xlLmNvbT6JAT4EEwECACgFAlrBaNsCGy8FCQWjmoAG
+    CwkIBwMCBhUIAgkKCwQWAgMBAh4BAheAAAoJEGoDCyG6B/T78e8H/1WH2LN/nVNhm5TS1VYJG8B+
+    IW8zS4BqyozxC9iJAJqZIVHXl8g8a/Hus8RfXR7cnYHcg8sjSaJfQhqO9RbKnffiuQgGrqwQxuC2
+    jBa6M/QKzejTeP0Mgi67pyrLJNWrFI71RhritQZmzTZ2PoWxfv6b+Tv5v0rPaG+ut1J47pn+kYgt
+    UaKdsJz1umi6HzK6AacDf0C0CksJdKG7MOWsZcB4xeOxJYuy6NuO6KcdEz8/XyEUjIuIOlhYTd0h
+    H8E/SEBbXXft7/VBQC5wNq40izPi+6WFK/e1O42DIpzQ749ogYQ1eodexPNhLzekKR3XhGrNXJ95
+    r5KO10VrsLFNd8KwAgAD
 `
 
+const CENTOS = `centos`
+const UBUNTU = `ubuntu`
+
+var (
+	registryPort                       int
+	registryIP                         string
+	yumRepoIP                          string
+	tag                                string
+	node_os, node_version              string
+	node0IP, node1IP, node2IP, node3IP string
+)
+
 func TestMultimasterSetup(t *testing.T) {
-	tag := imageTag(t)
-	registryPort := port(t, "REGISTRY_PORT", 5000)
+
+	node_os, node_version = strings.Trim(os.Getenv("NODE_OS"), " "), "18.04"
+	if node_os != UBUNTU {
+		node_os, node_version = CENTOS, "7"
+	}
+
+	fmt.Printf("Running MultiMasterTest with %s:%s nodes", node_os, node_version)
+	tag = imageTag(t)
+	registryPort = port(t, "REGISTRY_PORT", 5000)
 	repositoryPort := port(t, "REPOSITORY_PORT", 8080)
 
 	// Ensure the local Docker registry is running:
@@ -225,36 +275,42 @@ func TestMultimasterSetup(t *testing.T) {
 	}
 	run(t, "docker", "tag", fmt.Sprintf("docker.io/weaveworks/wksctl-controller:%s", tag), fmt.Sprintf("localhost:%d/weaveworks/wksctl-controller:%s", registryPort, tag))
 	run(t, "docker", "push", fmt.Sprintf("localhost:%d/weaveworks/wksctl-controller:%s", registryPort, tag))
-	registryIP := sanitizeIP(run(t, "docker", "inspect", "registry", "--format='{{.NetworkSettings.IPAddress}}'"))
+	registryIP = sanitizeIP(run(t, "docker", "inspect", "registry", "--format='{{.NetworkSettings.IPAddress}}'"))
 
 	// Ensure the local YUM repo is running:
 	if out := runIgnoreError(t, "docker", "inspect", "-f", "'{{.State.Running}}'", "yumrepo"); !strings.Contains(out, "true") {
 		// NOTE: image must be updated each time Kubernetes or Docker is updated in wksctl
 		run(t, "docker", "run", "-d", "-p", fmt.Sprintf("%d:80", repositoryPort), "--restart", "always", "--name", "yumrepo", "weaveworks/local-yum-repo:master-48b0deac")
 	}
-	yumRepoIP := sanitizeIP(run(t, "docker", "inspect", "yumrepo", "--format='{{.NetworkSettings.IPAddress}}'"))
-
+	yumRepoIP = sanitizeIP(run(t, "docker", "inspect", "yumrepo", "--format='{{.NetworkSettings.IPAddress}}'"))
 	// Start the footloose container "VMs" used for testing:
-	run(t, "footloose", "create", "-c", "../../../examples/footloose/centos7/docker/multimaster.yaml")
-	node0IP := sanitizeIP(run(t, "docker", "inspect", "centos-multimaster-node0", "--format='{{.NetworkSettings.IPAddress}}'"))
-	node1IP := sanitizeIP(run(t, "docker", "inspect", "centos-multimaster-node1", "--format='{{.NetworkSettings.IPAddress}}'"))
-	node2IP := sanitizeIP(run(t, "docker", "inspect", "centos-multimaster-node2", "--format='{{.NetworkSettings.IPAddress}}'"))
-	node3IP := sanitizeIP(run(t, "docker", "inspect", "centos-multimaster-node3", "--format='{{.NetworkSettings.IPAddress}}'"))
+	run(t, "footloose", "create", "-c", "../../../examples/footloose/"+node_os+node_version+"/docker/multimaster.yaml")
+	node0IP = sanitizeIP(run(t, "docker", "inspect", node_os+"-multimaster-node0", "--format='{{.NetworkSettings.IPAddress}}'"))
+	fmt.Printf("node0IP: %s\n", node0IP)
+	node1IP = sanitizeIP(run(t, "docker", "inspect", node_os+"-multimaster-node1", "--format='{{.NetworkSettings.IPAddress}}'"))
+	node2IP = sanitizeIP(run(t, "docker", "inspect", node_os+"-multimaster-node2", "--format='{{.NetworkSettings.IPAddress}}'"))
+	node3IP = sanitizeIP(run(t, "docker", "inspect", node_os+"-multimaster-node3", "--format='{{.NetworkSettings.IPAddress}}'"))
 
 	dirName := tempDir(t)
-	clusterYAML := saveToFile(t, dirName, "cluster.yaml", fmt.Sprintf(clusterYAML, registryIP, registryPort))
-	machinesYAML := saveToFile(t, dirName, "machines.yaml", fmt.Sprintf(machinesYAML, node0IP, node1IP, node2IP, node3IP))
+	clusterYamlContent := fmt.Sprintf(clusterYAML, registryIP, registryPort)
+	clusterYaml := saveToFile(t, dirName, "cluster.yaml", clusterYamlContent)
+	fmt.Printf("clusterYAML file: %s\ncontents: \n%+v\n", clusterYaml, clusterYamlContent)
+
+	machinesYamlContent := fmt.Sprintf(string(machinesYAML), node0IP, node1IP, node2IP, node3IP)
+	machinesYaml := saveToFile(t, dirName, "machines.yaml", machinesYamlContent)
+	fmt.Printf("machinesYAML file: %s\ncontents: \n%+v\n", machinesYaml, machinesYamlContent)
+
 	_ = saveToFile(t, dirName, "repo-config.yaml", fmt.Sprintf(repoConfigMap, yumRepoIP))
 	_ = saveToFile(t, dirName, "docker-config.yaml", fmt.Sprintf(dockerConfigMap, registryIP, registryPort))
 
 	run(t, "../../../cmd/wksctl/wksctl", "apply",
-		fmt.Sprintf("--cluster=%s", clusterYAML), fmt.Sprintf("--machines=%s", machinesYAML),
+		fmt.Sprintf("--cluster=%s", clusterYaml), fmt.Sprintf("--machines=%s", machinesYaml),
 		fmt.Sprintf("--config-directory=%s", dirName),
 		"--verbose",
 		fmt.Sprintf("--controller-image=docker.io/weaveworks/wksctl-controller:%s", tag))
 
 	out := run(t, "../../../cmd/wksctl/wksctl", "kubeconfig",
-		fmt.Sprintf("--cluster=%s", clusterYAML), fmt.Sprintf("--machines=%s", machinesYAML))
+		fmt.Sprintf("--cluster=%s", clusterYaml), fmt.Sprintf("--machines=%s", machinesYaml))
 
 	var nodeList corev1.NodeList
 	for {
@@ -284,7 +340,7 @@ func TestMultimasterSetup(t *testing.T) {
 		for _, kubeletArg := range expectedKubeletArgs {
 			log.Infof("Checking kubelet arg (%s) on node%d", kubeletArg, i)
 			run(t, "footloose",
-				"-c", "../../../examples/footloose/centos7/docker/multimaster.yaml",
+				"-c", "../../../examples/footloose/"+node_os+node_version+"/docker/multimaster.yaml",
 				"ssh", fmt.Sprintf("root@node%d", i), fmt.Sprintf("ps -ef | grep -v 'ps -ef' | grep /usr/bin/kubelet | grep %s", kubeletArg))
 		}
 
@@ -293,7 +349,7 @@ func TestMultimasterSetup(t *testing.T) {
 			for _, apiServerArg := range expectedApiServerArgs {
 				log.Infof("Checking api server arg (%s) on node%d", apiServerArg, i)
 				run(t, "footloose",
-					"-c", "../../../examples/footloose/centos7/docker/multimaster.yaml",
+					"-c", "../../../examples/footloose/"+node_os+node_version+"/docker/multimaster.yaml",
 					"ssh", fmt.Sprintf("root@node%d", i), fmt.Sprintf("ps -ef | grep -v 'ps -ef' | grep kube-apiserver | grep %s", apiServerArg))
 			}
 		}
@@ -301,7 +357,7 @@ func TestMultimasterSetup(t *testing.T) {
 
 	if !t.Failed() { // Otherwise leave the footloose "VMs" & config files around for debugging purposes.
 		// Clean up:
-		defer runIgnoreError(t, "footloose", "delete", "-c", "../../../examples/footloose/centos7/docker/multimaster.yaml")
+		defer runIgnoreError(t, "footloose", "delete", "-c", "../../../examples/footloose/"+node_os+node_version+"/docker/multimaster.yaml")
 		defer os.Remove(dirName)
 		defer os.Remove(clusterYAML)
 		defer os.Remove(machinesYAML)
@@ -373,6 +429,22 @@ func waitForLocalRegistryToStart(t *testing.T, port int) {
 			break
 		}
 	}
+}
+
+func removeIfExists(dirOrFile string) {
+	if _, err := os.Stat(dirOrFile); err == nil {
+		os.Remove(dirOrFile)
+	}
+}
+
+// Clean up:
+func cleanup(t *testing.T, node_os, node_version, dirName, clusterYAML, machinesYAML string) {
+	runIgnoreError(t, "footloose", "delete", "-c", "../../../examples/footloose/"+node_os+node_version+"/docker/multimaster.yaml")
+	removeIfExists(dirName)
+	removeIfExists(clusterYAML)
+	removeIfExists(machinesYAML)
+	removeIfExists(repoConfigMap)
+	removeIfExists(repoConfigMap)
 }
 
 func shouldRetagPush(t *testing.T, port int) bool {
