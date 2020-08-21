@@ -133,13 +133,12 @@ container-tests: pkg/apis/wksprovider/machine/scripts/scripts_vfsdata.go pkg/api
 	go test -count=1 ./test/container/...
 
 
-integration-tests-container: cmd/wksctl/wksctl cmd/controller/.uptodate
-	IMAGE_TAG=$(IMAGE_TAG)
+integration-tests-container: cmd/wksctl/wksctl
 	APK_INDEX='https://https:dl-cdn.alpinelinux.org/alpine/v3.11/main/x86_64/APKINDEX.tar.gz https://dl-cdn.alpinelinux.org/alpine/v3.11/community/x86_64/APKINDEX.tar.gz'
 	NODE_OS1="centos"
 	NODE_OS2="ubuntu"
 	NODE_OS_CHOICE=$$(echo $$NODE_OS1 $$NODE_OS2 | tr ' ' '\n' | shuf | head -1)
-	NODE_OS="$${NODE_OS_CHOICE}" go test -v -timeout 40m ./test/integration/container/...
+	IMAGE_TAG=$(IMAGE_TAG) NODE_OS="$${NODE_OS_CHOICE}" go test -v -timeout 40m ./test/integration/container/...
 
 FORCE:
 
