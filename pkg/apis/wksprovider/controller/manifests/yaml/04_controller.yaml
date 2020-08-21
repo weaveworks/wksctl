@@ -42,7 +42,7 @@ spec:
         operator: Exists
       containers:
       - name: controller
-        image: docker.io/weaveworks/wksctl-controller:latest
+        image: weaveworks/cluster-api-existinginfra-controller:v0.0.2
         args:
         - --verbose
         resources:
