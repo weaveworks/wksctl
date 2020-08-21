@@ -431,22 +431,6 @@ func waitForLocalRegistryToStart(t *testing.T, port int) {
 	}
 }
 
-func removeIfExists(dirOrFile string) {
-	if _, err := os.Stat(dirOrFile); err == nil {
-		os.Remove(dirOrFile)
-	}
-}
-
-// Clean up:
-func cleanup(t *testing.T, node_os, node_version, dirName, clusterYAML, machinesYAML string) {
-	runIgnoreError(t, "footloose", "delete", "-c", "../../../examples/footloose/"+node_os+node_version+"/docker/multimaster.yaml")
-	removeIfExists(dirName)
-	removeIfExists(clusterYAML)
-	removeIfExists(machinesYAML)
-	removeIfExists(repoConfigMap)
-	removeIfExists(repoConfigMap)
-}
-
 func shouldRetagPush(t *testing.T, port int) bool {
 	images := run(t, "../../../environments/local-docker-registry/retag_push.sh", "-p", strconv.Itoa(port), "--print-local")
 	for _, image := range strings.Split(images, "\n") {
