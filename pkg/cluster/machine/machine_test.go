@@ -7,9 +7,10 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	capeiv1alpha3 "github.com/weaveworks/cluster-api-provider-existinginfra/apis/cluster.weave.works/v1alpha3"
+	capeimachine "github.com/weaveworks/cluster-api-provider-existinginfra/pkg/cluster/machine"
+	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/kubernetes"
 	"github.com/weaveworks/wksctl/pkg/cluster/machine"
-	existinginfrav1 "github.com/weaveworks/wksctl/pkg/existinginfra/v1alpha3"
-	"github.com/weaveworks/wksctl/pkg/kubernetes"
 	"github.com/weaveworks/wksctl/pkg/utilities/manifest"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -43,7 +44,7 @@ func TestIsNode(t *testing.T) {
 }
 
 func TestFirstMasterInPointersArray(t *testing.T) {
-	bl := []*existinginfrav1.ExistingInfraMachine{nil, nil}
+	bl := []*capeiv1alpha3.ExistingInfraMachine{nil, nil}
 	v1, _ := machine.FirstMaster([]*clusterv1.Machine{
 		&worker,
 		&master,
@@ -206,7 +207,7 @@ const machinesNoGodNoMaster = `
       address: "172.17.8.102"
 `
 
-func machinesFromString(t *testing.T, s string) ([]*clusterv1.Machine, []*existinginfrav1.ExistingInfraMachine) {
+func machinesFromString(t *testing.T, s string) ([]*clusterv1.Machine, []*capeiv1alpha3.ExistingInfraMachine) {
 	r := ioutil.NopCloser(strings.NewReader(s))
 	machines, bml, err := machine.Parse(r)
 	assert.NoError(t, err)
@@ -320,6 +321,6 @@ func TestGetKubernetesVersionFromMasterInGetsControlPlaneVersion(t *testing.T) {
 
 func TestGetKubernetesVersionDefaultsVersionWhenMachinesDoNotSpecifyAny(t *testing.T) {
 	machines, _ := machinesFromString(t, machinesWithoutVersions)
-	version := machine.GetKubernetesVersion(machines[0])
+	version := capeimachine.GetKubernetesVersion(machines[0])
 	assert.Equal(t, kubernetes.DefaultVersion, version)
 }

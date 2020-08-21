@@ -58,7 +58,6 @@ BINARIES = \
 	cmd/wksctl/wksctl \
 	cmd/mock-authz-server/server \
 	cmd/mock-https-authz-server/server \
-	cmd/controller/controller \
 	$(NULL)
 
 binaries: $(BINARIES)
@@ -91,11 +90,6 @@ cmd/wksctl/wksctl: $(DEPS) generated
 cmd/wksctl/wksctl: cmd/wksctl/*.go
 	CGO_ENABLED=0 GOARCH=amd64 go build -ldflags "-X github.com/weaveworks/wksctl/pkg/version.Version=$(VERSION) -X github.com/weaveworks/wksctl/pkg/version.ImageTag=$(IMAGE_TAG)" -o $@ cmd/wksctl/*.go
 
-cmd/controller/.uptodate: cmd/controller/controller cmd/controller/Dockerfile
-cmd/controller/controller: $(DEPS) generated
-cmd/controller/controller: cmd/controller/*.go
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-X main.version=$(VERSION)" -o $@ cmd/controller/*.go
-
 cmd/mock-authz-server/.uptodate: cmd/mock-authz-server/server cmd/mock-authz-server/Dockerfile
 cmd/mock-authz-server/server: cmd/mock-authz-server/*.go
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-X main.version=$(VERSION)" -o $@ cmd/mock-authz-server/*.go
@@ -120,7 +114,6 @@ clean:
 	$(SUDO) docker rmi $(IMAGE_NAMES) >/dev/null 2>&1 || true
 	rm -rf $(UPTODATE_FILES)
 	rm -f cmd/wksctl/wksctl
-	rm -f cmd/controller/controller
 
 push:
 	for IMAGE_NAME in $(IMAGE_NAMES); do \
@@ -139,7 +132,7 @@ mkfile_dir := $(dir $(mkfile_path))
 container-tests: pkg/apis/wksprovider/machine/scripts/scripts_vfsdata.go pkg/apis/wksprovider/controller/manifests/manifests_vfsdata.go
 	go test -count=1 ./test/container/...
 
-integration-tests-container: cmd/wksctl/wksctl cmd/controller/.uptodate
+integration-tests-container: cmd/wksctl/wksctl
 	IMAGE_TAG=$(IMAGE_TAG) go test -v -timeout 20m ./test/integration/container/...
 
 FORCE:

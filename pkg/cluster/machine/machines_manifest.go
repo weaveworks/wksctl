@@ -7,7 +7,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/thanhpk/randstr"
-	existinginfrav1 "github.com/weaveworks/wksctl/pkg/existinginfra/v1alpha3"
+	capeiv1alpha3 "github.com/weaveworks/cluster-api-provider-existinginfra/apis/cluster.weave.works/v1alpha3"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"
 	"sigs.k8s.io/yaml"
 )
@@ -55,7 +55,7 @@ func UpdateWithGeneratedNames(r io.ReadCloser) (string, error) {
 	return buf.String(), err
 }
 
-func WriteMachines(w io.Writer, machines []*clusterv1.Machine, bml []*existinginfrav1.ExistingInfraMachine) error {
+func WriteMachines(w io.Writer, machines []*clusterv1.Machine, bml []*capeiv1alpha3.ExistingInfraMachine) error {
 	// Need to do this in a loop because we want a stream not an array
 	for _, machine := range machines {
 		manifestBytes, err := yaml.Marshal(machine)

@@ -6,8 +6,9 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/config"
-	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/os"
+	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/apis/wksprovider/machine/config"
+	capeios "github.com/weaveworks/cluster-api-provider-existinginfra/pkg/apis/wksprovider/machine/os"
+	wksos "github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/os"
 	"github.com/weaveworks/wksctl/pkg/manifests"
 	"github.com/weaveworks/wksctl/pkg/plan/runners/ssh"
 	"github.com/weaveworks/wksctl/pkg/specs"
@@ -90,7 +91,7 @@ func displayPlan(clusterManifestPath, machinesManifestPath string) error {
 		return errors.Wrap(err, "failed to create SSH client: ")
 	}
 	defer sshClient.Close()
-	installer, err := os.Identify(sshClient)
+	installer, err := capeios.Identify(sshClient)
 	if err != nil {
 		return errors.Wrapf(err, "failed to identify operating system for seed node (%s)", sp.GetMasterPublicAddress())
 	}
@@ -101,7 +102,7 @@ func displayPlan(clusterManifestPath, machinesManifestPath string) error {
 		configDir = filepath.Dir(clusterManifestPath)
 	}
 
-	params := os.SeedNodeParams{
+	params := wksos.SeedNodeParams{
 		PublicIP:             sp.GetMasterPublicAddress(),
 		PrivateIP:            sp.GetMasterPrivateAddress(),
 		ClusterManifestPath:  clusterManifestPath,
@@ -111,11 +112,11 @@ func displayPlan(clusterManifestPath, machinesManifestPath string) error {
 			NodeIP:        sp.GetMasterPrivateAddress(),
 			CloudProvider: sp.GetCloudProvider(),
 		},
-		Controller: os.ControllerParams{
+		Controller: wksos.ControllerParams{
 			ImageOverride: viewOptions.controllerImage,
 			ImageBuiltin:  "docker.io/weaveworks/wksctl-controller:" + version.ImageTag,
 		},
-		GitData: os.GitParams{
+		GitData: wksos.GitParams{
 			GitURL:           viewOptions.gitURL,
 			GitBranch:        viewOptions.gitBranch,
 			GitPath:          viewOptions.gitPath,
@@ -126,7 +127,7 @@ func displayPlan(clusterManifestPath, machinesManifestPath string) error {
 		AddonNamespaces:      manifest.DefaultAddonNamespaces,
 		ConfigDirectory:      configDir,
 	}
-	plan, err := installer.CreateSeedNodeSetupPlan(params)
+	plan, err := wksos.CreateSeedNodeSetupPlan(installer, params)
 	if err != nil {
 		return errors.Wrap(err, "could not generate plan")
 	}
