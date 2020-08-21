@@ -9,8 +9,10 @@ import (
 	"github.com/blang/semver"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	capeiv1alpha3 "github.com/weaveworks/cluster-api-provider-existinginfra/apis/cluster.weave.works/v1alpha3"
+	capeimachine "github.com/weaveworks/cluster-api-provider-existinginfra/pkg/cluster/machine"
+	capeikubernetes "github.com/weaveworks/cluster-api-provider-existinginfra/pkg/kubernetes"
 	"github.com/weaveworks/libgitops/pkg/serializer"
-	existinginfrav1 "github.com/weaveworks/wksctl/pkg/existinginfra/v1alpha3"
 	"github.com/weaveworks/wksctl/pkg/kubernetes"
 	"github.com/weaveworks/wksctl/pkg/scheme"
 	"github.com/weaveworks/wksctl/pkg/utilities/manifest"
@@ -42,7 +44,7 @@ func IsNode(machine *clusterv1.Machine) bool {
 // FirstMaster scans the provided array of machines and return the first
 // one which is a "Master" or nil if none.
 // Machines and ExistingInfraMachines must be in the same order
-func FirstMaster(machines []*clusterv1.Machine, bl []*existinginfrav1.ExistingInfraMachine) (*clusterv1.Machine, *existinginfrav1.ExistingInfraMachine) {
+func FirstMaster(machines []*clusterv1.Machine, bl []*capeiv1alpha3.ExistingInfraMachine) (*clusterv1.Machine, *capeiv1alpha3.ExistingInfraMachine) {
 	// TODO: validate size and ordering of lists
 	for i, machine := range machines {
 		if IsMaster(machine) {
@@ -53,7 +55,7 @@ func FirstMaster(machines []*clusterv1.Machine, bl []*existinginfrav1.ExistingIn
 }
 
 // ParseManifest parses the provided machines manifest file.
-func ParseManifest(file string) (ml []*clusterv1.Machine, bl []*existinginfrav1.ExistingInfraMachine, err error) {
+func ParseManifest(file string) (ml []*clusterv1.Machine, bl []*capeiv1alpha3.ExistingInfraMachine, err error) {
 	f, err := os.Open(file)
 	if err != nil {
 		return nil, nil, err
@@ -66,7 +68,7 @@ func ParseManifest(file string) (ml []*clusterv1.Machine, bl []*existinginfrav1.
 }
 
 // Parse parses the provided machines io.Reader.
-func Parse(rc io.ReadCloser) (ml []*clusterv1.Machine, bl []*existinginfrav1.ExistingInfraMachine, err error) {
+func Parse(rc io.ReadCloser) (ml []*clusterv1.Machine, bl []*capeiv1alpha3.ExistingInfraMachine, err error) {
 	// Read from the ReadCloser YAML document-by-document
 	fr := serializer.NewYAMLFrameReader(rc)
 
@@ -81,7 +83,7 @@ func Parse(rc io.ReadCloser) (ml []*clusterv1.Machine, bl []*existinginfrav1.Exi
 		switch typed := obj.(type) {
 		case *clusterv1.Machine:
 			ml = append(ml, typed)
-		case *existinginfrav1.ExistingInfraMachine:
+		case *capeiv1alpha3.ExistingInfraMachine:
 			bl = append(bl, typed)
 		default:
 			return nil, nil, fmt.Errorf("unexpected type %T", obj)
@@ -92,7 +94,7 @@ func Parse(rc io.ReadCloser) (ml []*clusterv1.Machine, bl []*existinginfrav1.Exi
 }
 
 // Validate validates the provided machines.
-func Validate(machines []*clusterv1.Machine, bl []*existinginfrav1.ExistingInfraMachine) field.ErrorList {
+func Validate(machines []*clusterv1.Machine, bl []*capeiv1alpha3.ExistingInfraMachine) field.ErrorList {
 	if len(machines) == 0 { // Some other validations crash on empty list
 		return field.ErrorList{nonFieldError("no machines")}
 	}
@@ -240,7 +242,7 @@ func populateVersions(m *clusterv1.Machine) {
 	if m.Spec.Version != nil {
 		return
 	}
-	versionCopy := kubernetes.DefaultVersion
+	versionCopy := capeikubernetes.DefaultVersion
 	m.Spec.Version = &versionCopy
 }
 
@@ -271,7 +273,7 @@ func Populate(machines []*clusterv1.Machine) {
 
 // InvalidMachinesHandler encapsulates logic to apply in case of an invalid
 // machines manifest being provided.
-type InvalidMachinesHandler = func(machines []*clusterv1.Machine, bl []*existinginfrav1.ExistingInfraMachine, errors field.ErrorList) ([]*clusterv1.Machine, []*existinginfrav1.ExistingInfraMachine, error)
+type InvalidMachinesHandler = func(machines []*clusterv1.Machine, bl []*capeiv1alpha3.ExistingInfraMachine, errors field.ErrorList) ([]*clusterv1.Machine, []*capeiv1alpha3.ExistingInfraMachine, error)
 
 // NoOpInvalidMachinesHandler does nothing when an invalid machines manifest
 // is being provided.
@@ -281,7 +283,7 @@ var NoOpInvalidMachinesHandler = func(machines []*clusterv1.Machine, errors fiel
 
 // ParseAndDefaultAndValidate parses the provided manifest, validates it and
 // defaults values where possible.
-func ParseAndDefaultAndValidate(machinesManifestPath string, errorsHandler InvalidMachinesHandler) ([]*clusterv1.Machine, []*existinginfrav1.ExistingInfraMachine, error) {
+func ParseAndDefaultAndValidate(machinesManifestPath string, errorsHandler InvalidMachinesHandler) ([]*clusterv1.Machine, []*capeiv1alpha3.ExistingInfraMachine, error) {
 	machines, bl, err := ParseManifest(machinesManifestPath)
 	if err != nil {
 		return nil, nil, err
@@ -306,37 +308,20 @@ func GetKubernetesVersionFromManifest(machinesManifestPath string) (string, stri
 // GetKubernetesVersionFromMasterIn reads the version of the Kubernetes control
 // plane from the provided machines. If no version is configured, the default
 // Kubernetes version will be returned.
-func GetKubernetesVersionFromMasterIn(machines []*clusterv1.Machine, bl []*existinginfrav1.ExistingInfraMachine) (string, string, error) {
+func GetKubernetesVersionFromMasterIn(machines []*clusterv1.Machine, bl []*capeiv1alpha3.ExistingInfraMachine) (string, string, error) {
 	// Ensures all machines have the same version (either specified or empty):
 	errs := Validate(machines, bl)
 	if len(errs) > 0 {
 		return "", "", errs.ToAggregate()
 	}
 	machine, _ := FirstMaster(machines, bl)
-	version := GetKubernetesVersion(machine)
+	version := capeimachine.GetKubernetesVersion(machine)
 	ns := machine.ObjectMeta.Namespace
 	if ns == "" {
 		ns = manifest.DefaultNamespace
 	}
 	log.WithField("machine", machine.Name).WithField("version", version).WithField("namespace", ns).Debug("Kubernetes version used")
 	return version, ns, nil
-}
-
-// GetKubernetesVersion reads the Kubernetes version of the provided machine,
-// or if missing, returns the default version.
-func GetKubernetesVersion(machine *clusterv1.Machine) string {
-	if machine == nil {
-		return kubernetes.DefaultVersion
-	}
-	return getKubernetesVersion(machine)
-}
-
-func getKubernetesVersion(machine *clusterv1.Machine) string {
-	if machine.Spec.Version != nil {
-		return *machine.Spec.Version
-	}
-	log.WithField("machine", machine.Name).WithField("defaultVersion", kubernetes.DefaultVersion).Debug("No kubernetes version configured in manifest, falling back to default")
-	return kubernetes.DefaultVersion
 }
 
 // GetKubernetesNamespaceFromMachines reads the namespace of the Kubernetes control

@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	existinginfrav1 "github.com/weaveworks/wksctl/pkg/existinginfra/v1alpha3"
+	capeiv1alpha3 "github.com/weaveworks/cluster-api-provider-existinginfra/apis/cluster.weave.works/v1alpha3"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"
 )
@@ -273,7 +273,7 @@ spec:
 	  keytab: /foo
 `
 
-func clusterFromString(t *testing.T, s string) (*clusterv1.Cluster, *existinginfrav1.ExistingInfraCluster) {
+func clusterFromString(t *testing.T, s string) (*clusterv1.Cluster, *capeiv1alpha3.ExistingInfraCluster) {
 	r := ioutil.NopCloser(strings.NewReader(s))
 	cluster, eic, err := ParseCluster(r)
 	assert.NoError(t, err)

@@ -6,6 +6,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	capeipath "github.com/weaveworks/cluster-api-provider-existinginfra/pkg/utilities/path"
 	"github.com/weaveworks/wksctl/pkg/kubernetes/config"
 	"github.com/weaveworks/wksctl/pkg/manifests"
 	"github.com/weaveworks/wksctl/pkg/specs"
@@ -105,7 +106,7 @@ func writeKubeconfig(cpath, mpath string) error {
 	sp := specs.NewFromPaths(cpath, mpath)
 
 	if kubeconfigOptions.artifactDirectory != "" {
-		wksHome, err = path.CreateDirectory(path.ExpandHome(kubeconfigOptions.artifactDirectory))
+		wksHome, err = path.CreateDirectory(capeipath.ExpandHome(kubeconfigOptions.artifactDirectory))
 		if err != nil {
 			return errors.Wrapf(err, "failed to create WKS home directory")
 		}

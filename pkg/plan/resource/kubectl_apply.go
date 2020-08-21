@@ -8,16 +8,17 @@ import (
 
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/apis/wksprovider/machine/scripts"
+	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/plan"
+	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/plan/resource"
+	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/utilities/manifest"
 	"github.com/weaveworks/libgitops/pkg/serializer"
-	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/scripts"
-	"github.com/weaveworks/wksctl/pkg/plan"
-	"github.com/weaveworks/wksctl/pkg/utilities/manifest"
 )
 
 // KubectlApply is a resource applying the provided manifest.
 // It doesn't realise any state, Apply will always apply the manifest.
 type KubectlApply struct {
-	base
+	resource.Base
 
 	// Filename is the remote manifest file name.
 	// Only provide this if you do NOT provide ManifestPath or ManifestURL.
@@ -57,7 +58,7 @@ var _ plan.Resource = plan.RegisterResource(&KubectlApply{})
 
 // State implements plan.Resource.
 func (ka *KubectlApply) State() plan.State {
-	return toState(ka)
+	return resource.ToState(ka)
 }
 
 func (ka *KubectlApply) content() ([]byte, error) {
@@ -123,7 +124,7 @@ func (ka *KubectlApply) Apply(runner plan.Runner, diff plan.Diff) (bool, error) 
 		}
 	}
 
-	if err := kubectlApply(runner, kubectlApplyArgs{
+	if err := RunKubectlApply(runner, KubectlApplyArgs{
 		Content:       c,
 		WaitCondition: ka.WaitCondition,
 	}, str(ka.Filename)); err != nil {
@@ -133,14 +134,14 @@ func (ka *KubectlApply) Apply(runner plan.Runner, diff plan.Diff) (bool, error) 
 	return true, nil
 }
 
-type kubectlApplyArgs struct {
+type KubectlApplyArgs struct {
 	// Content is the YAML manifest to be applied. Must be non-empty.
 	Content []byte
-	// WaitCondition, if non-empty, makes kubectlApply do "kubectl wait --for=<value>" on the applied resource.
+	// WaitCondition, if non-empty, makes RunKubectlApply do "kubectl wait --for=<value>" on the applied resource.
 	WaitCondition string
 }
 
-func kubectlApply(r plan.Runner, args kubectlApplyArgs, fname string) error {
+func RunKubectlApply(r plan.Runner, args KubectlApplyArgs, fname string) error {
 	// Write the manifest content to the remote filesystem.
 	path, err := writeTempFile(r, args.Content, fname)
 	if err != nil {
@@ -150,14 +151,14 @@ func kubectlApply(r plan.Runner, args kubectlApplyArgs, fname string) error {
 	defer r.RunCommand(fmt.Sprintf("rm -vf %q", path), nil) // TODO: Deferred error checking
 
 	// Run kubectl apply.
-	if err := kubectlRemoteApply(path, r); err != nil {
+	if err := RunKubectlRemoteApply(path, r); err != nil {
 		return errors.Wrap(err, "kubectl apply")
 	}
 
 	// Run kubectl wait, if requested.
 	if args.WaitCondition != "" {
 		cmd := fmt.Sprintf("kubectl wait --for=%q -f %q", args.WaitCondition, path)
-		if _, err := r.RunCommand(withoutProxy(cmd), nil); err != nil {
+		if _, err := r.RunCommand(resource.WithoutProxy(cmd), nil); err != nil {
 			return errors.Wrap(err, "kubectl wait")
 		}
 	}
@@ -166,10 +167,10 @@ func kubectlApply(r plan.Runner, args kubectlApplyArgs, fname string) error {
 	return nil
 }
 
-func kubectlRemoteApply(remoteURL string, runner plan.Runner) error {
+func RunKubectlRemoteApply(remoteURL string, runner plan.Runner) error {
 	cmd := fmt.Sprintf("kubectl apply -f %q", remoteURL)
 
-	if stdouterr, err := runner.RunCommand(withoutProxy(cmd), nil); err != nil {
+	if stdouterr, err := runner.RunCommand(resource.WithoutProxy(cmd), nil); err != nil {
 		log.WithField("stdouterr", stdouterr).WithField("URL", remoteURL).Debug("failed to apply Kubernetes manifest")
 		return errors.Wrapf(err, "failed to apply manifest %s; output %s", remoteURL, stdouterr)
 	}

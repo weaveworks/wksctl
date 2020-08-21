@@ -7,9 +7,10 @@ import (
 
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	capeiv1alpha3 "github.com/weaveworks/cluster-api-provider-existinginfra/apis/cluster.weave.works/v1alpha3"
+	capeispecs "github.com/weaveworks/cluster-api-provider-existinginfra/pkg/specs"
 	"github.com/weaveworks/libgitops/pkg/serializer"
 	"github.com/weaveworks/wksctl/pkg/cluster/machine"
-	existinginfrav1 "github.com/weaveworks/wksctl/pkg/existinginfra/v1alpha3"
 	"github.com/weaveworks/wksctl/pkg/scheme"
 	"github.com/weaveworks/wksctl/pkg/utilities"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -22,8 +23,8 @@ import (
 
 type Specs struct {
 	Cluster      *clusterv1.Cluster
-	ClusterSpec  *existinginfrav1.ExistingInfraClusterSpec
-	MasterSpec   *existinginfrav1.ExistingInfraMachineSpec
+	ClusterSpec  *capeiv1alpha3.ClusterSpec
+	MasterSpec   *capeiv1alpha3.MachineSpec
 	machineCount int
 	masterCount  int
 }
@@ -38,7 +39,7 @@ func NewFromPaths(clusterManifestPath, machinesManifestPath string) *Specs {
 }
 
 // Get a "Specs" object that can create an SSHClient (and retrieve useful nested fields)
-func New(cluster *clusterv1.Cluster, eic *existinginfrav1.ExistingInfraCluster, machines []*clusterv1.Machine, bl []*existinginfrav1.ExistingInfraMachine) *Specs {
+func New(cluster *clusterv1.Cluster, eic *capeiv1alpha3.ExistingInfraCluster, machines []*clusterv1.Machine, bl []*capeiv1alpha3.ExistingInfraMachine) *Specs {
 	_, master := machine.FirstMaster(machines, bl)
 	if master == nil {
 		log.Fatal("No master provided in manifest.")
@@ -59,7 +60,7 @@ func New(cluster *clusterv1.Cluster, eic *existinginfrav1.ExistingInfraCluster, 
 	}
 }
 
-func parseManifests(clusterManifestPath, machinesManifestPath string) (*clusterv1.Cluster, *existinginfrav1.ExistingInfraCluster, []*clusterv1.Machine, []*existinginfrav1.ExistingInfraMachine, error) {
+func parseManifests(clusterManifestPath, machinesManifestPath string) (*clusterv1.Cluster, *capeiv1alpha3.ExistingInfraCluster, []*clusterv1.Machine, []*capeiv1alpha3.ExistingInfraMachine, error) {
 	cluster, eic, err := ParseClusterManifest(clusterManifestPath)
 	if err != nil {
 		return nil, nil, nil, nil, err
@@ -73,7 +74,7 @@ func parseManifests(clusterManifestPath, machinesManifestPath string) (*clusterv
 			"%s failed validation, use --skip-validation to force the operation", clusterManifestPath)
 	}
 
-	errorsHandler := func(machines []*clusterv1.Machine, bl []*existinginfrav1.ExistingInfraMachine, errors field.ErrorList) ([]*clusterv1.Machine, []*existinginfrav1.ExistingInfraMachine, error) {
+	errorsHandler := func(machines []*clusterv1.Machine, bl []*capeiv1alpha3.ExistingInfraMachine, errors field.ErrorList) ([]*clusterv1.Machine, []*capeiv1alpha3.ExistingInfraMachine, error) {
 		if len(errors) > 0 {
 			utilities.PrintErrors(errors)
 			return nil, nil, apierrors.InvalidMachineConfiguration(
@@ -91,7 +92,7 @@ func parseManifests(clusterManifestPath, machinesManifestPath string) (*clusterv
 }
 
 // ParseCluster converts the manifest file into a Cluster
-func ParseCluster(rc io.ReadCloser) (cluster *clusterv1.Cluster, eic *existinginfrav1.ExistingInfraCluster, err error) {
+func ParseCluster(rc io.ReadCloser) (cluster *clusterv1.Cluster, eic *capeiv1alpha3.ExistingInfraCluster, err error) {
 	// Read from the ReadCloser YAML document-by-document
 	fr := serializer.NewYAMLFrameReader(rc)
 
@@ -106,7 +107,7 @@ func ParseCluster(rc io.ReadCloser) (cluster *clusterv1.Cluster, eic *existingin
 		switch typed := obj.(type) {
 		case *clusterv1.Cluster:
 			cluster = typed
-		case *existinginfrav1.ExistingInfraCluster:
+		case *capeiv1alpha3.ExistingInfraCluster:
 			eic = typed
 		default:
 			return nil, nil, fmt.Errorf("unexpected type %T", obj)
@@ -124,7 +125,7 @@ func ParseCluster(rc io.ReadCloser) (cluster *clusterv1.Cluster, eic *existingin
 	return
 }
 
-func ParseClusterManifest(file string) (*clusterv1.Cluster, *existinginfrav1.ExistingInfraCluster, error) {
+func ParseClusterManifest(file string) (*clusterv1.Cluster, *capeiv1alpha3.ExistingInfraCluster, error) {
 	f, err := os.Open(file)
 	if err != nil {
 		return nil, nil, err
@@ -132,14 +133,6 @@ func ParseClusterManifest(file string) (*clusterv1.Cluster, *existinginfrav1.Exi
 	defer f.Close()
 
 	return ParseCluster(f)
-}
-
-func TranslateServerArgumentsToStringMap(args []existinginfrav1.ServerArgument) map[string]string {
-	result := map[string]string{}
-	for _, arg := range args {
-		result[arg.Name] = arg.Value
-	}
-	return result
 }
 
 // Getters for nested fields needed externally
@@ -160,7 +153,7 @@ func (s *Specs) GetCloudProvider() string {
 }
 
 func (s *Specs) GetKubeletArguments() map[string]string {
-	return TranslateServerArgumentsToStringMap(s.ClusterSpec.KubeletArguments)
+	return capeispecs.TranslateServerArgumentsToStringMap(s.ClusterSpec.KubeletArguments)
 }
 
 func (s *Specs) GetMachineCount() int {

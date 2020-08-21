@@ -6,12 +6,13 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/weaveworks/wksctl/pkg/plan"
+	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/plan"
+	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/plan/resource"
 )
 
 // KubectlWait waits for an object to reach a required state
 type KubectlWait struct {
-	base
+	resource.Base
 
 	// Namespace specifies the namespace in which to search for the object being waited on
 	WaitNamespace string `structs:"namespace"`
@@ -29,7 +30,7 @@ var _ plan.Resource = plan.RegisterResource(&KubectlWait{})
 
 // State implements plan.Resource.
 func (kw *KubectlWait) State() plan.State {
-	return toState(kw)
+	return resource.ToState(kw)
 }
 
 // Apply performs a "kubectl wait" as specified in the receiver.
@@ -64,7 +65,7 @@ func kubectlWait(r plan.Runner, args kubectlWaitArgs) error {
 	// Assume the objects to wait for should/will exist. Don't start the timeout until they are present
 	for {
 		cmd := fmt.Sprintf("kubectl get %q %s%s", args.WaitType, waitOn(args), waitNamespace(args))
-		output, err := r.RunCommand(withoutProxy(cmd), nil)
+		output, err := r.RunCommand(resource.WithoutProxy(cmd), nil)
 		if err != nil || strings.Contains(output, "No resources found") {
 			time.Sleep(500 * time.Millisecond)
 		} else {
@@ -73,7 +74,7 @@ func kubectlWait(r plan.Runner, args kubectlWaitArgs) error {
 	}
 	cmd := fmt.Sprintf("kubectl wait %q --for=%q%s%s%s",
 		args.WaitType, args.WaitCondition, waitOn(args), waitTimeout(args), waitNamespace(args))
-	if _, err := r.RunCommand(withoutProxy(cmd), nil); err != nil {
+	if _, err := r.RunCommand(resource.WithoutProxy(cmd), nil); err != nil {
 		return errors.Wrap(err, "kubectl wait")
 	}
 	return nil
