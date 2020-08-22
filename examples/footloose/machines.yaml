@@ -5,15 +5,16 @@ metadata:
     set: master
   name: master-1
 spec:
+  clusterName: example
   infrastructureRef:
     apiVersion: cluster.weave.works/v1alpha3
     kind: ExistingInfraMachine
-    name: master-1-provider
+    name: master-1
 ---
 apiVersion: cluster.weave.works/v1alpha3
 kind: ExistingInfraMachine
 metadata:
-  name: master-1-provider
+  name: master-1
 spec:
   private:
     address: 172.17.0.2
@@ -29,15 +30,16 @@ metadata:
     set: worker
   name: worker-1
 spec:
+  clusterName: example
   infrastructureRef:
     apiVersion: cluster.weave.works/v1alpha3
     kind: ExistingInfraMachine
-    name: worker-1-provider
+    name: worker-1
 ---
 apiVersion: cluster.weave.works/v1alpha3
 kind: ExistingInfraMachine
 metadata:
-  name: worker-1-provider
+  name: worker-1
 spec:
   private:
     address: 172.17.0.3
