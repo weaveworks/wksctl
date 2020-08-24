@@ -327,6 +327,7 @@ func testNodes(t *testing.T, numMasters, numWorkers int, kubeconfig string) {
 		cmd = exec.Command(cmdItems[0], cmdItems[1:]...)
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
+		cmd.Run()
 		time.Sleep(10 * time.Second)
 		nodes = test.ListNodes(metav1.ListOptions{})
 	}
