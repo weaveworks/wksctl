@@ -323,7 +323,6 @@ func TestMultimasterSetup(t *testing.T) {
 		if err := json.Unmarshal([]byte(jsonOut), &nodeList); err != nil {
 			log.Warnf("Error deserialising output of kubectl get nodes: %s", err)
 		}
-		log.Infof("NODES: %#v\n", nodeList.Items)
 		log.Infof("The cluster currently has %d node(s)", len(nodeList.Items))
 		if len(nodeList.Items) == 4 {
 			break
