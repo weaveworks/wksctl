@@ -429,7 +429,7 @@ func TestApply(t *testing.T) {
 	kubeconfig := wksKubeconfig(t)
 	err = kube.SetKubeconfig(kubeconfig)
 	assert.NoError(t, err)
-	conf, _ := exec.Command("sudo", "cat", "/root/.kube/config")
+	conf := exec.Command("sudo", "cat", "/root/.kube/config")
 	conf.Stdout = os.Stdout
 	conf.Stderr = os.Stderr
 	conf.Run()
