@@ -324,8 +324,9 @@ func testNodes(t *testing.T, numMasters, numWorkers int, kubeconfig string) {
 		cmd.Run()
 		cmdItems := []string{kubectl,
 			fmt.Sprintf("--kubeconfig=%s", kubeconfig), "get", "pods", "-l", "name=wks-controller", "--namespace=default", "-o", "yaml"}
-		cmd := exec.Command(cmdItems[0], cmdItems[1:]...)
-		podIP, err := cmd.CombinedOutput()
+		cmd = exec.Command(cmdItems[0], cmdItems[1:]...)
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
 		time.Sleep(10 * time.Second)
 		nodes = test.ListNodes(metav1.ListOptions{})
 	}
