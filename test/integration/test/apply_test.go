@@ -309,7 +309,7 @@ func nodesNumWorkers(l *v1.NodeList) int {
 	return n
 }
 
-func testNodes(t *testing.T, numMasters, numWorkers int) {
+func testNodes(t *testing.T, numMasters, numWorkers int, kubeconfig string) {
 	test := kube.NewTest(t)
 	defer test.Close()
 	// Wait for two nodes to be available
@@ -320,6 +320,12 @@ func testNodes(t *testing.T, numMasters, numWorkers int) {
 		}
 		log.Println("waiting for nodes - retrying in 10s")
 		fmt.Printf("NODES: %#v\n", nodes)
+		cmd := exec.Command("sh", "-c", "kubectl logs $(awk '{print $2}' <<< $(kubectl get pods -n system -o wide | grep wks-controller)) -n system")
+		cmd.Run()
+		cmdItems := []string{kubectl,
+			fmt.Sprintf("--kubeconfig=%s", kubeconfig), "get", "pods", "-l", "name=wks-controller", "--namespace=default", "-o", "yaml"}
+		cmd := exec.Command(cmdItems[0], cmdItems[1:]...)
+		podIP, err := cmd.CombinedOutput()
 		time.Sleep(10 * time.Second)
 		nodes = test.ListNodes(metav1.ListOptions{})
 	}
@@ -436,7 +442,7 @@ func TestApply(t *testing.T) {
 
 	// Test we have the number of nodes we asked for.
 	t.Run("Nodes", func(t *testing.T) {
-		testNodes(t, numMasters(machines), numWorkers(machines))
+		testNodes(t, numMasters(machines), numWorkers(machines), kubeconfig)
 	})
 
 	t.Log("Waiting 1 minute for nodes to settle")
