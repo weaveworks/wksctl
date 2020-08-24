@@ -319,7 +319,7 @@ func testNodes(t *testing.T, numMasters, numWorkers int) {
 			break
 		}
 		log.Println("waiting for nodes - retrying in 10s")
-		log.Infof("NODES: %#v\n", nodes)
+		fmt.Printf("NODES: %#v\n", nodes)
 		time.Sleep(10 * time.Second)
 		nodes = test.ListNodes(metav1.ListOptions{})
 	}
