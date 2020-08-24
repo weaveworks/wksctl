@@ -131,9 +131,11 @@ func displayPlan(clusterManifestPath, machinesManifestPath string) error {
 	}
 	switch viewOptions.output {
 	case "dot":
-		fmt.Println(plan.ToDOT())
+		fmt.Println(plan[0].ToDOT())
+		fmt.Println(plan[1].ToDOT())
 	case "json":
-		fmt.Println(plan.ToHumanReadableJSON())
+		fmt.Println(plan[0].ToHumanReadableJSON())
+		fmt.Println(plan[1].ToHumanReadableJSON())
 	}
 	return nil
 }

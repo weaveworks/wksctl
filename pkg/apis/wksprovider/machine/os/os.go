@@ -47,6 +47,7 @@ import (
 )
 
 const (
+	// TODO move this version value outside the code.
 	sealedSecretVersion       = "v0.11.0"
 	sealedSecretKeySecretName = "sealed-secrets-key"
 	fluxSecretTemplate        = `apiVersion: v1
@@ -141,6 +142,7 @@ type SeedNodeParams struct {
 	ControlPlaneEndpoint string
 	AdditionalSANs       []string
 	AddonNamespaces      map[string]string
+	APIServer            plan.Runner
 }
 
 // Validate generally validates this SeedNodeParams struct, e.g. ensures it
@@ -158,6 +160,8 @@ func (params SeedNodeParams) Validate() error {
 	return nil
 }
 
+// GetAddonNamespace returns either the general namspace or the
+// override defined the for the namespaces if set
 func (params SeedNodeParams) GetAddonNamespace(name string) string {
 	if ns, ok := params.AddonNamespaces[name]; ok {
 		return ns
@@ -178,7 +182,7 @@ func SetupSeedNode(o *capeios.OS, params SeedNodeParams) error {
 
 // CreateSeedNodeSetupPlan constructs the seed node plan used to setup the initial node
 // prior to turning control over to wks-controller
-func CreateSeedNodeSetupPlan(o *capeios.OS, params SeedNodeParams) (*plan.Plan, error) {
+func CreateSeedNodeSetupPlan(o *capeios.OS, params SeedNodeParams) ([]*plan.Plan, error) {
 	if err := params.Validate(); err != nil {
 		return nil, err
 	}
@@ -254,7 +258,13 @@ func CreateSeedNodeSetupPlan(o *capeios.OS, params SeedNodeParams) (*plan.Plan, 
 		}
 	b.AddResource("kubeadm:init", kubeadmInitResource, plan.DependOn("install:k8s"))
 
+	// TODO: Separate the plan here into the K8s SeedNode setup and the remaining steps
+	// are dependent on k8s being up and then apply the rest of the resources using a
+	// combination of apiserver applies and GitOps.  The SeedNode setup should be the
+	// plan that is an annotation on the seed node.
 	// TODO(damien): Add a CNI section in cluster.yaml once we support more than one CNI plugin.
+	bWithK8s := plan.NewBuilder()
+
 	const cni = "weave-net"
 
 	cniAdddon := capeiv1alpha3.Addon{Name: cni}
@@ -277,12 +287,12 @@ func CreateSeedNodeSetupPlan(o *capeios.OS, params SeedNodeParams) (*plan.Plan, 
 	}
 
 	cniRsc := recipe.BuildCNIPlan(cni, manifests)
-	b.AddResource("install:cni", cniRsc, plan.DependOn("kubeadm:init"))
+	bWithK8s.AddResource("install:cni", cniRsc, plan.DependOn("kubeadm:init"))
 
 	// Add resources to apply the cluster API's CRDs so that Kubernetes
 	// understands objects like Cluster, Machine, etc.
 
-	crdIDs, err := addClusterAPICRDs(b)
+	crdIDs, err := addClusterAPICRDs(bWithK8s)
 	if err != nil {
 		return nil, err
 	}
@@ -290,7 +300,7 @@ func CreateSeedNodeSetupPlan(o *capeios.OS, params SeedNodeParams) (*plan.Plan, 
 	kubectlApplyDeps := append([]string{"kubeadm:init"}, crdIDs...)
 
 	// If we're pulling data out of GitHub, we install sealed secrets and any auth secrets stored in sealed secrets
-	configDeps, err := addSealedSecretResourcesIfNecessary(b, kubectlApplyDeps, pemSecretResources, sealedSecretVersion, params.SealedSecretKeyPath, params.SealedSecretCertPath, params.Namespace)
+	configDeps, err := addSealedSecretResourcesIfNecessary(bWithK8s, kubectlApplyDeps, pemSecretResources, sealedSecretVersion, params.SealedSecretKeyPath, params.SealedSecretCertPath, params.Namespace)
 	if err != nil {
 		return nil, err
 	}
@@ -300,27 +310,27 @@ func CreateSeedNodeSetupPlan(o *capeios.OS, params SeedNodeParams) (*plan.Plan, 
 	if err != nil {
 		return nil, err
 	}
-	b.AddResource("node:plan", &resource.KubectlAnnotateSingleNode{Key: capeirecipe.PlanKey, Value: seedNodePlan.ToJSON()}, plan.DependOn("kubeadm:init"))
+	bWithK8s.AddResource("node:plan", &resource.KubectlAnnotateSingleNode{Key: capeirecipe.PlanKey, Value: seedNodePlan.ToJSON()}, plan.DependOn("kubeadm:init"))
 
 	addAuthConfigMapIfNecessary(configMapManifests, authConfigManifest)
 
 	// Add config maps to system so controller can use them
 	configMapPlan := recipe.BuildConfigMapPlan(configMapManifests, params.Namespace)
 
-	b.AddResource("install:configmaps", configMapPlan, plan.DependOn(configDeps[0], configDeps[1:]...))
+	bWithK8s.AddResource("install:configmaps", configMapPlan, plan.DependOn(configDeps[0], configDeps[1:]...))
 
 	applyClstrRsc := &resource.KubectlApply{ManifestPath: object.String(params.ClusterManifestPath), Namespace: object.String(params.Namespace)}
 
-	b.AddResource("kubectl:apply:cluster", applyClstrRsc, plan.DependOn("install:configmaps"))
+	bWithK8s.AddResource("kubectl:apply:cluster", applyClstrRsc, plan.DependOn("install:configmaps"))
 
 	machinesManifest, err := machine.GetMachinesManifest(params.MachinesManifestPath)
 	if err != nil {
 		return nil, err
 	}
 	mManRsc := &resource.KubectlApply{Manifest: []byte(machinesManifest), Filename: object.String("machinesmanifest"), Namespace: object.String(params.Namespace)}
-	b.AddResource("kubectl:apply:machines", mManRsc, plan.DependOn(kubectlApplyDeps[0], kubectlApplyDeps[1:]...))
+	bWithK8s.AddResource("kubectl:apply:machines", mManRsc, plan.DependOn(kubectlApplyDeps[0], kubectlApplyDeps[1:]...))
 
-	dep := addSealedSecretWaitIfNecessary(b, params.SealedSecretKeyPath, params.SealedSecretCertPath)
+	dep := addSealedSecretWaitIfNecessary(bWithK8s, params.SealedSecretKeyPath, params.SealedSecretCertPath)
 
 	{
 		capiCtlrManifest, err := capiControllerManifest(params.Controller, params.Namespace, params.ConfigDirectory)
@@ -328,7 +338,7 @@ func CreateSeedNodeSetupPlan(o *capeios.OS, params SeedNodeParams) (*plan.Plan, 
 			return nil, err
 		}
 		ctlrRsc := &resource.KubectlApply{Manifest: capiCtlrManifest, Filename: object.String("capi_controller.yaml")}
-		b.AddResource("install:capi", ctlrRsc, plan.DependOn("kubectl:apply:cluster", dep))
+		bWithK8s.AddResource("install:capi", ctlrRsc, plan.DependOn("kubectl:apply:cluster", dep))
 	}
 
 	wksCtlrManifest, err := wksControllerManifest(params.Controller, params.Namespace, params.ConfigDirectory)
@@ -337,9 +347,9 @@ func CreateSeedNodeSetupPlan(o *capeios.OS, params SeedNodeParams) (*plan.Plan, 
 	}
 
 	ctlrRsc := &resource.KubectlApply{Manifest: wksCtlrManifest, Filename: object.String("wks_controller.yaml")}
-	b.AddResource("install:wks", ctlrRsc, plan.DependOn("kubectl:apply:cluster", dep))
+	bWithK8s.AddResource("install:wks", ctlrRsc, plan.DependOn("kubectl:apply:cluster", dep))
 
-	if err := configureFlux(b, params); err != nil {
+	if err := configureFlux(bWithK8s, params); err != nil {
 		return nil, errors.Wrap(err, "Failed to configure flux")
 	}
 
@@ -350,12 +360,22 @@ func CreateSeedNodeSetupPlan(o *capeios.OS, params SeedNodeParams) (*plan.Plan, 
 	}
 
 	addonRsc := recipe.BuildAddonPlan(params.ClusterManifestPath, addons)
-	b.AddResource("install:addons", addonRsc, plan.DependOn("kubectl:apply:cluster", "kubectl:apply:machines"))
+	bWithK8s.AddResource("install:addons", addonRsc, plan.DependOn("kubectl:apply:cluster", "kubectl:apply:machines"))
 
-	return capeios.CreatePlan(b)
+	k8sBootstrapPlan, err := capeios.CreatePlan(b)
+	if err != nil {
+		return nil, err
+	}
+
+	k8sConfigPlan, err := capeios.CreatePlan(bWithK8s)
+	if err != nil {
+		return nil, err
+	}
+
+	return []*plan.Plan{k8sBootstrapPlan, k8sConfigPlan}, nil
 }
 
-// Sets the pod CIDR block in the weave-net manifest
+// SetWeaveNetPodCIDRBlock sets the pod CIDR block in the weave-net manifest
 func SetWeaveNetPodCIDRBlock(manifests [][]byte, podsCIDRBlock string) ([][]byte, error) {
 	// Weave-Net has a container named weave in its daemonset
 	containerName := "weave"
@@ -562,7 +582,8 @@ func seedNodeSetupPlan(o *capeios.OS, params SeedNodeParams, providerSpec *capei
 	return o.CreateNodeSetupPlan(nodeParams)
 }
 
-func applySeedNodePlan(o *capeios.OS, p *plan.Plan) error {
+func applySeedNodePlan(o *capeios.OS, plans []*plan.Plan) error {
+	p := plans[0]
 	err := p.Undo(o.Runner, plan.EmptyState)
 	if err != nil {
 		log.Infof("Pre-plan cleanup failed:\n%s\n", err)
@@ -574,6 +595,14 @@ func applySeedNodePlan(o *capeios.OS, p *plan.Plan) error {
 		log.Errorf("Apply of Plan failed:\n%s\n", err)
 		return err
 	}
+	// TODO create apiserver runner here and execute part 2 of the setup
+	p = plans[1]
+	_, err = p.Apply(o.Runner, plan.EmptyDiff())
+	if err != nil {
+		log.Errorf("Apply of Plan on top of k8s failed:\n%s\n", err)
+		return err
+	}
+
 	return err
 }
 

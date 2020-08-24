@@ -13,6 +13,7 @@ import (
 	"github.com/weaveworks/wksctl/pkg/addons"
 	wksos "github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/os"
 	"github.com/weaveworks/wksctl/pkg/manifests"
+	"github.com/weaveworks/wksctl/pkg/plan/runners/apiserver"
 	"github.com/weaveworks/wksctl/pkg/plan/runners/ssh"
 	"github.com/weaveworks/wksctl/pkg/specs"
 	"github.com/weaveworks/wksctl/pkg/utilities/manifest"
@@ -108,6 +109,13 @@ func (a *Applier) initiateCluster(clusterManifestPath, machinesManifestPath stri
 		return errors.Wrapf(err, "failed to identify operating system for seed node (%s)", sp.GetMasterPublicAddress())
 	}
 
+	// Create an apiserver client to be used when applying manifests
+	apiClient, err := apiserver.NewClientForMachine(sp, a.Params.sshKeyPath, log.GetLevel() > log.InfoLevel)
+
+	if err != nil {
+		return errors.Wrap(err, "failed to create apiserver client")
+	}
+
 	// N.B.: we generate this bootstrap token where wksctl apply is run hoping
 	// that this will be on a machine which has been running for a while, and
 	// therefore will generate a "more random" token, than we would on a
@@ -186,6 +194,7 @@ func (a *Applier) initiateCluster(clusterManifestPath, machinesManifestPath stri
 		AdditionalSANs:       sp.ClusterSpec.APIServer.AdditionalSANs,
 		Namespace:            ns,
 		AddonNamespaces:      addonNamespaces,
+		APIServer:            apiServer,
 	}); err != nil {
 		return errors.Wrapf(err, "failed to set up seed node (%s)", sp.GetMasterPublicAddress())
 	}
