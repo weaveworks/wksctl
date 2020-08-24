@@ -13,7 +13,6 @@ import (
 	"github.com/weaveworks/wksctl/pkg/plan/runners/ssh"
 	"github.com/weaveworks/wksctl/pkg/specs"
 	"github.com/weaveworks/wksctl/pkg/utilities/manifest"
-	"github.com/weaveworks/wksctl/pkg/version"
 )
 
 // Cmd represents the plan view command
@@ -114,7 +113,6 @@ func displayPlan(clusterManifestPath, machinesManifestPath string) error {
 		},
 		Controller: wksos.ControllerParams{
 			ImageOverride: viewOptions.controllerImage,
-			ImageBuiltin:  "docker.io/weaveworks/wksctl-controller:" + version.ImageTag,
 		},
 		GitData: wksos.GitParams{
 			GitURL:           viewOptions.gitURL,
