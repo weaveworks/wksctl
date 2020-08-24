@@ -322,7 +322,7 @@ func testNodes(t *testing.T, numMasters, numWorkers int, kubeconfig string) {
 		fmt.Printf("NODE COUNT: %d\n", len(nodes.Items))
 		fmt.Printf("NODES: %#v\n", nodes.Items)
 		cmd := exec.Command(
-			"sh", "-c", fmt.Sprintf("kubectl logs -l name=wks-controller -o yaml --kubeconfig=%s",
+			"sh", "-c", fmt.Sprintf("kubectl logs -l name=wks-controller --kubeconfig=%s",
 				kubeconfig))
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
