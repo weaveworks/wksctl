@@ -319,8 +319,11 @@ func testNodes(t *testing.T, numMasters, numWorkers int, kubeconfig string) {
 			break
 		}
 		log.Println("waiting for nodes - retrying in 10s")
-		fmt.Printf("NODES: %#v\n", nodes)
-		cmd := exec.Command("sh", "-c", "kubectl logs $(awk '{print $2}' <<< $(kubectl get pods -n system -o wide | grep wks-controller)) -n system")
+		fmt.Printf("NODE COUNT: %d\n", len(nodes.Items))
+		fmt.Printf("NODES: %#v\n", nodes.Items)
+		cmd := exec.Command(
+			"sh", "-c", fmt.Sprintf("kubectl logs -l name=wks-controller -o yaml --kubeconfig=%s",
+				kubeconfig))
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		cmd.Run()
