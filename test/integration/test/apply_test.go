@@ -429,6 +429,10 @@ func TestApply(t *testing.T) {
 	kubeconfig := wksKubeconfig(t)
 	err = kube.SetKubeconfig(kubeconfig)
 	assert.NoError(t, err)
+	conf, _ := exec.Command("sudo", "cat", "/root/.kube/config")
+	conf.Stdout = os.Stdout
+	conf.Stderr = os.Stderr
+	conf.Run()
 
 	// Test we have the number of nodes we asked for.
 	t.Run("Nodes", func(t *testing.T) {
