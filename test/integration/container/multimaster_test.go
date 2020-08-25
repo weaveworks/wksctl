@@ -254,7 +254,6 @@ var (
 )
 
 func TestMultimasterSetup(t *testing.T) {
-
 	node_os, node_version = strings.Trim(os.Getenv("NODE_OS"), " "), "18.04"
 	if node_os != UBUNTU {
 		node_os, node_version = CENTOS, "7"

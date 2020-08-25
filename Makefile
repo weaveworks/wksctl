@@ -137,7 +137,7 @@ integration-tests-container: cmd/wksctl/wksctl
 	APK_INDEX='https://https:dl-cdn.alpinelinux.org/alpine/v3.11/main/x86_64/APKINDEX.tar.gz https://dl-cdn.alpinelinux.org/alpine/v3.11/community/x86_64/APKINDEX.tar.gz'
 	NODE_OS1="centos"
 	NODE_OS2="ubuntu"
-	NODE_OS_CHOICE=$$(echo $$NODE_OS1 $$NODE_OS2 | tr ' ' '\n' | shuf | head -1)
+	NODE_OS_CHOICE=$${NODE_OS_CHOICE:-"$$(echo $$NODE_OS1 $$NODE_OS2 | tr ' ' '\n' | shuf | head -1)"}
 	IMAGE_TAG=$(IMAGE_TAG) NODE_OS="$${NODE_OS_CHOICE}" go test -v -timeout 40m ./test/integration/container/...
 
 FORCE:
