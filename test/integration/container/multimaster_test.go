@@ -273,7 +273,7 @@ func TestMultimasterSetup(t *testing.T) {
 		run(t, "../../../environments/local-docker-registry/retag_push.sh", "-p", strconv.Itoa(registryPort))
 	}
 	// TODO: Use CAPEI upstream when its build system has been set up
-	run(t, "docker", "tag", fmt.Sprintf("capei-controller:%s", "latest"), fmt.Sprintf("localhost:%d/weaveworks/wksctl-controller:%s", registryPort, tag))
+	run(t, "docker", "tag", "weaveworks/cluster-api-existinginfra-controller:v0.0.2", fmt.Sprintf("localhost:%d/weaveworks/wksctl-controller:%s", registryPort, tag))
 	run(t, "docker", "push", fmt.Sprintf("localhost:%d/weaveworks/wksctl-controller:%s", registryPort, tag))
 	registryIP = sanitizeIP(run(t, "docker", "inspect", "registry", "--format='{{.NetworkSettings.IPAddress}}'"))
 
