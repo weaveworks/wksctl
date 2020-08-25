@@ -365,6 +365,9 @@ func TestMultimasterSetup(t *testing.T) {
 		defer os.Remove(repoConfigMap)
 		defer os.Remove(repoConfigMap)
 	}
+
+	// clean up the registry and yum repo
+	run(t, "docker", "rm", "-f", "yumrepo", "registry")
 }
 
 func imageTag(t *testing.T) string {
