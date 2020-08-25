@@ -220,32 +220,32 @@ func testKubectl(t *testing.T, kubeconfig string) {
 	assert.True(t, run.Contains("Ready"))
 }
 
-func testDebugLogging(t *testing.T, kubeconfig string) {
-	exe := run.NewExecutor()
+// func testDebugLogging(t *testing.T, kubeconfig string) {
+//  exe := run.NewExecutor()
 
-	run, err := exe.RunV(kubectl,
-		fmt.Sprintf("--kubeconfig=%s", kubeconfig), "get", "pods", "-l", "name=wks-controller", "--namespace=default", "-o", "jsonpath={.items[].spec.containers[].command}")
-	assert.NoError(t, err)
-	assert.Equal(t, 0, run.ExitCode())
-	verbose := false
-	if run.Contains("--verbose") {
-		verbose = true
-	}
+//  run, err := exe.RunV(kubectl,
+//      fmt.Sprintf("--kubeconfig=%s", kubeconfig), "get", "pods", "-l", "name=wks-controller", "-o", "jsonpath={.items[].spec.containers[].command}")
+//  assert.NoError(t, err)
+//  assert.Equal(t, 0, run.ExitCode())
+//  verbose := false
+//  if run.Contains("--verbose") {
+//      verbose = true
+//  }
 
-	run, err = exe.RunV(kubectl,
-		fmt.Sprintf("--kubeconfig=%s", kubeconfig), "logs", "-l", "name=wks-controller", "--namespace=default")
-	assert.NoError(t, err)
-	assert.Equal(t, 0, run.ExitCode())
-	if verbose {
-		assert.True(t, run.Contains("level=debug"))
-	} else {
-		assert.False(t, run.Contains("level=debug"))
-	}
-}
+//  run, err = exe.RunV(kubectl,
+//      fmt.Sprintf("--kubeconfig=%s", kubeconfig), "logs", "-l", "name=wks-controller")
+//  assert.NoError(t, err)
+//  assert.Equal(t, 0, run.ExitCode())
+//  if verbose {
+//      assert.True(t, run.Contains("level=debug"))
+//  } else {
+//      assert.False(t, run.Contains("level=debug"))
+//  }
+// }
 
 func testCIDRBlocks(t *testing.T, kubeconfig string) {
 	cmdItems := []string{kubectl,
-		fmt.Sprintf("--kubeconfig=%s", kubeconfig), "get", "pods", "-l", "name=wks-controller", "--namespace=default", "-o", "jsonpath={.items[].status.podIP}"}
+		fmt.Sprintf("--kubeconfig=%s", kubeconfig), "get", "pods", "-l", "name=wks-controller", "-o", "jsonpath={.items[].status.podIP}"}
 	cmd := exec.Command(cmdItems[0], cmdItems[1:]...)
 	podIP, err := cmd.CombinedOutput()
 	log.Printf("wks-controller has IP: %s\n", string(podIP))
@@ -256,7 +256,7 @@ func testCIDRBlocks(t *testing.T, kubeconfig string) {
 	assert.True(t, isValid)
 
 	cmdItems = []string{kubectl,
-		fmt.Sprintf("--kubeconfig=%s", kubeconfig), "get", "service", "kubernetes", "--namespace=default", "-o", "jsonpath={.spec.clusterIP}"}
+		fmt.Sprintf("--kubeconfig=%s", kubeconfig), "get", "service", "kubernetes", "-o", "jsonpath={.spec.clusterIP}"}
 	cmd = exec.Command(cmdItems[0], cmdItems[1:]...)
 	serviceIP, err := cmd.CombinedOutput()
 	log.Printf("kubernetes service has IP: %s\n", string(serviceIP))
@@ -328,7 +328,7 @@ func testNodes(t *testing.T, numMasters, numWorkers int, kubeconfig string) {
 		cmd.Stderr = os.Stderr
 		cmd.Run()
 		cmdItems := []string{kubectl,
-			fmt.Sprintf("--kubeconfig=%s", kubeconfig), "get", "pods", "-l", "name=wks-controller", "--namespace=default", "-o", "yaml"}
+			fmt.Sprintf("--kubeconfig=%s", kubeconfig), "get", "pods", "-l", "name=wks-controller", "-o", "yaml"}
 		cmd = exec.Command(cmdItems[0], cmdItems[1:]...)
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
@@ -421,13 +421,13 @@ func TestApply(t *testing.T) {
 	// First test that bad apply returns non-zero exit code
 	badMachinesManifestPath := configPath("badmachines.yaml")
 	// Fail to install the cluster.
-	run, _ := apply(exe, "--cluster="+clusterManifestPath, "--machines="+badMachinesManifestPath, "--namespace=default",
+	run, _ := apply(exe, "--cluster="+clusterManifestPath, "--machines="+badMachinesManifestPath,
 		"--config-directory="+configDir, "--sealed-secret-key="+configPath("ss.key"), "--sealed-secret-cert="+configPath("ss.cert"),
 		"--verbose=true", "--ssh-key="+sshKeyPath)
 	assert.Equal(t, 1, run.ExitCode())
 
 	// Install the Cluster.
-	run, err = apply(exe, "--cluster="+clusterManifestPath, "--machines="+machinesManifestPath, "--namespace=default",
+	run, err = apply(exe, "--cluster="+clusterManifestPath, "--machines="+machinesManifestPath,
 		"--config-directory="+configDir, "--sealed-secret-key="+configPath("ss.key"), "--sealed-secret-cert="+configPath("ss.cert"),
 		//		"--verbose=true", "--ssh-key="+sshKeyPath, "--controller-image=weaveworks/cluster-api-existinginfra-controller:v0.0.2")
 		//        "--verbose=true", "--ssh-key="+sshKeyPath, "--controller-image=jrryjcksn/wks-controller:fix")
@@ -436,7 +436,7 @@ func TestApply(t *testing.T) {
 	require.Equal(t, 0, run.ExitCode())
 
 	// Extract the kubeconfig,
-	run, err = kubeconfig(exe, "--cluster="+configPath("cluster.yaml"), "--machines="+configPath("machines.yaml"), "--namespace=default", "--ssh-key="+sshKeyPath)
+	run, err = kubeconfig(exe, "--cluster="+configPath("cluster.yaml"), "--machines="+configPath("machines.yaml"), "--ssh-key="+sshKeyPath)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, run.ExitCode())
 
@@ -467,10 +467,10 @@ func TestApply(t *testing.T) {
 		testKubectl(t, kubeconfig)
 	})
 
-	// Test the we are getting debug logging messages.
-	t.Run("loglevel", func(t *testing.T) {
-		testDebugLogging(t, kubeconfig)
-	})
+	// // Test the we are getting debug logging messages.
+	// t.Run("loglevel", func(t *testing.T) {
+	//  testDebugLogging(t, kubeconfig)
+	// })
 
 	// Test that the pods.cidrBlocks are passed to weave-net
 	t.Run("CIDRBlocks", func(t *testing.T) {
