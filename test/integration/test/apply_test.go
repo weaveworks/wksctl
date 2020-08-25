@@ -325,13 +325,13 @@ func testNodes(t *testing.T, numMasters, numWorkers int, kubeconfig string) {
 				kubeconfig))
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
-		cmd.Run()
+		_ = cmd.Run()
 		cmdItems := []string{kubectl,
 			fmt.Sprintf("--kubeconfig=%s", kubeconfig), "get", "pods", "-l", "name=wks-controller", "-o", "yaml"}
 		cmd = exec.Command(cmdItems[0], cmdItems[1:]...)
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
-		cmd.Run()
+		_ = cmd.Run()
 		time.Sleep(10 * time.Second)
 		nodes = test.ListNodes(metav1.ListOptions{})
 	}
@@ -444,7 +444,7 @@ func TestApply(t *testing.T) {
 	conf := exec.Command("sudo", "cat", "/root/.kube/config")
 	conf.Stdout = os.Stdout
 	conf.Stderr = os.Stderr
-	conf.Run()
+	_ = conf.Run()
 
 	// Test we have the number of nodes we asked for.
 	t.Run("Nodes", func(t *testing.T) {
