@@ -245,7 +245,7 @@ func testKubectl(t *testing.T, kubeconfig string) {
 
 func testCIDRBlocks(t *testing.T, kubeconfig string) {
 	cmdItems := []string{kubectl,
-		fmt.Sprintf("--kubeconfig=%s", kubeconfig), "get", "pods", "-l", "name=wks-controller", "-o", "jsonpath={.items[].status.podIP}"}
+		fmt.Sprintf("--kubeconfig=%s", kubeconfig), "get", "pods", "-l", "name=wks-controller", "-o", "jsonpath={.items[].status.podIP}", "--namespace=weavek8sops"}
 	cmd := exec.Command(cmdItems[0], cmdItems[1:]...)
 	podIP, err := cmd.CombinedOutput()
 	log.Printf("wks-controller has IP: %s\n", string(podIP))
@@ -320,7 +320,6 @@ func testNodes(t *testing.T, numMasters, numWorkers int, kubeconfig string) {
 		}
 		log.Println("waiting for nodes - retrying in 10s")
 		fmt.Printf("NODE COUNT: %d\n", len(nodes.Items))
-		fmt.Printf("NODES: %#v\n", nodes.Items)
 		cmd := exec.Command(
 			"sh", "-c", fmt.Sprintf("kubectl logs -l name=wks-controller --kubeconfig=%s",
 				kubeconfig))
@@ -429,8 +428,6 @@ func TestApply(t *testing.T) {
 	// Install the Cluster.
 	run, err = apply(exe, "--cluster="+clusterManifestPath, "--machines="+machinesManifestPath,
 		"--config-directory="+configDir, "--sealed-secret-key="+configPath("ss.key"), "--sealed-secret-cert="+configPath("ss.cert"),
-		//		"--verbose=true", "--ssh-key="+sshKeyPath, "--controller-image=weaveworks/cluster-api-existinginfra-controller:v0.0.2")
-		//        "--verbose=true", "--ssh-key="+sshKeyPath, "--controller-image=jrryjcksn/wks-controller:fix")
 		"--verbose=true", "--ssh-key="+sshKeyPath)
 	assert.NoError(t, err)
 	require.Equal(t, 0, run.ExitCode())
