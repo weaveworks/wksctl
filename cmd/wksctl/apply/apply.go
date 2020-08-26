@@ -13,6 +13,7 @@ import (
 	"github.com/weaveworks/wksctl/pkg/addons"
 	wksos "github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/os"
 	"github.com/weaveworks/wksctl/pkg/manifests"
+	"github.com/weaveworks/wksctl/pkg/plan/runners/apiserver"
 	"github.com/weaveworks/wksctl/pkg/plan/runners/ssh"
 	"github.com/weaveworks/wksctl/pkg/specs"
 	"github.com/weaveworks/wksctl/pkg/utilities/manifest"
@@ -107,6 +108,10 @@ func (a *Applier) initiateCluster(clusterManifestPath, machinesManifestPath stri
 	if err != nil {
 		return errors.Wrapf(err, "failed to identify operating system for seed node (%s)", sp.GetMasterPublicAddress())
 	}
+	apiClient, err := apiserver.NewClient(sp, sshClient)
+	if err != nil {
+		return errors.Wrap(err, "failed to create apiserver client")
+	}
 
 	// N.B.: we generate this bootstrap token where wksctl apply is run hoping
 	// that this will be on a machine which has been running for a while, and
@@ -155,7 +160,7 @@ func (a *Applier) initiateCluster(clusterManifestPath, machinesManifestPath stri
 		}
 	}
 
-	if err := wksos.SetupSeedNode(installer, wksos.SeedNodeParams{
+	if err := wksos.SetupSeedNode(installer, apiClient, wksos.SeedNodeParams{
 		PublicIP:             sp.GetMasterPublicAddress(),
 		PrivateIP:            sp.GetMasterPrivateAddress(),
 		ServicesCIDRBlocks:   sp.Cluster.Spec.ClusterNetwork.Services.CIDRBlocks,

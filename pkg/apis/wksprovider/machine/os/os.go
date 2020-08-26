@@ -161,7 +161,7 @@ func (params SeedNodeParams) Validate() error {
 }
 
 // GetAddonNamespace returns either the general namspace or the
-// override defined the for the namespaces if set
+// override defined for the namespace
 func (params SeedNodeParams) GetAddonNamespace(name string) string {
 	if ns, ok := params.AddonNamespaces[name]; ok {
 		return ns
@@ -172,12 +172,12 @@ func (params SeedNodeParams) GetAddonNamespace(name string) string {
 // SetupSeedNode installs Kubernetes on this machine, and store the provided
 // manifests in the API server, so that the rest of the cluster can then be
 // set up by the WKS controller.
-func SetupSeedNode(o *capeios.OS, params SeedNodeParams) error {
+func SetupSeedNode(o *capeios.OS, apiClient plan.Runner, params SeedNodeParams) error {
 	p, err := CreateSeedNodeSetupPlan(o, params)
 	if err != nil {
 		return err
 	}
-	return applySeedNodePlan(o, p)
+	return applySeedNodePlan(o, apiClient, p)
 }
 
 // CreateSeedNodeSetupPlan constructs the seed node plan used to setup the initial node
@@ -582,7 +582,7 @@ func seedNodeSetupPlan(o *capeios.OS, params SeedNodeParams, providerSpec *capei
 	return o.CreateNodeSetupPlan(nodeParams)
 }
 
-func applySeedNodePlan(o *capeios.OS, plans []*plan.Plan) error {
+func applySeedNodePlan(o *capeios.OS, apiClient plan.Runner, plans []*plan.Plan) error {
 	p := plans[0]
 	err := p.Undo(o.Runner, plan.EmptyState)
 	if err != nil {
@@ -595,9 +595,9 @@ func applySeedNodePlan(o *capeios.OS, plans []*plan.Plan) error {
 		log.Errorf("Apply of Plan failed:\n%s\n", err)
 		return err
 	}
-	// TODO create apiserver runner here and execute part 2 of the setup
-	p = plans[1]
-	_, err = p.Apply(o.Runner, plan.EmptyDiff())
+
+	// The second part of the plan can be executed using the apiClient
+	_, err = p.Apply(apiClient, plan.EmptyDiff())
 	if err != nil {
 		log.Errorf("Apply of Plan on top of k8s failed:\n%s\n", err)
 		return err

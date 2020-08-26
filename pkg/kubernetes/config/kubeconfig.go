@@ -8,6 +8,7 @@ import (
 	yaml "github.com/ghodss/yaml"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	capeissh "github.com/weaveworks/cluster-api-provider-existinginfra/pkg/plan/runners/ssh"
 	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/plan/runners/sudo"
 	"github.com/weaveworks/wksctl/pkg/plan/runners/ssh"
 	"github.com/weaveworks/wksctl/pkg/specs"
@@ -75,7 +76,11 @@ func GetRemoteKubeconfig(sp *specs.Specs, sshKeyPath string, verbose, skipTLSVer
 		return "", errors.Wrap(err, "failed to create SSH client: ")
 	}
 	defer sshClient.Close()
+	return GetRemoteKubeconfigSSH(sp, sshClient, verbose, skipTLSVerify)
+}
 
+// GetRemoteKubeconfigSSH retrieves the Kubernetes configuration from a sshclient
+func GetRemoteKubeconfigSSH(sp *specs.Specs, sshClient *capeissh.Client, verbose, skipTLSVerify bool) (string, error) {
 	runner := sudo.Runner{Runner: sshClient}
 	configStr, err := runner.RunCommand("cat /etc/kubernetes/admin.conf", nil)
 	if err != nil {
