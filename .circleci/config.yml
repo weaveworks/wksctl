@@ -155,6 +155,13 @@ jobs:
             tar xvzf kubectl.tar.gz --strip-components=3
             sudo mv kubectl /usr/local/bin
       - run:
+          name: Install kpt
+          command: |
+            curl -L https://storage.googleapis.com/kpt-dev/latest/linux_amd64/kpt -o kpt
+            echo "f55d8d715ab8dbbbfcf05671f0edfb46e9614d778b06ee3b2ff4d0aa05eafa47  kpt" | sha256sum -c
+            chmod +x kpt
+            sudo mv kpt /usr/local/bin
+      - run:
           # TODO: Use CAPEI upstream when its build system has been set up
           name: Build cluster-api-provider-existinginfra
           command: |
