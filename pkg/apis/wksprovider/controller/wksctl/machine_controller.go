@@ -24,6 +24,7 @@ import (
 	"github.com/weaveworks/wksctl/pkg/plan/runners/ssh"
 	"github.com/weaveworks/wksctl/pkg/specs"
 	bootstraputils "github.com/weaveworks/wksctl/pkg/utilities/kubeadm"
+	"github.com/weaveworks/wksctl/pkg/utilities/manifest"
 	"github.com/weaveworks/wksctl/pkg/utilities/version"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
@@ -67,8 +68,6 @@ type MachineController struct {
 
 func (r *MachineController) Reconcile(req ctrl.Request) (_ ctrl.Result, reterr error) {
 	ctx := context.TODO() // upstream will add this eventually
-	sp, ctx := ot.StartSpanFromContext(ctx, "MachineController.Reconcile", ot.Tag{Key: "objectKey", Value: req.NamespacedName})
-	defer sp.Finish()
 	contextLog := log.WithField("name", req.NamespacedName)
 
 	// request only contains the name of the object, so fetch it from the api-server
@@ -80,7 +79,13 @@ func (r *MachineController) Reconcile(req ctrl.Request) (_ ctrl.Result, reterr e
 		}
 		return ctrl.Result{}, err
 	}
-	sp.SetTag("ResourceVersion", eim.ResourceVersion)
+	sp, err := manifest.SpanFromAnnotations("MachineController.Reconcile", eim.Annotations)
+	if err == nil && sp != nil {
+		defer sp.Finish()
+		sp.SetTag("objectKey", req.NamespacedName)
+		sp.SetTag("ResourceVersion", eim.ResourceVersion)
+		ctx = ot.ContextWithSpan(ctx, sp)
+	}
 
 	// Get Machine via OwnerReferences
 	machine, err := util.GetOwnerMachine(ctx, r.client, eim.ObjectMeta)
