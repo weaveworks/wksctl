@@ -376,7 +376,7 @@ func TestMultimasterSetup(t *testing.T) {
 		// NOTE: image must be updated each time Kubernetes or Docker is updated in wksctl
 		run(t, "docker", "run", "-d", "-p", fmt.Sprintf("%d:80", repositoryPort), "--restart", "always", "--name", "yumrepo", "weaveworks/local-yum-repo:master-48b0deac")
 	}
-	yumRepoIP := sanitizeIP(run(t, "docker", "inspect", "yumrepo", "--format='{{.NetworkSettings.IPAddress}}'"))
+	yumRepoIP = sanitizeIP(run(t, "docker", "inspect", "yumrepo", "--format='{{.NetworkSettings.IPAddress}}'"))
 
 	tests := []struct {
 		name string
@@ -404,10 +404,10 @@ func TestMultimasterSetup(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Start the footloose container "VMs" used for testing:
 			run(t, "footloose", "create", "--config", tc.path)
-			node0IP := sanitizeIP(run(t, "docker", "inspect", fmt.Sprintf("%s-multimaster-node0", tc.name), "--format='{{.NetworkSettings.IPAddress}}'"))
-			node1IP := sanitizeIP(run(t, "docker", "inspect", fmt.Sprintf("%s-multimaster-node1", tc.name), "--format='{{.NetworkSettings.IPAddress}}'"))
-			node2IP := sanitizeIP(run(t, "docker", "inspect", fmt.Sprintf("%s-multimaster-node2", tc.name), "--format='{{.NetworkSettings.IPAddress}}'"))
-			node3IP := sanitizeIP(run(t, "docker", "inspect", fmt.Sprintf("%s-multimaster-node3", tc.name), "--format='{{.NetworkSettings.IPAddress}}'"))
+			node0IP = sanitizeIP(run(t, "docker", "inspect", fmt.Sprintf("%s-multimaster-node0", tc.name), "--format='{{.NetworkSettings.IPAddress}}'"))
+			node1IP = sanitizeIP(run(t, "docker", "inspect", fmt.Sprintf("%s-multimaster-node1", tc.name), "--format='{{.NetworkSettings.IPAddress}}'"))
+			node2IP = sanitizeIP(run(t, "docker", "inspect", fmt.Sprintf("%s-multimaster-node2", tc.name), "--format='{{.NetworkSettings.IPAddress}}'"))
+			node3IP = sanitizeIP(run(t, "docker", "inspect", fmt.Sprintf("%s-multimaster-node3", tc.name), "--format='{{.NetworkSettings.IPAddress}}'"))
 
 			dirName := tempDir(t)
 			clusterYAML := saveToFile(t, dirName, "cluster.yaml", fmt.Sprintf(clusterYAML, registryIP, registryPort))
