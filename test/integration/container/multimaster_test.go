@@ -19,7 +19,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-const clusterYAML = `apiVersion: cluster.x-k8s.io/v1alpha3
+var clusterYAML = `
+apiVersion: cluster.x-k8s.io/v1alpha3
 kind: Cluster
 metadata:
   name: test-multimaster
@@ -75,7 +76,7 @@ spec:
       value: "10000"
 `
 
-const machinesYAML = `
+var machinesYAML = `
   apiVersion: cluster.x-k8s.io/v1alpha3
   kind: Machine
   metadata:
@@ -473,6 +474,9 @@ func TestMultimasterSetup(t *testing.T) {
 			}
 		})
 	}
+
+	// clean up the registry and yum repo
+	run(t, "docker", "rm", "-f", "yumrepo", "registry")
 }
 
 func imageTag(t *testing.T) string {

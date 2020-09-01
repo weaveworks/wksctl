@@ -282,7 +282,7 @@ func buildKubeadmInitPlan(path string, ignorePreflightErrors string, useIPTables
 	b := capeiplan.NewBuilder()
 	if useIPTables {
 		b.AddResource(
-			"configrure:iptables",
+			"configure:iptables",
 			&capeiresource.Run{Script: object.String("sysctl net.bridge.bridge-nf-call-iptables=1")}) // TODO: undo?
 	} else {
 		b.AddResource(
