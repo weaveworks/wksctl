@@ -1005,9 +1005,6 @@ func wksControllerManifest(controller ControllerParams, namespace, configDir str
 			return nil, openErr
 		}
 		manifestbytes, err = ioutil.ReadAll(file)
-		if controller.ImageOverride == "" {
-			controller.ImageOverride = controller.ImageBuiltin
-		}
 	} else {
 		manifestbytes, err = ioutil.ReadFile(filepath)
 	}
