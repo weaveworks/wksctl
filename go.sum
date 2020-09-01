@@ -803,6 +803,7 @@ github.com/weaveworks/footloose v0.0.0-20200609124411-8f3df89ea188 h1:BuiVM+91YR
 github.com/weaveworks/footloose v0.0.0-20200609124411-8f3df89ea188/go.mod h1:nxDdCjg1kb5+luh4mUCp+mtBZIWrhzoLIArrD99y+Sc=
 github.com/weaveworks/go-checkpoint v0.0.0-20170503165305-ebbb8b0518ab h1:mW+hgchD9qUUBqnuaDBj7BkcpFPk/FxeFcUFI5lvvUw=
 github.com/weaveworks/go-checkpoint v0.0.0-20170503165305-ebbb8b0518ab/go.mod h1:qkbvw5GPibQ/Nf7IZJL0UoLwmJ6858b4S/hUWRd+cH4=
+github.com/weaveworks/launcher v0.0.0-20180824102238-59a4fcc32c9c h1:YTNC1c2AM3xjrL6DM4vuq0HNJ79GFR8ScT+QKWadFUw=
 github.com/weaveworks/launcher v0.0.0-20180824102238-59a4fcc32c9c/go.mod h1:w9Z1vnQmPobkEZ0F3oyiqRYP+62qDqTGnK6t5uhe1kg=
 github.com/weaveworks/libgitops v0.0.2 h1:Brdmd+2DI8iPtrfWoyzyyzYcuFFlAGj+kf8asdKRjBg=
 github.com/weaveworks/libgitops v0.0.2/go.mod h1:P3TjYVc4kFAUmXolRTMWUoUNTvN2HPMTo1ZWrpOCwFM=
