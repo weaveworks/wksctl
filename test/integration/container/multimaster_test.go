@@ -348,7 +348,9 @@ var (
 )
 
 func TestMultimasterSetup(t *testing.T) {
-	node_os, node_version = strings.Trim(os.Getenv("NODE_OS"), " "), "18.04"
+	// Set env var NODE_OS to either "centos" or "ubuntu" to choose a node running that OS
+	// e.g. NODE_OS=centos go test -v test/integration/container/...
+	node_os, node_version = strings.ToLower(strings.Trim(os.Getenv("NODE_OS"), " ")), "18.04"
 	if node_os != UBUNTU {
 		node_os, node_version = CENTOS, "7"
 	}
@@ -387,12 +389,12 @@ func TestMultimasterSetup(t *testing.T) {
 		{
 			name: CENTOS,
 			path: "../../../examples/footloose/centos7/docker/multimaster.yaml",
-			skip: false,
+			skip: !strings.Contains(node_os, CENTOS),
 		},
 		{
 			name: UBUNTU,
-			path: "../../../examples/footloose/ubuntu1804/docker/multimaster.yaml",
-			skip: true,
+			path: "../../../examples/footloose/ubuntu18.04/docker/multimaster.yaml",
+			skip: !strings.Contains(node_os, UBUNTU),
 		},
 	}
 
