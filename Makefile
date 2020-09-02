@@ -143,8 +143,8 @@ integration-tests-container: cmd/wksctl/wksctl
 
 	NODE_OS1="centos"
 	NODE_OS2="ubuntu"
-	NODE_OS_CHOICE=$${NODE_OS:-"$$(echo $$NODE_OS1 $$NODE_OS2 | tr ' ' '\n' | shuf | head -1)"}
-	IMAGE_TAG=$(IMAGE_TAG) NODE_OS="$${NODE_OS}" go test -v -timeout 40m ./test/integration/container/...
+	NODE_OS=$${NODE_OS:-"$$(echo $$NODE_OS1 $$NODE_OS2 | tr ' ' '\n' | shuf | head -1)"}
+	IMAGE_TAG=$(IMAGE_TAG) NODE_OS="$${NODE_OS}" go test -v -timeout 60m ./test/integration/container/...
 
 FORCE:
 
