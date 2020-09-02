@@ -141,14 +141,10 @@ integration-tests-container: cmd/wksctl/wksctl
 
 # Leaving NODE_OS unset will result in one of centos or ubuntu being chosen for the test
 
-ifeq ($(shell go env NODE_OS),)
 	NODE_OS1="centos"
 	NODE_OS2="ubuntu"
-	NODE_OS_CHOICE=$${NODE_OS_CHOICE:-"$$(echo $$NODE_OS1 $$NODE_OS2 | tr ' ' '\n' | shuf | head -1)"}
-	IMAGE_TAG=$(IMAGE_TAG) NODE_OS="$${NODE_OS_CHOICE}" go test -v -timeout 40m ./test/integration/container/...
-else
-	NODE_OS=$(strip(${NODE_OS}) go test -v -timeout 40m ./test/integration/container/...
-endif
+	NODE_OS_CHOICE=$${NODE_OS:-"$$(echo $$NODE_OS1 $$NODE_OS2 | tr ' ' '\n' | shuf | head -1)"}
+	IMAGE_TAG=$(IMAGE_TAG) NODE_OS="$${NODE_OS}" go test -v -timeout 40m ./test/integration/container/...
 
 FORCE:
 
