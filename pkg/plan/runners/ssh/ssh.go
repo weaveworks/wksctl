@@ -9,6 +9,7 @@ import (
 	"os"
 
 	ot "github.com/opentracing/opentracing-go"
+	otlog "github.com/opentracing/opentracing-go/log"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/weaveworks/wksctl/pkg/existinginfra/v1alpha3"
@@ -86,10 +87,11 @@ func NewClient(params ClientParams) (*Client, error) {
 // A Client supports multiple interactive sessions.
 func (c *Client) RunCommand(ctx context.Context, command string, stdin io.Reader) (string, error) {
 	// TODO: hold a human-readable name of the target machine in Client so we can log it here
-	sp, ctx := ot.StartSpanFromContext(ctx, "sshClient.RunCommand",
-		ot.Tag{Key: "target", Value: c.client.Conn.RemoteAddr()},
-		ot.Tag{Key: "command", Value: command})
-	defer sp.Finish()
+	if sp := ot.SpanFromContext(ctx); sp != nil {
+		sp.LogFields(otlog.Event("ssh run"),
+			otlog.String("target", c.client.Conn.RemoteAddr().String()),
+			otlog.String("command", command))
+	}
 	log.Debugf("running command: %s", command)
 	return c.handleSessionIO(func(session *ssh.Session) error {
 		session.Stdin = stdin
