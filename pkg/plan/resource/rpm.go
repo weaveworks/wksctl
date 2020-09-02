@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/cavaliercoder/go-rpm/version"
+	ot "github.com/opentracing/opentracing-go"
 	"github.com/weaveworks/wksctl/pkg/plan"
 )
 
@@ -81,6 +82,8 @@ func (p *RPM) label() string {
 
 // QueryState implements plan.Resource.
 func (p *RPM) QueryState(ctx context.Context, r plan.Runner) (plan.State, error) {
+	span, ctx := ot.StartSpanFromContext(ctx, "RPM.QueryState", ot.Tag{Key: "label", Value: p.label()})
+	defer span.Finish()
 	output, err := r.RunCommand(ctx, fmt.Sprintf("rpm -q --queryformat '%%{NAME} %%{VERSION} %%{RELEASE}\\n' %s", p.label()), nil)
 	if err != nil && strings.Contains(output, "is not installed") {
 		// Package isn't installed.
@@ -125,6 +128,8 @@ func (p *RPM) WouldChangeState(ctx context.Context, r plan.Runner) (bool, error)
 
 // Apply implements plan.Resource.
 func (p *RPM) Apply(ctx context.Context, r plan.Runner, diff plan.Diff) (bool, error) {
+	span, ctx := ot.StartSpanFromContext(ctx, "RPM.Apply", ot.Tag{Key: "label", Value: p.label()})
+	defer span.Finish()
 	if !p.stateDifferent(diff.CurrentState) {
 		return false, nil
 	}
@@ -154,6 +159,8 @@ var undoAction = func(ctx context.Context, p *RPM, r plan.Runner, current plan.S
 
 // Undo implements plan.Resource
 func (p *RPM) Undo(ctx context.Context, r plan.Runner, current plan.State) error {
+	span, ctx := ot.StartSpanFromContext(ctx, "RPM.Undo", ot.Tag{Key: "label", Value: p.label()})
+	defer span.Finish()
 	pkgDescription := p.Name
 	if p.IgnoreOtherVersions {
 		pkgDescription = p.label()

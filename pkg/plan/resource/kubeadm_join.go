@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	ot "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/weaveworks/wksctl/pkg/plan"
@@ -52,6 +53,8 @@ func (kj *KubeadmJoin) State() plan.State {
 // TODO: find a way to make this idempotent.
 // TODO: should such a resource be splitted in smaller resources?
 func (kj *KubeadmJoin) Apply(ctx context.Context, runner plan.Runner, diff plan.Diff) (bool, error) {
+	span, ctx := ot.StartSpanFromContext(ctx, "KubeadmJoin.Apply", ot.Tag{Key: "node", Value: kj.NodeName})
+	defer span.Finish()
 	log.Info("joining Kubernetes cluster")
 	apiServerEndpoint := fmt.Sprintf("%s:%d", kj.MasterIP, kj.MasterPort)
 	if kj.ControlPlaneEndpoint != "" {

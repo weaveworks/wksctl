@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	ot "github.com/opentracing/opentracing-go"
 	"github.com/weaveworks/wksctl/pkg/plan"
 )
 
@@ -25,6 +26,8 @@ func (d *Deb) State() plan.State {
 }
 
 func (d *Deb) QueryState(ctx context.Context, runner plan.Runner) (plan.State, error) {
+	span, ctx := ot.StartSpanFromContext(ctx, "Deb.QueryState", ot.Tag{Key: "name", Value: d.Name})
+	defer span.Finish()
 	q := dpkgQuerier{Runner: runner}
 	installed, err := q.ShowInstalled(ctx, d.Name)
 
@@ -40,6 +43,8 @@ func (d *Deb) QueryState(ctx context.Context, runner plan.Runner) (plan.State, e
 }
 
 func (d *Deb) Apply(ctx context.Context, runner plan.Runner, diff plan.Diff) (propagate bool, err error) {
+	span, ctx := ot.StartSpanFromContext(ctx, "Deb.Apply", ot.Tag{Key: "name", Value: d.Name})
+	defer span.Finish()
 	a := aptInstaller{Runner: runner}
 	if err := a.UpdateCache(ctx); err != nil {
 		return false, fmt.Errorf("update cache failed: %v", err)
@@ -53,6 +58,8 @@ func (d *Deb) Apply(ctx context.Context, runner plan.Runner, diff plan.Diff) (pr
 }
 
 func (d *Deb) Undo(ctx context.Context, runner plan.Runner, current plan.State) error {
+	span, ctx := ot.StartSpanFromContext(ctx, "Deb.Undo", ot.Tag{Key: "name", Value: d.Name})
+	defer span.Finish()
 	a := aptInstaller{Runner: runner}
 	return a.Purge(ctx, d.Name)
 }

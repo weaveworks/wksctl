@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"strings"
 
+	ot "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/weaveworks/libgitops/pkg/serializer"
@@ -88,6 +89,8 @@ func (ki *KubeadmInit) State() plan.State {
 // TODO: find a way to make this idempotent.
 // TODO: should such a resource be split into smaller resources?
 func (ki *KubeadmInit) Apply(ctx context.Context, runner plan.Runner, diff plan.Diff) (bool, error) {
+	span, ctx := ot.StartSpanFromContext(ctx, "KubeadmInit.Apply", ot.Tag{Key: "node", Value: ki.NodeName})
+	defer span.Finish()
 	log.Debug("Initializing Kubernetes cluster")
 
 	sshKey, err := ssh.ReadPrivateKey(ki.SSHKeyPath)
@@ -249,6 +252,8 @@ func (ki *KubeadmInit) deserializeSecret(fileName, namespace string) (*corev1.Se
 
 // Undo implements plan.Resource.
 func (ki *KubeadmInit) Undo(ctx context.Context, runner plan.Runner, current plan.State) error {
+	span, ctx := ot.StartSpanFromContext(ctx, "KubeadmInit.Undo", ot.Tag{Key: "node", Value: ki.NodeName})
+	defer span.Finish()
 	remotePath := "/tmp/wks_kubeadm_init_config.yaml"
 	var ignored string
 	return buildKubeadmInitPlan(

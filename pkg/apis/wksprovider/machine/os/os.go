@@ -207,6 +207,8 @@ func (o OS) SetupSeedNode(ctx context.Context, params SeedNodeParams) error {
 // CreateSeedNodeSetupPlan constructs the seed node plan used to setup the initial node
 // prior to turning control over to wks-controller
 func (o OS) CreateSeedNodeSetupPlan(ctx context.Context, params SeedNodeParams) (*plan.Plan, error) {
+	sp, ctx := ot.StartSpanFromContext(ctx, "OS.CreateSeedNodeSetupPlan")
+	defer sp.Finish()
 	if err := params.Validate(); err != nil {
 		return nil, err
 	}
@@ -603,6 +605,8 @@ func (o OS) seedNodeSetupPlan(ctx context.Context, params SeedNodeParams, provid
 }
 
 func (o OS) applySeedNodePlan(ctx context.Context, p *plan.Plan) error {
+	span, _ := ot.StartSpanFromContext(ctx, "OS.applySeedNodePlan")
+	defer span.Finish()
 	err := p.Undo(ctx, o.runner, plan.EmptyState)
 	if err != nil {
 		log.Infof("Pre-plan cleanup failed:\n%s\n", err)
@@ -1144,6 +1148,8 @@ func (params NodeParams) Validate() error {
 // manifests stored during the initialization of the cluster, when
 // SetupSeedNode was called.
 func (o OS) SetupNode(ctx context.Context, p *plan.Plan) error {
+	span, _ := ot.StartSpanFromContext(ctx, "OS.SetupNode", ot.Tag{Key: "name", Value: o.Name})
+	defer span.Finish()
 	// We don't know the state of the machine so undo at the beginning
 	//nolint:errcheck
 	p.Undo(ctx, o.runner, plan.EmptyState) // TODO: Implement error checking
@@ -1157,6 +1163,8 @@ func (o OS) SetupNode(ctx context.Context, p *plan.Plan) error {
 
 // CreateNodeSetupPlan creates the plan that will be used to set up a node.
 func (o OS) CreateNodeSetupPlan(ctx context.Context, params NodeParams) (*plan.Plan, error) {
+	span, _ := ot.StartSpanFromContext(ctx, "OS.CreateSeedNodeSetupPlan")
+	defer span.Finish()
 	if err := params.Validate(); err != nil {
 		return nil, err
 	}
