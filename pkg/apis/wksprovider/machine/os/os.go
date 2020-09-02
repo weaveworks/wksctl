@@ -17,6 +17,7 @@ import (
 
 	ssv1alpha1 "github.com/bitnami-labs/sealed-secrets/pkg/apis/sealed-secrets/v1alpha1"
 	"github.com/bitnami-labs/sealed-secrets/pkg/crypto"
+	ot "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/weaveworks/libgitops/pkg/serializer"
@@ -336,7 +337,15 @@ func (o OS) CreateSeedNodeSetupPlan(ctx context.Context, params SeedNodeParams) 
 
 	b.AddResource("install:configmaps", configMapPlan, plan.DependOn(configDeps[0], configDeps[1:]...))
 
-	applyClstrRsc := &resource.KubectlApply{ManifestPath: object.String(params.ClusterManifestPath), Namespace: object.String(params.Namespace)}
+	span, _ := ot.StartSpanFromContext(ctx, "apply-manifests")
+	defer span.Finish()
+
+	clusterManifest, err := manifest.WithTraceAnnotation(serializer.FromFile(params.ClusterManifestPath), span)
+	if err != nil {
+		return nil, err
+	}
+
+	applyClstrRsc := &resource.KubectlApply{Manifest: clusterManifest, Filename: object.String("clustermanifest"), Namespace: object.String(params.Namespace)}
 
 	b.AddResource("kubectl:apply:cluster", applyClstrRsc, plan.DependOn("install:configmaps"))
 
@@ -344,7 +353,11 @@ func (o OS) CreateSeedNodeSetupPlan(ctx context.Context, params SeedNodeParams) 
 	if err != nil {
 		return nil, err
 	}
-	mManRsc := &resource.KubectlApply{Manifest: []byte(machinesManifest), Filename: object.String("machinesmanifest"), Namespace: object.String(params.Namespace)}
+	newMachinesManifest, err := manifest.WithTraceAnnotation(serializer.FromBytes([]byte(machinesManifest)), span)
+	if err != nil {
+		return nil, err
+	}
+	mManRsc := &resource.KubectlApply{Manifest: newMachinesManifest, Filename: object.String("machinesmanifest"), Namespace: object.String(params.Namespace)}
 	b.AddResource("kubectl:apply:machines", mManRsc, plan.DependOn(kubectlApplyDeps[0], kubectlApplyDeps[1:]...))
 
 	dep := addSealedSecretWaitIfNecessary(b, params.SealedSecretKeyPath, params.SealedSecretCertPath)
