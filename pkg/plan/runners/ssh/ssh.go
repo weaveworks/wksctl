@@ -87,16 +87,21 @@ func NewClient(params ClientParams) (*Client, error) {
 // A Client supports multiple interactive sessions.
 func (c *Client) RunCommand(ctx context.Context, command string, stdin io.Reader) (string, error) {
 	// TODO: hold a human-readable name of the target machine in Client so we can log it here
-	if sp := ot.SpanFromContext(ctx); sp != nil {
+	sp := ot.SpanFromContext(ctx)
+	if sp != nil {
 		sp.LogFields(otlog.Event("ssh run"),
 			otlog.String("target", c.client.Conn.RemoteAddr().String()),
 			otlog.String("command", command))
 	}
 	log.Debugf("running command: %s", command)
-	return c.handleSessionIO(func(session *ssh.Session) error {
+	errString, err := c.handleSessionIO(func(session *ssh.Session) error {
 		session.Stdin = stdin
 		return session.Start(command)
 	})
+	if sp != nil && err != nil {
+		sp.LogFields(otlog.Error(err), otlog.String("stderr", errString))
+	}
+	return errString, err
 }
 
 // Handle output and command completion for a remote shell
