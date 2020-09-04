@@ -17,6 +17,8 @@ spec:
     plural: existinginfraclusters
     singular: existinginfracluster
   scope: Namespaced
+  subresources:
+    status: {}
   validation:
     openAPIV3Schema:
       properties:
