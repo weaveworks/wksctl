@@ -207,6 +207,100 @@ metadata:
   name: repo
   namespace: system
 data:
+  kubernetes.repo: |
+    [kubernetes]
+    name=Kubernetes
+    baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-x86_64
+    enabled=1
+    gpgcheck=1
+    repo_gpgcheck=1
+    gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+    exclude=kube*
+  docker-ce.repo: |
+    [docker-ce-stable]
+    name=Docker CE Stable - $basearch
+    baseurl=https://download.docker.com/linux/centos/7/$basearch/stable
+    enabled=1
+    gpgcheck=1
+    gpgkey=https://download.docker.com/linux/centos/gpg
+
+    [docker-ce-stable-debuginfo]
+    name=Docker CE Stable - Debuginfo $basearch
+    baseurl=https://download.docker.com/linux/centos/7/debug-$basearch/stable
+    enabled=0
+    gpgcheck=1
+    gpgkey=https://download.docker.com/linux/centos/gpg
+
+    [docker-ce-stable-source]
+    name=Docker CE Stable - Sources
+    baseurl=https://download.docker.com/linux/centos/7/source/stable
+    enabled=0
+    gpgcheck=1
+    gpgkey=https://download.docker.com/linux/centos/gpg
+
+    [docker-ce-edge]
+    name=Docker CE Edge - $basearch
+    baseurl=https://download.docker.com/linux/centos/7/$basearch/edge
+    enabled=0
+    gpgcheck=1
+    gpgkey=https://download.docker.com/linux/centos/gpg
+
+    [docker-ce-edge-debuginfo]
+    name=Docker CE Edge - Debuginfo $basearch
+    baseurl=https://download.docker.com/linux/centos/7/debug-$basearch/edge
+    enabled=0
+    gpgcheck=1
+    gpgkey=https://download.docker.com/linux/centos/gpg
+
+    [docker-ce-edge-source]
+    name=Docker CE Edge - Sources
+    baseurl=https://download.docker.com/linux/centos/7/source/edge
+    enabled=0
+    gpgcheck=1
+    gpgkey=https://download.docker.com/linux/centos/gpg
+
+    [docker-ce-test]
+    name=Docker CE Test - $basearch
+    baseurl=https://download.docker.com/linux/centos/7/$basearch/test
+    enabled=0
+    gpgcheck=1
+    gpgkey=https://download.docker.com/linux/centos/gpg
+
+    [docker-ce-test-debuginfo]
+    name=Docker CE Test - Debuginfo $basearch
+    baseurl=https://download.docker.com/linux/centos/7/debug-$basearch/test
+    enabled=0
+    gpgcheck=1
+    gpgkey=https://download.docker.com/linux/centos/gpg
+
+    [docker-ce-test-source]
+    name=Docker CE Test - Sources
+    baseurl=https://download.docker.com/linux/centos/7/source/test
+    enabled=0
+    gpgcheck=1
+    gpgkey=https://download.docker.com/linux/centos/gpg
+
+    [docker-ce-nightly]
+    name=Docker CE Nightly - $basearch
+    baseurl=https://download.docker.com/linux/centos/7/$basearch/nightly
+    enabled=0
+    gpgcheck=1
+    gpgkey=https://download.docker.com/linux/centos/gpg
+
+    [docker-ce-nightly-debuginfo]
+    name=Docker CE Nightly - Debuginfo $basearch
+    baseurl=https://download.docker.com/linux/centos/7/debug-$basearch/nightly
+    enabled=0
+    gpgcheck=1
+    gpgkey=https://download.docker.com/linux/centos/gpg
+
+    [docker-ce-nightly-source]
+    name=Docker CE Nightly - Sources
+    baseurl=https://download.docker.com/linux/centos/7/source/nightly
+    enabled=0
+    gpgcheck=1
+    gpgkey=https://download.docker.com/linux/centos/gpg
+
   local.repo: |
     [local]
     name=Local
@@ -254,7 +348,9 @@ var (
 )
 
 func TestMultimasterSetup(t *testing.T) {
-	node_os, node_version = strings.Trim(os.Getenv("NODE_OS"), " "), "18.04"
+	// Set env var NODE_OS to either "centos" or "ubuntu" to choose a node running that OS
+	// e.g. NODE_OS=centos go test -v test/integration/container/...
+	node_os, node_version = strings.ToLower(strings.Trim(os.Getenv("NODE_OS"), " ")), "18.04"
 	if node_os != UBUNTU {
 		node_os, node_version = CENTOS, "7"
 	}
@@ -284,86 +380,101 @@ func TestMultimasterSetup(t *testing.T) {
 		run(t, "docker", "run", "-d", "-p", fmt.Sprintf("%d:80", repositoryPort), "--restart", "always", "--name", "yumrepo", "weaveworks/local-yum-repo:master-48b0deac")
 	}
 	yumRepoIP = sanitizeIP(run(t, "docker", "inspect", "yumrepo", "--format='{{.NetworkSettings.IPAddress}}'"))
-	// Start the footloose container "VMs" used for testing:
-	run(t, "footloose", "create", "-c", "../../../examples/footloose/"+node_os+node_version+"/docker/multimaster.yaml")
-	node0IP = sanitizeIP(run(t, "docker", "inspect", node_os+"-multimaster-node0", "--format='{{.NetworkSettings.IPAddress}}'"))
-	fmt.Printf("node0IP: %s\n", node0IP)
-	node1IP = sanitizeIP(run(t, "docker", "inspect", node_os+"-multimaster-node1", "--format='{{.NetworkSettings.IPAddress}}'"))
-	node2IP = sanitizeIP(run(t, "docker", "inspect", node_os+"-multimaster-node2", "--format='{{.NetworkSettings.IPAddress}}'"))
-	node3IP = sanitizeIP(run(t, "docker", "inspect", node_os+"-multimaster-node3", "--format='{{.NetworkSettings.IPAddress}}'"))
 
-	dirName := tempDir(t)
-	clusterYamlContent := fmt.Sprintf(clusterYAML, registryIP, registryPort)
-	clusterYaml := saveToFile(t, dirName, "cluster.yaml", clusterYamlContent)
-	fmt.Printf("clusterYAML file: %s\ncontents: \n%+v\n", clusterYaml, clusterYamlContent)
+	tests := []struct {
+		name string
+		path string
+		skip bool
+	}{
+		{
+			name: CENTOS,
+			path: "../../../examples/footloose/centos7/docker/multimaster.yaml",
+			skip: !strings.Contains(node_os, CENTOS),
+		},
+		{
+			name: UBUNTU,
+			path: "../../../examples/footloose/ubuntu18.04/docker/multimaster.yaml",
+			skip: !strings.Contains(node_os, UBUNTU),
+		},
+	}
 
-	machinesYamlContent := fmt.Sprintf(string(machinesYAML), node0IP, node1IP, node2IP, node3IP)
-	machinesYaml := saveToFile(t, dirName, "machines.yaml", machinesYamlContent)
-	fmt.Printf("machinesYAML file: %s\ncontents: \n%+v\n", machinesYaml, machinesYamlContent)
-
-	_ = saveToFile(t, dirName, "repo-config.yaml", fmt.Sprintf(repoConfigMap, yumRepoIP))
-	_ = saveToFile(t, dirName, "docker-config.yaml", fmt.Sprintf(dockerConfigMap, registryIP, registryPort))
-
-	run(t, "../../../cmd/wksctl/wksctl", "apply",
-		fmt.Sprintf("--cluster=%s", clusterYaml), fmt.Sprintf("--machines=%s", machinesYaml),
-		fmt.Sprintf("--config-directory=%s", dirName),
-		"--verbose",
-		fmt.Sprintf("--controller-image=docker.io/weaveworks/wksctl-controller:%s", tag))
-
-	out := run(t, "../../../cmd/wksctl/wksctl", "kubeconfig",
-		fmt.Sprintf("--cluster=%s", clusterYaml), fmt.Sprintf("--machines=%s", machinesYaml))
-
-	var nodeList corev1.NodeList
-	for {
-		jsonOut, stderr := doRun("kubectl", "get", "nodes", "-o", "json", fmt.Sprintf("--kubeconfig=%s", kubeconfig(out)))
-		if stderr != "" {
-			log.Warnf("error from kubectl; ignoring: %s", stderr)
+	for _, tc := range tests {
+		tc := tc
+		if tc.skip {
 			continue
 		}
-		if err := json.Unmarshal([]byte(jsonOut), &nodeList); err != nil {
-			log.Warnf("Error deserialising output of kubectl get nodes: %s", err)
-		}
-		log.Infof("The cluster currently has %d node(s)", len(nodeList.Items))
-		if len(nodeList.Items) == 4 {
-			break
-		}
-		time.Sleep(30 * time.Second)
-	}
 
-	assert.Len(t, nodeList.Items, 4)
-	assert.Len(t, nodes.Masters(nodeList).Items, 3)
-	assert.Len(t, nodes.Workers(nodeList).Items, 1)
+		t.Run(tc.name, func(t *testing.T) {
+			// Start the footloose container "VMs" used for testing:
+			run(t, "footloose", "create", "--config", tc.path)
+			node0IP = sanitizeIP(run(t, "docker", "inspect", fmt.Sprintf("%s-multimaster-node0", tc.name), "--format='{{.NetworkSettings.IPAddress}}'"))
+			node1IP = sanitizeIP(run(t, "docker", "inspect", fmt.Sprintf("%s-multimaster-node1", tc.name), "--format='{{.NetworkSettings.IPAddress}}'"))
+			node2IP = sanitizeIP(run(t, "docker", "inspect", fmt.Sprintf("%s-multimaster-node2", tc.name), "--format='{{.NetworkSettings.IPAddress}}'"))
+			node3IP = sanitizeIP(run(t, "docker", "inspect", fmt.Sprintf("%s-multimaster-node3", tc.name), "--format='{{.NetworkSettings.IPAddress}}'"))
 
-	expectedKubeletArgs := []string{"alsologtostderr=true", "container-runtime=docker"}
-	expectedApiServerArgs := []string{"alsologtostderr=true", "audit-log-maxsize=10000"}
+			dirName := tempDir(t)
+			clusterYAML := saveToFile(t, dirName, "cluster.yaml", fmt.Sprintf(clusterYAML, registryIP, registryPort))
+			machinesYAML := saveToFile(t, dirName, "machines.yaml", fmt.Sprintf(machinesYAML, node0IP, node1IP, node2IP, node3IP))
+			_ = saveToFile(t, dirName, "repo-config.yaml", fmt.Sprintf(repoConfigMap, yumRepoIP))
+			_ = saveToFile(t, dirName, "docker-config.yaml", fmt.Sprintf(dockerConfigMap, registryIP, registryPort))
 
-	for i := 0; i < 4; i++ {
-		for _, kubeletArg := range expectedKubeletArgs {
-			log.Infof("Checking kubelet arg (%s) on node%d", kubeletArg, i)
-			run(t, "footloose",
-				"-c", "../../../examples/footloose/"+node_os+node_version+"/docker/multimaster.yaml",
-				"ssh", fmt.Sprintf("root@node%d", i), fmt.Sprintf("ps -ef | grep -v 'ps -ef' | grep /usr/bin/kubelet | grep %s", kubeletArg))
-		}
+			run(t, "../../../cmd/wksctl/wksctl", "apply",
+				fmt.Sprintf("--cluster=%s", clusterYAML), fmt.Sprintf("--machines=%s", machinesYAML),
+				fmt.Sprintf("--config-directory=%s", dirName),
+				"--verbose",
+				fmt.Sprintf("--controller-image=docker.io/weaveworks/wksctl-controller:%s", tag))
 
-		// node0 - node2 are masters
-		if i < 3 {
-			for _, apiServerArg := range expectedApiServerArgs {
-				log.Infof("Checking api server arg (%s) on node%d", apiServerArg, i)
-				run(t, "footloose",
-					"-c", "../../../examples/footloose/"+node_os+node_version+"/docker/multimaster.yaml",
-					"ssh", fmt.Sprintf("root@node%d", i), fmt.Sprintf("ps -ef | grep -v 'ps -ef' | grep kube-apiserver | grep %s", apiServerArg))
+			out := run(t, "../../../cmd/wksctl/wksctl", "kubeconfig",
+				fmt.Sprintf("--cluster=%s", clusterYAML), fmt.Sprintf("--machines=%s", machinesYAML))
+
+			var nodeList corev1.NodeList
+			for {
+				jsonOut := run(t, "kubectl", "get", "nodes", "-o", "json", fmt.Sprintf("--kubeconfig=%s", kubeconfig(out)))
+				if err := json.Unmarshal([]byte(jsonOut), &nodeList); err != nil {
+					log.Warnf("Error deserialising output of kubectl get nodes: %s", err)
+				}
+				log.Infof("The cluster currently has %d node(s)", len(nodeList.Items))
+				if len(nodeList.Items) == 4 {
+					break
+				}
+				time.Sleep(30 * time.Second)
 			}
-		}
-	}
 
-	if !t.Failed() { // Otherwise leave the footloose "VMs" & config files around for debugging purposes.
-		// Clean up:
-		defer runIgnoreError(t, "footloose", "delete", "-c", "../../../examples/footloose/"+node_os+node_version+"/docker/multimaster.yaml")
-		defer os.Remove(dirName)
-		defer os.Remove(clusterYAML)
-		defer os.Remove(machinesYAML)
-		defer os.Remove(repoConfigMap)
-		defer os.Remove(repoConfigMap)
+			assert.Len(t, nodeList.Items, 4)
+			assert.Len(t, nodes.Masters(nodeList).Items, 3)
+			assert.Len(t, nodes.Workers(nodeList).Items, 1)
+
+			expectedKubeletArgs := []string{"alsologtostderr=true", "container-runtime=docker"}
+			expectedApiServerArgs := []string{"alsologtostderr=true", "audit-log-maxsize=10000"}
+
+			for i := 0; i < 4; i++ {
+				for _, kubeletArg := range expectedKubeletArgs {
+					log.Infof("Checking kubelet arg (%s) on node%d", kubeletArg, i)
+					run(t, "footloose",
+						"-c", "../../../examples/footloose/"+node_os+node_version+"/docker/multimaster.yaml",
+						"ssh", fmt.Sprintf("root@node%d", i), fmt.Sprintf("ps -ef | grep -v 'ps -ef' | grep /usr/bin/kubelet | grep %s", kubeletArg))
+				}
+
+				// node0 - node2 are masters
+				if i < 3 {
+					for _, apiServerArg := range expectedApiServerArgs {
+						log.Infof("Checking api server arg (%s) on node%d", apiServerArg, i)
+						run(t, "footloose",
+							"-c", "../../../examples/footloose/"+node_os+node_version+"/docker/multimaster.yaml",
+							"ssh", fmt.Sprintf("root@node%d", i), fmt.Sprintf("ps -ef | grep -v 'ps -ef' | grep kube-apiserver | grep %s", apiServerArg))
+					}
+				}
+			}
+
+			if !t.Failed() { // Otherwise leave the footloose "VMs" & config files around for debugging purposes.
+				// Clean up:
+				defer runIgnoreError(t, "footloose", "delete", "-c", "../../../examples/footloose/"+node_os+node_version+"/docker/multimaster.yaml")
+				defer os.Remove(dirName)
+				defer os.Remove(clusterYAML)
+				defer os.Remove(machinesYAML)
+				defer os.Remove(repoConfigMap)
+			}
+		})
 	}
 
 	// clean up the registry and yum repo
