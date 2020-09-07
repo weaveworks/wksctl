@@ -45,7 +45,7 @@ require (
 	k8s.io/utils v0.0.0-20200619165400-6e3d28b6ed19
 	sigs.k8s.io/cluster-api v0.3.6
 	sigs.k8s.io/controller-runtime v0.6.0
-	sigs.k8s.io/kustomize/kyaml v0.6.0 // indirect
+	sigs.k8s.io/kustomize/kyaml v0.6.0
 	sigs.k8s.io/yaml v1.2.0
 )
 

@@ -36,6 +36,7 @@ import (
 	"github.com/weaveworks/wksctl/pkg/plan/resource"
 	"github.com/weaveworks/wksctl/pkg/scheme"
 	"github.com/weaveworks/wksctl/pkg/specs"
+	tracingmanifest "github.com/weaveworks/wksctl/pkg/utilities/manifest"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/api/apps/v1beta2"
 	v1 "k8s.io/api/core/v1"
@@ -313,7 +314,15 @@ func CreateSeedNodeSetupPlan(ctx context.Context, o *capeios.OS, params SeedNode
 
 	b.AddResource("install:configmaps", configMapPlan, plan.DependOn(configDeps[0], configDeps[1:]...))
 
-	applyClstrRsc := &resource.KubectlApply{ManifestPath: object.String(params.ClusterManifestPath), Namespace: object.String(params.Namespace)}
+	span, _ := ot.StartSpanFromContext(ctx, "apply-manifests")
+	defer span.Finish()
+
+	clusterManifest, err := tracingmanifest.WithTraceAnnotation(serializer.FromFile(params.ClusterManifestPath), span)
+	if err != nil {
+		return nil, err
+	}
+
+	applyClstrRsc := &resource.KubectlApply{Manifest: clusterManifest, Filename: object.String("clustermanifest"), Namespace: object.String(params.Namespace)}
 
 	b.AddResource("kubectl:apply:cluster", applyClstrRsc, plan.DependOn("install:configmaps"))
 
@@ -321,7 +330,11 @@ func CreateSeedNodeSetupPlan(ctx context.Context, o *capeios.OS, params SeedNode
 	if err != nil {
 		return nil, err
 	}
-	mManRsc := &resource.KubectlApply{Manifest: []byte(machinesManifest), Filename: object.String("machinesmanifest"), Namespace: object.String(params.Namespace)}
+	newMachinesManifest, err := tracingmanifest.WithTraceAnnotation(serializer.FromBytes([]byte(machinesManifest)), span)
+	if err != nil {
+		return nil, err
+	}
+	mManRsc := &resource.KubectlApply{Manifest: newMachinesManifest, Filename: object.String("machinesmanifest"), Namespace: object.String(params.Namespace)}
 	b.AddResource("kubectl:apply:machines", mManRsc, plan.DependOn(kubectlApplyDeps[0], kubectlApplyDeps[1:]...))
 
 	dep := addSealedSecretWaitIfNecessary(b, params.SealedSecretKeyPath, params.SealedSecretCertPath)
