@@ -123,17 +123,17 @@ push:
 # We select which directory we want to descend into to not execute integration
 # tests here.
 unit-tests: generated
-	go test -p 1 -v ./cmd/... ./pkg/...
+	WKP_DEBUG=true go test -p 1 -v ./cmd/... ./pkg/...
 
 # Tests running in containers
 mkfile_path := $(abspath $(lastword $(MAKEFILE_LIST)))
 mkfile_dir := $(dir $(mkfile_path))
 
 container-tests: pkg/apis/wksprovider/machine/scripts/scripts_vfsdata.go pkg/apis/wksprovider/controller/manifests/manifests_vfsdata.go
-	go test -count=1 ./test/container/...
+	WKP_DEBUG=true go test -v -count=1 ./test/container/...
 
 integration-tests-container: cmd/wksctl/wksctl
-	IMAGE_TAG=$(IMAGE_TAG) go test -v -timeout 20m ./test/integration/container/...
+	WKP_DEBUG=true IMAGE_TAG=$(IMAGE_TAG) go test -v -timeout 20m ./test/integration/container/...
 
 FORCE:
 
