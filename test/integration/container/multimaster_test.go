@@ -368,10 +368,10 @@ func TestMultimasterSetup(t *testing.T) {
 	if shouldRetagPush(t, registryPort) {
 		run(t, "../../../environments/local-docker-registry/retag_push.sh", "-p", strconv.Itoa(registryPort))
 	}
-	// TODO: Use CAPEI upstream when its build system has been set up
-	run(t, "docker", "pull", "weaveworks/cluster-api-existinginfra-controller:v0.0.2")
-	run(t, "docker", "tag", fmt.Sprintf("weaveworks/cluster-api-existinginfra-controller:%s", "v0.0.2"), fmt.Sprintf("localhost:%d/weaveworks/wksctl-controller:%s", registryPort, tag))
-	run(t, "docker", "push", fmt.Sprintf("localhost:%d/weaveworks/wksctl-controller:%s", registryPort, tag))
+	const capeiImage = "weaveworks/cluster-api-existinginfra-controller:v0.0.2"
+	run(t, "docker", "pull", capeiImage)
+	run(t, "docker", "tag", capeiImage, fmt.Sprintf("localhost:%d/%s", registryPort, capeiImage))
+	run(t, "docker", "push", fmt.Sprintf("localhost:%d/%s", registryPort, capeiImage))
 	registryIP = sanitizeIP(run(t, "docker", "inspect", "registry", "--format='{{.NetworkSettings.IPAddress}}'"))
 
 	// Ensure the local YUM repo is running:
@@ -422,7 +422,7 @@ func TestMultimasterSetup(t *testing.T) {
 				fmt.Sprintf("--cluster=%s", clusterYAML), fmt.Sprintf("--machines=%s", machinesYAML),
 				fmt.Sprintf("--config-directory=%s", dirName),
 				"--verbose",
-				fmt.Sprintf("--controller-image=docker.io/weaveworks/wksctl-controller:%s", tag))
+				fmt.Sprintf("--controller-image=%s", capeiImage))
 
 			out := run(t, "../../../cmd/wksctl/wksctl", "kubeconfig",
 				fmt.Sprintf("--cluster=%s", clusterYAML), fmt.Sprintf("--machines=%s", machinesYAML))
