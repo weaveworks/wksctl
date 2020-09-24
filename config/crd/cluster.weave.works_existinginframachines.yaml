@@ -16,6 +16,8 @@ spec:
     listKind: ExistingInfraMachineList
     plural: existinginframachines
     singular: existinginframachine
+  subresources:
+    status: {}
   scope: Namespaced
   validation:
     openAPIV3Schema:
