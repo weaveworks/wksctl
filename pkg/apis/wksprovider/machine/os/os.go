@@ -32,6 +32,7 @@ import (
 	"github.com/weaveworks/wksctl/pkg/cluster/machine"
 	"github.com/weaveworks/wksctl/pkg/plan/recipe"
 	"github.com/weaveworks/wksctl/pkg/plan/resource"
+	"github.com/weaveworks/wksctl/pkg/profiles"
 	"github.com/weaveworks/wksctl/pkg/scheme"
 	"github.com/weaveworks/wksctl/pkg/specs"
 	appsv1 "k8s.io/api/apps/v1"
@@ -257,23 +258,23 @@ func CreateSeedNodeSetupPlan(o *capeios.OS, params SeedNodeParams) (*plan.Plan, 
 	// TODO(damien): Add a CNI section in cluster.yaml once we support more than one CNI plugin.
 	const cni = "weave-net"
 
-	cniAdddon := capeiv1alpha3.Addon{Name: cni}
-
-	// we use the namespace defined in addon-namespace map to make weave-net run in kube-system
-	// as weave-net requires to run in the kube-system namespace *only*.
-	manifests, err := buildAddon(cniAdddon, params.ImageRepository, params.ClusterManifestPath, params.GetAddonNamespace(cni))
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to generate manifests for CNI plugin")
-	}
-
+	cniParams := map[string]string{}
 	if len(params.PodsCIDRBlocks) > 0 && params.PodsCIDRBlocks[0] != "" {
 		// setting the pod CIDR block is currently only supported for the weave-net CNI
 		if cni == "weave-net" {
-			manifests, err = SetWeaveNetPodCIDRBlock(manifests, params.PodsCIDRBlocks[0])
-			if err != nil {
-				return nil, errors.Wrap(err, "failed to inject ipalloc_range")
-			}
+			cniParams["ipalloc-range"] = params.PodsCIDRBlocks[0]
 		}
+	}
+
+	cniAdddon := profiles.Profile{
+		Name:     cni,
+		Location: "https://github.com/weaveworks/weave/install/kubernetes@k8s-manifest",
+		Params:   cniParams,
+	}
+
+	manifests, err := cniAdddon.Build(params.ImageRepository)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to generate manifests for CNI plugin")
 	}
 
 	cniRsc := recipe.BuildCNIPlan(cni, manifests)

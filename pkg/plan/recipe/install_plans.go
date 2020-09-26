@@ -28,18 +28,19 @@ func BuildConfigMapPlan(manifests map[string][]byte, namespace string) plan.Reso
 // BuildCNIPlan creates a sub-plan to install the CNI plugin.
 func BuildCNIPlan(cni string, manifests [][]byte) plan.Resource {
 	b := plan.NewBuilder()
+	var previous string
+	for i, m := range manifests {
+		resFile := fmt.Sprintf("%s-%02d", cni, i)
+		resName := "install-cni:apply-manifests:" + resFile
+		manRsc := &resource.KubectlApply{Manifest: m, Filename: object.String(resFile + ".yaml")}
 
-	b.AddResource(
-		"install-cni:apply-manifests",
-		&resource.KubectlApply{Manifest: manifests[0], Filename: object.String(cni + ".yaml")},
-	)
-	if len(manifests) == 2 {
-		b.AddResource(
-			"install-cni:apply-manifests-ds",
-			&resource.KubectlApply{Manifest: manifests[1], Filename: object.String(cni + "-daemon-set" + ".yaml")},
-			plan.DependOn("install-cni:apply-manifests"))
+		if previous != "" {
+			b.AddResource(resName, manRsc, plan.DependOn(previous))
+		} else {
+			b.AddResource(resName, manRsc)
+		}
+		previous = resName
 	}
-
 	p, err := b.Plan()
 	if err != nil {
 		log.Fatalf("%v", err)
