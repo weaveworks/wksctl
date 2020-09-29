@@ -15,6 +15,7 @@ import (
 
 	ssv1alpha1 "github.com/bitnami-labs/sealed-secrets/pkg/apis/sealed-secrets/v1alpha1"
 	"github.com/bitnami-labs/sealed-secrets/pkg/crypto"
+	ot "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	capeiv1alpha3 "github.com/weaveworks/cluster-api-provider-existinginfra/apis/cluster.weave.works/v1alpha3"
@@ -180,6 +181,8 @@ func SetupSeedNode(ctx context.Context, o *capeios.OS, params SeedNodeParams) er
 // CreateSeedNodeSetupPlan constructs the seed node plan used to setup the initial node
 // prior to turning control over to wks-controller
 func CreateSeedNodeSetupPlan(ctx context.Context, o *capeios.OS, params SeedNodeParams) (*plan.Plan, error) {
+	sp, ctx := ot.StartSpanFromContext(ctx, "CreateSeedNodeSetupPlan")
+	defer sp.Finish()
 	if err := params.Validate(); err != nil {
 		return nil, err
 	}
@@ -564,6 +567,8 @@ func seedNodeSetupPlan(ctx context.Context, o *capeios.OS, params SeedNodeParams
 }
 
 func applySeedNodePlan(ctx context.Context, o *capeios.OS, p *plan.Plan) error {
+	span, ctx := ot.StartSpanFromContext(ctx, "applySeedNodePlan")
+	defer span.Finish()
 	err := p.Undo(ctx, o.Runner, plan.EmptyState)
 	if err != nil {
 		log.Infof("Pre-plan cleanup failed:\n%s\n", err)
