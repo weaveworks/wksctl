@@ -12,7 +12,6 @@ import (
 	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/apis/wksprovider/machine/scripts"
 	capeiplan "github.com/weaveworks/cluster-api-provider-existinginfra/pkg/plan"
 	capeiresource "github.com/weaveworks/cluster-api-provider-existinginfra/pkg/plan/resource"
-	capeimanifest "github.com/weaveworks/cluster-api-provider-existinginfra/pkg/utilities/manifest"
 	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/utilities/object"
 	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/utilities/ssh"
 	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/utilities/version"
@@ -189,7 +188,7 @@ func (ki *KubeadmInit) updateManifestNamespace(fileName, namespace string) ([]by
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to open manifest")
 	}
-	c, err := capeimanifest.WithNamespace(serializer.FromBytes(content), namespace)
+	c, err := manifest.WithNamespace(serializer.FromBytes(content), namespace)
 	if err != nil {
 		return nil, err
 	}

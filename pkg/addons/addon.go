@@ -13,11 +13,11 @@ import (
 	"github.com/ghodss/yaml"
 	"github.com/google/go-jsonnet"
 	log "github.com/sirupsen/logrus"
-	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/utilities/manifest"
 	"github.com/weaveworks/libgitops/pkg/serializer"
 	"github.com/weaveworks/wksctl/pkg/addons/assets"
 	"github.com/weaveworks/wksctl/pkg/qjson"
 	"github.com/weaveworks/wksctl/pkg/registry"
+	"github.com/weaveworks/wksctl/pkg/utilities/manifest"
 )
 
 const (
