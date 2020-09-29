@@ -1,6 +1,7 @@
 package resource
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -31,7 +32,7 @@ func AssertNotInstalled(t *testing.T, name string, r plan.Runner) {
 
 func AssertInstalled(t *testing.T, name string, r plan.Runner) {
 	res := resource.Deb{Name: name}
-	installedState, err := res.QueryState(r)
+	installedState, err := res.QueryState(context.Background(), r)
 	assert.NoError(t, err)
 	assert.Equal(t, name, installedState["name"])
 	assert.NotZero(t, installedState["suffix"])
@@ -39,13 +40,13 @@ func AssertInstalled(t *testing.T, name string, r plan.Runner) {
 
 func InstallAndAssertSuccess(t *testing.T, name, suffix string, r plan.Runner) {
 	res := resource.Deb{Name: name, Suffix: suffix}
-	prop, err := res.Apply(r, plan.EmptyDiff())
+	prop, err := res.Apply(context.Background(), r, plan.EmptyDiff())
 	assert.NoError(t, err)
 	assert.True(t, prop)
 }
 
 func PurgeAndAssertSuccess(t *testing.T, name string, r plan.Runner) {
 	res := resource.Deb{Name: name}
-	err := res.Undo(r, res.State())
+	err := res.Undo(context.Background(), r, res.State())
 	assert.NoError(t, err)
 }

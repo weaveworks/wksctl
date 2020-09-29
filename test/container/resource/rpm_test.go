@@ -1,6 +1,7 @@
 package resource
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -23,11 +24,11 @@ func TestRPM(t *testing.T) {
 	testutils.AssertEmptyState(t, p, r)
 
 	// Install make.
-	_, err := p.Apply(r, emptyDiff)
+	_, err := p.Apply(context.Background(), r, emptyDiff)
 	assert.NoError(t, err)
 
 	// Verify make is installed.
-	installedState, err := p.QueryState(r)
+	installedState, err := p.QueryState(context.Background(), r)
 	assert.NoError(t, err)
 	assert.Equal(t, "make", installedState["name"])
 	assert.NotZero(t, installedState["version"])
@@ -38,12 +39,12 @@ func TestRPM(t *testing.T) {
 	installedDiff := plan.Diff{
 		CurrentState:    installedState,
 		InvalidatedDeps: []plan.Resource{}}
-	_, err = p.Apply(r, installedDiff)
+	_, err = p.Apply(context.Background(), r, installedDiff)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(r.Operations()))
 
 	// Undo the install.
-	err = p.Undo(r, installedState)
+	err = p.Undo(context.Background(), r, installedState)
 	assert.NoError(t, err)
 	testutils.AssertEmptyState(t, p, r)
 }

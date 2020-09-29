@@ -1,6 +1,7 @@
 package resource
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -25,7 +26,7 @@ func TestDirRecursive(t *testing.T) {
 	runCmdOrFail(t, r, "[ ! -e /tmp/dir-test ]")
 
 	// Create a directory.
-	_, err := tmpDir.Apply(r, emptyDiff)
+	_, err := tmpDir.Apply(context.Background(), r, emptyDiff)
 	assert.NoError(t, err, "tmpDir.Apply")
 
 	// Check that the directory exists.
@@ -38,7 +39,7 @@ func TestDirRecursive(t *testing.T) {
 	runCmdOrFail(t, r, "[ -f /tmp/dir-test/somefile ]")
 
 	// Delete the directory.
-	assert.NoError(t, tmpDir.Undo(r, tmpDir.State()))
+	assert.NoError(t, tmpDir.Undo(context.Background(), r, tmpDir.State()))
 
 	// Check that the directory does not exist.
 	runCmdOrFail(t, r, "[ ! -e /tmp/dir-test ]")
@@ -58,7 +59,7 @@ func TestDirNotRecursive(t *testing.T) {
 	runCmdOrFail(t, r, "[ ! -e /tmp/dir-test ]")
 
 	// Create a directory.
-	_, err := tmpDir.Apply(r, emptyDiff)
+	_, err := tmpDir.Apply(context.Background(), r, emptyDiff)
 	assert.NoError(t, err, "tmpDir.Apply")
 
 	// Check that the directory exists.
@@ -71,7 +72,7 @@ func TestDirNotRecursive(t *testing.T) {
 	runCmdOrFail(t, r, "[ -f /tmp/dir-test/somefile ]")
 
 	// Delete the directory.
-	assert.NoError(t, tmpDir.Undo(r, tmpDir.State()))
+	assert.NoError(t, tmpDir.Undo(context.Background(), r, tmpDir.State()))
 
 	// Check that the directory and the file both exist.
 	runCmdOrFail(t, r, "[ -d /tmp/dir-test ]")
@@ -79,6 +80,6 @@ func TestDirNotRecursive(t *testing.T) {
 }
 
 func runCmdOrFail(t *testing.T, r plan.Runner, cmd string) {
-	_, err := r.RunCommand(cmd, nil)
+	_, err := r.RunCommand(context.Background(), cmd, nil)
 	assert.NoError(t, err, cmd)
 }
