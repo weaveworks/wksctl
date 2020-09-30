@@ -23,6 +23,7 @@ import (
 	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/plan"
 	capeirecipe "github.com/weaveworks/cluster-api-provider-existinginfra/pkg/plan/recipe"
 	capeiresource "github.com/weaveworks/cluster-api-provider-existinginfra/pkg/plan/resource"
+	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/scheme"
 	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/utilities/envcfg"
 	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/utilities/manifest"
 	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/utilities/object"
@@ -33,7 +34,6 @@ import (
 	"github.com/weaveworks/wksctl/pkg/cluster/machine"
 	"github.com/weaveworks/wksctl/pkg/plan/recipe"
 	"github.com/weaveworks/wksctl/pkg/plan/resource"
-	"github.com/weaveworks/wksctl/pkg/scheme"
 	"github.com/weaveworks/wksctl/pkg/specs"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/api/apps/v1beta2"
@@ -65,40 +65,6 @@ type: Opaque`
 var (
 	pemKeys = []string{"certificate-authority", "client-certificate", "client-key"}
 )
-
-type crdFile struct {
-	fname string
-	data  []byte
-}
-
-// Retrieve all CRD definitions needed for cluster API
-func getCRDs() ([]crdFile, error) {
-	crddir, err := crds.CRDs.Open(".")
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to list cluster API CRDs")
-	}
-	crdFiles := make([]crdFile, 0)
-	for {
-		entry, err := crddir.Readdir(1)
-		if err != nil && err != io.EOF {
-			return nil, errors.Wrap(err, "failed to open cluster API CRD directory")
-		}
-		if entry == nil {
-			break
-		}
-		fname := entry[0].Name()
-		crd, err := crds.CRDs.Open(fname)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to open cluster API CRD")
-		}
-		data, err := ioutil.ReadAll(crd)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to read cluster API CRD")
-		}
-		crdFiles = append(crdFiles, crdFile{fname, data})
-	}
-	return crdFiles, nil
-}
 
 // GitParams are all SeedNodeParams related to the user's Git(Hub) repo
 type GitParams struct {
@@ -230,7 +196,7 @@ func CreateSeedNodeSetupPlan(ctx context.Context, o *capeios.OS, params SeedNode
 	}
 
 	kubeadmInitResource :=
-		&resource.KubeadmInit{
+		&capeiresource.KubeadmInit{
 			PublicIP:              params.PublicIP,
 			PrivateIP:             params.PrivateIP,
 			KubeletConfig:         &params.KubeletConfig,
@@ -277,13 +243,13 @@ func CreateSeedNodeSetupPlan(ctx context.Context, o *capeios.OS, params SeedNode
 		}
 	}
 
-	cniRsc := recipe.BuildCNIPlan(cni, manifests)
+	cniRsc := capeirecipe.BuildCNIPlan(cni, manifests)
 	b.AddResource("install:cni", cniRsc, plan.DependOn("kubeadm:init"))
 
 	// Add resources to apply the cluster API's CRDs so that Kubernetes
 	// understands objects like Cluster, Machine, etc.
 
-	crdIDs, err := addClusterAPICRDs(b)
+	crdIDs, err := capeios.AddClusterAPICRDs(b, crds.CRDs)
 	if err != nil {
 		return nil, err
 	}
@@ -301,7 +267,7 @@ func CreateSeedNodeSetupPlan(ctx context.Context, o *capeios.OS, params SeedNode
 	if err != nil {
 		return nil, err
 	}
-	b.AddResource("node:plan", &resource.KubectlAnnotateSingleNode{Key: capeirecipe.PlanKey, Value: seedNodePlan.ToJSON()}, plan.DependOn("kubeadm:init"))
+	b.AddResource("node:plan", &capeiresource.KubectlAnnotateSingleNode{Key: capeirecipe.PlanKey, Value: seedNodePlan.ToJSON()}, plan.DependOn("kubeadm:init"))
 
 	addAuthConfigMapIfNecessary(configMapManifests, authConfigManifest)
 
@@ -310,7 +276,7 @@ func CreateSeedNodeSetupPlan(ctx context.Context, o *capeios.OS, params SeedNode
 
 	b.AddResource("install:configmaps", configMapPlan, plan.DependOn(configDeps[0], configDeps[1:]...))
 
-	applyClstrRsc := &resource.KubectlApply{ManifestPath: object.String(params.ClusterManifestPath), Namespace: object.String(params.Namespace)}
+	applyClstrRsc := &capeiresource.KubectlApply{ManifestPath: object.String(params.ClusterManifestPath), Namespace: object.String(params.Namespace)}
 
 	b.AddResource("kubectl:apply:cluster", applyClstrRsc, plan.DependOn("install:configmaps"))
 
@@ -318,7 +284,7 @@ func CreateSeedNodeSetupPlan(ctx context.Context, o *capeios.OS, params SeedNode
 	if err != nil {
 		return nil, err
 	}
-	mManRsc := &resource.KubectlApply{Manifest: []byte(machinesManifest), Filename: object.String("machinesmanifest"), Namespace: object.String(params.Namespace)}
+	mManRsc := &capeiresource.KubectlApply{Manifest: []byte(machinesManifest), Filename: object.String("machinesmanifest"), Namespace: object.String(params.Namespace)}
 	b.AddResource("kubectl:apply:machines", mManRsc, plan.DependOn(kubectlApplyDeps[0], kubectlApplyDeps[1:]...))
 
 	dep := addSealedSecretWaitIfNecessary(b, params.SealedSecretKeyPath, params.SealedSecretCertPath)
@@ -328,7 +294,7 @@ func CreateSeedNodeSetupPlan(ctx context.Context, o *capeios.OS, params SeedNode
 		if err != nil {
 			return nil, err
 		}
-		ctlrRsc := &resource.KubectlApply{Manifest: capiCtlrManifest, Filename: object.String("capi_controller.yaml")}
+		ctlrRsc := &capeiresource.KubectlApply{Manifest: capiCtlrManifest, Filename: object.String("capi_controller.yaml")}
 		b.AddResource("install:capi", ctlrRsc, plan.DependOn("kubectl:apply:cluster", dep))
 	}
 
@@ -337,7 +303,7 @@ func CreateSeedNodeSetupPlan(ctx context.Context, o *capeios.OS, params SeedNode
 		return nil, err
 	}
 
-	ctlrRsc := &resource.KubectlApply{Manifest: wksCtlrManifest, Filename: object.String("wks_controller.yaml")}
+	ctlrRsc := &capeiresource.KubectlApply{Manifest: wksCtlrManifest, Filename: object.String("wks_controller.yaml")}
 	b.AddResource("install:wks", ctlrRsc, plan.DependOn("kubectl:apply:cluster", dep))
 
 	if err := configureFlux(b, params); err != nil {
@@ -680,7 +646,7 @@ func processPemFilesIfAny(builder *plan.Builder, providerSpec *capeiv1alpha3.Clu
 		secretResources["authentication"] = &secretResourceSpec{
 			secretName: authenticationSecretName,
 			decrypted:  decrypted,
-			resource:   &resource.KubectlApply{Namespace: object.String(ns), Manifest: authenticationSecretManifest, Filename: object.String(authenticationSecretName)}}
+			resource:   &capeiresource.KubectlApply{Namespace: object.String(ns), Manifest: authenticationSecretManifest, Filename: object.String(authenticationSecretName)}}
 	}
 	if providerSpec.Authorization != nil {
 		authorizationSecretFileName = providerSpec.Authorization.SecretFile
@@ -692,7 +658,7 @@ func processPemFilesIfAny(builder *plan.Builder, providerSpec *capeiv1alpha3.Clu
 		secretResources["authorization"] = &secretResourceSpec{
 			secretName: authorizationSecretName,
 			decrypted:  decrypted,
-			resource:   &resource.KubectlApply{Namespace: object.String(ns), Manifest: authorizationSecretManifest, Filename: object.String(authorizationSecretName)}}
+			resource:   &capeiresource.KubectlApply{Namespace: object.String(ns), Manifest: authorizationSecretManifest, Filename: object.String(authorizationSecretName)}}
 	}
 	filePlan, err := b.Plan()
 	if err != nil {
@@ -890,7 +856,7 @@ func configureFlux(b *plan.Builder, params SeedNodeParams) error {
 		}
 		for i, m := range manifests {
 			resName := fmt.Sprintf("%s-%02d", "flux", i)
-			fluxRsc := &resource.KubectlApply{Manifest: m, Filename: object.String(resName + ".yaml")}
+			fluxRsc := &capeiresource.KubectlApply{Manifest: m, Filename: object.String(resName + ".yaml")}
 			b.AddResource("install:flux:"+resName, fluxRsc, plan.DependOn("kubectl:apply:cluster", "kubectl:apply:machines"))
 		}
 		return nil
@@ -902,10 +868,10 @@ func configureFlux(b *plan.Builder, params SeedNodeParams) error {
 		return errors.Wrap(err, "failed to generate git deploy secret manifest for flux")
 	}
 	secretResName := "flux-git-deploy-secret"
-	fluxSecretRsc := &resource.KubectlApply{OpaqueManifest: manifest, Filename: object.String(secretResName + ".yaml")}
+	fluxSecretRsc := &capeiresource.KubectlApply{OpaqueManifest: manifest, Filename: object.String(secretResName + ".yaml")}
 	b.AddResource("install:flux:"+secretResName, fluxSecretRsc, plan.DependOn("kubectl:apply:cluster", "kubectl:apply:machines"))
 
-	fluxRsc := &resource.KubectlApply{ManifestPath: object.String(fluxManifestPath)}
+	fluxRsc := &capeiresource.KubectlApply{ManifestPath: object.String(fluxManifestPath)}
 	b.AddResource("install:flux:main", fluxRsc, plan.DependOn("install:flux:flux-git-deploy-secret"))
 	return nil
 }

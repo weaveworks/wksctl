@@ -7,11 +7,11 @@ import (
 
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
-	capeiv1alpha3 "github.com/weaveworks/cluster-api-provider-existinginfra/apis/cluster.weave.works/v1alpha3"
+	existinginfra1 "github.com/weaveworks/cluster-api-provider-existinginfra/apis/cluster.weave.works/v1alpha3"
+	capeimachine "github.com/weaveworks/cluster-api-provider-existinginfra/pkg/cluster/machine"
+	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/scheme"
 	capeispecs "github.com/weaveworks/cluster-api-provider-existinginfra/pkg/specs"
 	"github.com/weaveworks/libgitops/pkg/serializer"
-	"github.com/weaveworks/wksctl/pkg/cluster/machine"
-	"github.com/weaveworks/wksctl/pkg/scheme"
 	"github.com/weaveworks/wksctl/pkg/utilities"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"
@@ -23,8 +23,8 @@ import (
 
 type Specs struct {
 	Cluster      *clusterv1.Cluster
-	ClusterSpec  *capeiv1alpha3.ClusterSpec
-	MasterSpec   *capeiv1alpha3.MachineSpec
+	ClusterSpec  *existinginfra1.ClusterSpec
+	MasterSpec   *existinginfra1.MachineSpec
 	machineCount int
 	masterCount  int
 }
@@ -39,8 +39,8 @@ func NewFromPaths(clusterManifestPath, machinesManifestPath string) *Specs {
 }
 
 // Get a "Specs" object that can create an SSHClient (and retrieve useful nested fields)
-func New(cluster *clusterv1.Cluster, eic *capeiv1alpha3.ExistingInfraCluster, machines []*clusterv1.Machine, bl []*capeiv1alpha3.ExistingInfraMachine) *Specs {
-	_, master := machine.FirstMaster(machines, bl)
+func New(cluster *clusterv1.Cluster, eic *existinginfra1.ExistingInfraCluster, machines []*clusterv1.Machine, bl []*existinginfra1.ExistingInfraMachine) *Specs {
+	_, master := capeimachine.FirstMaster(machines, bl)
 	if master == nil {
 		log.Fatal("No master provided in manifest.")
 	}
@@ -60,7 +60,7 @@ func New(cluster *clusterv1.Cluster, eic *capeiv1alpha3.ExistingInfraCluster, ma
 	}
 }
 
-func parseManifests(clusterManifestPath, machinesManifestPath string) (*clusterv1.Cluster, *capeiv1alpha3.ExistingInfraCluster, []*clusterv1.Machine, []*capeiv1alpha3.ExistingInfraMachine, error) {
+func parseManifests(clusterManifestPath, machinesManifestPath string) (*clusterv1.Cluster, *existinginfra1.ExistingInfraCluster, []*clusterv1.Machine, []*existinginfra1.ExistingInfraMachine, error) {
 	cluster, eic, err := ParseClusterManifest(clusterManifestPath)
 	if err != nil {
 		return nil, nil, nil, nil, err
@@ -74,7 +74,7 @@ func parseManifests(clusterManifestPath, machinesManifestPath string) (*clusterv
 			"%s failed validation, use --skip-validation to force the operation", clusterManifestPath)
 	}
 
-	errorsHandler := func(machines []*clusterv1.Machine, bl []*capeiv1alpha3.ExistingInfraMachine, errors field.ErrorList) ([]*clusterv1.Machine, []*capeiv1alpha3.ExistingInfraMachine, error) {
+	errorsHandler := func(machines []*clusterv1.Machine, bl []*existinginfra1.ExistingInfraMachine, errors field.ErrorList) ([]*clusterv1.Machine, []*existinginfra1.ExistingInfraMachine, error) {
 		if len(errors) > 0 {
 			utilities.PrintErrors(errors)
 			return nil, nil, apierrors.InvalidMachineConfiguration(
@@ -83,7 +83,7 @@ func parseManifests(clusterManifestPath, machinesManifestPath string) (*clusterv
 		return machines, bl, nil
 	}
 
-	machines, bl, err := machine.ParseAndDefaultAndValidate(machinesManifestPath, errorsHandler)
+	machines, bl, err := capeimachine.ParseAndDefaultAndValidate(machinesManifestPath, errorsHandler)
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
@@ -92,7 +92,7 @@ func parseManifests(clusterManifestPath, machinesManifestPath string) (*clusterv
 }
 
 // ParseCluster converts the manifest file into a Cluster
-func ParseCluster(rc io.ReadCloser) (cluster *clusterv1.Cluster, eic *capeiv1alpha3.ExistingInfraCluster, err error) {
+func ParseCluster(rc io.ReadCloser) (cluster *clusterv1.Cluster, eic *existinginfra1.ExistingInfraCluster, err error) {
 	// Read from the ReadCloser YAML document-by-document
 	fr := serializer.NewYAMLFrameReader(rc)
 
@@ -107,7 +107,7 @@ func ParseCluster(rc io.ReadCloser) (cluster *clusterv1.Cluster, eic *capeiv1alp
 		switch typed := obj.(type) {
 		case *clusterv1.Cluster:
 			cluster = typed
-		case *capeiv1alpha3.ExistingInfraCluster:
+		case *existinginfra1.ExistingInfraCluster:
 			eic = typed
 		default:
 			return nil, nil, fmt.Errorf("unexpected type %T", obj)
@@ -125,7 +125,7 @@ func ParseCluster(rc io.ReadCloser) (cluster *clusterv1.Cluster, eic *capeiv1alp
 	return
 }
 
-func ParseClusterManifest(file string) (*clusterv1.Cluster, *capeiv1alpha3.ExistingInfraCluster, error) {
+func ParseClusterManifest(file string) (*clusterv1.Cluster, *existinginfra1.ExistingInfraCluster, error) {
 	f, err := os.Open(file)
 	if err != nil {
 		return nil, nil, err
