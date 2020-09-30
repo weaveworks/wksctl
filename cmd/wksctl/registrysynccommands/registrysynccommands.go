@@ -6,8 +6,8 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/kubernetes"
 	"github.com/weaveworks/wksctl/pkg/addons"
-	"github.com/weaveworks/wksctl/pkg/kubernetes"
 	"github.com/weaveworks/wksctl/pkg/registry"
 )
 
