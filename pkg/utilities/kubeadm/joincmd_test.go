@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/weaveworks/wksctl/pkg/utilities/kubeadm"
+	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/utilities/kubeadm"
 )
 
 const (
@@ -57,7 +57,7 @@ Run "kubectl apply -f [podnetwork].yaml" with one of the options listed at:
 Then you can join any number of worker nodes by running the following on each as root:
 
 kubeadm join 172.17.0.2:6443 --token 2wbvbd.bib9jtbupd9vu7ke \
-    --discovery-token-ca-cert-hash sha256:c70a0fcbbce8e1b579b6af359daef91e3dd1a37ce1359c4ee726c441253503b2 
+    --discovery-token-ca-cert-hash sha256:c70a0fcbbce8e1b579b6af359daef91e3dd1a37ce1359c4ee726c441253503b2
 `
 	kubeadmJoinCmdOneLiner = "kubeadm join 172.17.0.2:6443 --token 2wbvbd.bib9jtbupd9vu7ke --discovery-token-ca-cert-hash sha256:c70a0fcbbce8e1b579b6af359daef91e3dd1a37ce1359c4ee726c441253503b2"
 )
