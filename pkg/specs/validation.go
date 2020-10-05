@@ -5,7 +5,7 @@ import (
 	"net"
 	"path/filepath"
 
-	capeiv1alpha3 "github.com/weaveworks/cluster-api-provider-existinginfra/apis/cluster.weave.works/v1alpha3"
+	existinginfrav1 "github.com/weaveworks/cluster-api-provider-existinginfra/apis/cluster.weave.works/v1alpha3"
 	"github.com/weaveworks/launcher/pkg/kubectl"
 	"github.com/weaveworks/wksctl/pkg/addons"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -28,7 +28,7 @@ func populateNetwork(cluster *clusterv1.Cluster) {
 	}
 }
 
-type clusterValidationFunc func(*clusterv1.Cluster, *capeiv1alpha3.ClusterSpec, string) field.ErrorList
+type clusterValidationFunc func(*clusterv1.Cluster, *existinginfrav1.ClusterSpec, string) field.ErrorList
 
 func isValidCIDR(s string) (*net.IPNet, error) {
 	ip, cidr, err := net.ParseCIDR(s)
@@ -46,7 +46,7 @@ func networksIntersect(n1, n2 *net.IPNet) bool {
 	return n2.Contains(n1.IP) || n1.Contains(n2.IP)
 }
 
-func validateCIDRBlocks(cluster *clusterv1.Cluster, _ *capeiv1alpha3.ClusterSpec, manifestPath string) field.ErrorList {
+func validateCIDRBlocks(cluster *clusterv1.Cluster, _ *existinginfrav1.ClusterSpec, manifestPath string) field.ErrorList {
 	var errors field.ErrorList
 	const (
 		services = 0
@@ -104,7 +104,7 @@ func validateCIDRBlocks(cluster *clusterv1.Cluster, _ *capeiv1alpha3.ClusterSpec
 	return field.ErrorList{}
 }
 
-func validateServiceDomain(cluster *clusterv1.Cluster, _ *capeiv1alpha3.ClusterSpec, manifestPath string) field.ErrorList {
+func validateServiceDomain(cluster *clusterv1.Cluster, _ *existinginfrav1.ClusterSpec, manifestPath string) field.ErrorList {
 	f := cluster.Spec.ClusterNetwork.ServiceDomain
 	if f != "cluster.local" {
 		return field.ErrorList{
@@ -117,7 +117,7 @@ func validateServiceDomain(cluster *clusterv1.Cluster, _ *capeiv1alpha3.ClusterS
 	return field.ErrorList{}
 }
 
-func validateSSHKeyEmpty(_ *clusterv1.Cluster, spec *capeiv1alpha3.ClusterSpec, manifestPath string) field.ErrorList {
+func validateSSHKeyEmpty(_ *clusterv1.Cluster, spec *existinginfrav1.ClusterSpec, manifestPath string) field.ErrorList {
 	if spec.DeprecatedSSHKeyPath != "" {
 		return field.ErrorList{
 			field.Invalid(
@@ -136,7 +136,7 @@ func addonPath(i int, args ...string) *field.Path {
 	return clusterProviderPath(allArgs...)
 }
 
-func validateAddons(_ *clusterv1.Cluster, spec *capeiv1alpha3.ClusterSpec, manifestPath string) field.ErrorList {
+func validateAddons(_ *clusterv1.Cluster, spec *existinginfrav1.ClusterSpec, manifestPath string) field.ErrorList {
 	// Addons require kubectl for their manifests to be applied.
 	kubectl := kubectl.LocalClient{}
 	if len(spec.Addons) > 0 && !kubectl.IsPresent() {
@@ -178,7 +178,7 @@ func populateCluster(cluster *clusterv1.Cluster) {
 	populateNetwork(cluster)
 }
 
-func validateCluster(cluster *clusterv1.Cluster, eic *capeiv1alpha3.ExistingInfraCluster, manifestPath string) field.ErrorList {
+func validateCluster(cluster *clusterv1.Cluster, eic *existinginfrav1.ExistingInfraCluster, manifestPath string) field.ErrorList {
 	var errors field.ErrorList
 
 	for _, f := range []clusterValidationFunc{

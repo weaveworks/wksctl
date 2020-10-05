@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	capeiv1alpha3 "github.com/weaveworks/cluster-api-provider-existinginfra/apis/cluster.weave.works/v1alpha3"
+	existinginfrav1 "github.com/weaveworks/cluster-api-provider-existinginfra/apis/cluster.weave.works/v1alpha3"
 	capeimachine "github.com/weaveworks/cluster-api-provider-existinginfra/pkg/cluster/machine"
 	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/kubernetes"
 	"github.com/weaveworks/wksctl/pkg/cluster/machine"
@@ -44,7 +44,7 @@ func TestIsNode(t *testing.T) {
 }
 
 func TestFirstMasterInPointersArray(t *testing.T) {
-	bl := []*capeiv1alpha3.ExistingInfraMachine{nil, nil}
+	bl := []*existinginfrav1.ExistingInfraMachine{nil, nil}
 	v1, _ := machine.FirstMaster([]*clusterv1.Machine{
 		&worker,
 		&master,
@@ -207,7 +207,7 @@ const machinesNoGodNoMaster = `
       address: "172.17.8.102"
 `
 
-func machinesFromString(t *testing.T, s string) ([]*clusterv1.Machine, []*capeiv1alpha3.ExistingInfraMachine) {
+func machinesFromString(t *testing.T, s string) ([]*clusterv1.Machine, []*existinginfrav1.ExistingInfraMachine) {
 	r := ioutil.NopCloser(strings.NewReader(s))
 	machines, bml, err := machine.Parse(r)
 	assert.NoError(t, err)

@@ -14,7 +14,7 @@ import (
 	"github.com/pelletier/go-toml"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	wksos "github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/os"
+	capeios "github.com/weaveworks/cluster-api-provider-existinginfra/pkg/apis/wksprovider/machine/os"
 	"github.com/weaveworks/wksctl/pkg/specs"
 	"github.com/weaveworks/wksctl/pkg/utilities/manifest"
 	"github.com/weaveworks/wksctl/pkg/version"
@@ -149,7 +149,7 @@ func updateWeaveNetManifests(contents []byte, options initOptionType) ([]byte, e
 	if len(podsCIDRBlocks) > 0 && podsCIDRBlocks[0] != "" {
 		// setting the pod CIDR block is currently only supported for the weave-net CNI
 		log.Debug("Updating weave-net manifest.")
-		manifests, err := wksos.SetWeaveNetPodCIDRBlock([][]byte{contents}, podsCIDRBlocks[0])
+		manifests, err := capeios.SetWeaveNetPodCIDRBlock([][]byte{contents}, podsCIDRBlocks[0])
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to inject ipalloc_range")
 		}
