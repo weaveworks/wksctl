@@ -9,6 +9,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	capeispecs "github.com/weaveworks/cluster-api-provider-existinginfra/pkg/specs"
 	"github.com/weaveworks/launcher/pkg/kubectl"
 	"github.com/weaveworks/wksctl/pkg/addons"
 	"github.com/weaveworks/wksctl/pkg/specs"
@@ -40,7 +41,7 @@ func init() {
 		&applyAddonsOptions.namespace, "namespace", manifest.DefaultNamespace, "namespace portion of kubeconfig path")
 }
 
-func applyAddonsUsingConfig(sp *specs.Specs, basePath, kubeconfig string) error {
+func applyAddonsUsingConfig(sp *capeispecs.Specs, basePath, kubeconfig string) error {
 	fmt.Println("==> Applying addons (2)")
 
 	for _, addonDesc := range sp.ClusterSpec.Addons {

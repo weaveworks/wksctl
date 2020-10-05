@@ -12,7 +12,6 @@ import (
 	capeios "github.com/weaveworks/cluster-api-provider-existinginfra/pkg/apis/wksprovider/machine/os"
 	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/utilities/kubeadm"
 	"github.com/weaveworks/wksctl/pkg/addons"
-	wksos "github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/os"
 	"github.com/weaveworks/wksctl/pkg/manifests"
 	"github.com/weaveworks/wksctl/pkg/plan/runners/ssh"
 	"github.com/weaveworks/wksctl/pkg/specs"
@@ -170,10 +169,10 @@ func (a *Applier) initiateCluster(ctx context.Context, clusterManifestPath, mach
 			CloudProvider:  sp.GetCloudProvider(),
 			ExtraArguments: sp.GetKubeletArguments(),
 		},
-		Controller: wksos.ControllerParams{
+		Controller: capeios.ControllerParams{
 			ImageOverride: controllerImage,
 		},
-		GitData: wksos.GitParams{
+		GitData: capeios.GitParams{
 			GitURL:           a.Params.gitURL,
 			GitBranch:        a.Params.gitBranch,
 			GitPath:          a.Params.gitPath,
