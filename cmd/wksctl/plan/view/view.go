@@ -2,13 +2,13 @@ package view
 
 import (
 	"fmt"
+	"io/ioutil"
 	"path/filepath"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/apis/wksprovider/machine/config"
 	capeios "github.com/weaveworks/cluster-api-provider-existinginfra/pkg/apis/wksprovider/machine/os"
-	wksos "github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/os"
 	"github.com/weaveworks/wksctl/pkg/manifests"
 	"github.com/weaveworks/wksctl/pkg/plan/runners/ssh"
 	"github.com/weaveworks/wksctl/pkg/specs"
@@ -101,20 +101,37 @@ func displayPlan(clusterManifestPath, machinesManifestPath string) error {
 		configDir = filepath.Dir(clusterManifestPath)
 	}
 
-	params := wksos.SeedNodeParams{
-		PublicIP:             sp.GetMasterPublicAddress(),
-		PrivateIP:            sp.GetMasterPrivateAddress(),
-		ClusterManifestPath:  clusterManifestPath,
-		MachinesManifestPath: machinesManifestPath,
-		SSHKeyPath:           viewOptions.sshKeyPath,
+	// Read manifests and pass in the contents
+	clusterManifest, err := ioutil.ReadFile(clusterManifestPath)
+	if err != nil {
+		return errors.Wrap(err, "failed to read cluster manifest: ")
+	}
+
+	machinesManifest, err := ioutil.ReadFile(machinesManifestPath)
+	if err != nil {
+		return errors.Wrap(err, "failed to read machines manifest: ")
+	}
+
+	// Read ssh key
+	sshKey, err := ioutil.ReadFile(viewOptions.sshKeyPath)
+	if err != nil {
+		return errors.Wrap(err, "failed to read ssh key: ")
+	}
+
+	params := capeios.SeedNodeParams{
+		PublicIP:         sp.GetMasterPublicAddress(),
+		PrivateIP:        sp.GetMasterPrivateAddress(),
+		ClusterManifest:  string(clusterManifest),
+		MachinesManifest: string(machinesManifest),
+		SSHKey:           string(sshKey),
 		KubeletConfig: config.KubeletConfig{
 			NodeIP:        sp.GetMasterPrivateAddress(),
 			CloudProvider: sp.GetCloudProvider(),
 		},
-		Controller: wksos.ControllerParams{
+		Controller: capeios.ControllerParams{
 			ImageOverride: viewOptions.controllerImage,
 		},
-		GitData: wksos.GitParams{
+		GitData: capeios.GitParams{
 			GitURL:           viewOptions.gitURL,
 			GitBranch:        viewOptions.gitBranch,
 			GitPath:          viewOptions.gitPath,
@@ -125,7 +142,7 @@ func displayPlan(clusterManifestPath, machinesManifestPath string) error {
 		AddonNamespaces:      manifest.DefaultAddonNamespaces,
 		ConfigDirectory:      configDir,
 	}
-	plan, err := wksos.CreateSeedNodeSetupPlan(installer, params)
+	plan, err := capeios.CreateSeedNodeSetupPlan(installer, params)
 	if err != nil {
 		return errors.Wrap(err, "could not generate plan")
 	}

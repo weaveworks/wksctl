@@ -14,7 +14,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	capeiv1alpha3 "github.com/weaveworks/cluster-api-provider-existinginfra/apis/cluster.weave.works/v1alpha3"
+	existinginfrav1 "github.com/weaveworks/cluster-api-provider-existinginfra/apis/cluster.weave.works/v1alpha3"
 	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/kubernetes"
 	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/plan/runners/ssh"
 	"github.com/weaveworks/wksctl/pkg/cluster/machine"
@@ -63,9 +63,9 @@ func setLabel(role role) string {
 	}
 }
 
-func appendMachine(t *testing.T, ordinal int, ml *[]*clusterv1.Machine, bl *[]*capeiv1alpha3.ExistingInfraMachine, clusterName, role role, publicIP, privateIP string) {
+func appendMachine(t *testing.T, ordinal int, ml *[]*clusterv1.Machine, bl *[]*existinginfrav1.ExistingInfraMachine, clusterName, role role, publicIP, privateIP string) {
 	name := generateName(role, ordinal)
-	spec := capeiv1alpha3.ExistingInfraMachine{
+	spec := existinginfrav1.ExistingInfraMachine{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "cluster.weave.works/v1alpha3",
 			Kind:       "ExistingInfraMachine",
@@ -73,12 +73,12 @@ func appendMachine(t *testing.T, ordinal int, ml *[]*clusterv1.Machine, bl *[]*c
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 		},
-		Spec: capeiv1alpha3.MachineSpec{
-			Public: capeiv1alpha3.EndPoint{
+		Spec: existinginfrav1.MachineSpec{
+			Public: existinginfrav1.EndPoint{
 				Address: publicIP,
 				Port:    22,
 			},
-			Private: capeiv1alpha3.EndPoint{
+			Private: existinginfrav1.EndPoint{
 				Address: privateIP,
 				Port:    22,
 			}},
@@ -118,7 +118,7 @@ func appendMachine(t *testing.T, ordinal int, ml *[]*clusterv1.Machine, bl *[]*c
 // numMachines is the number of machines to use. It can be less than the number
 // of provisionned terraform machines. -1 means use all machines setup by
 // terraform. The minimum number of machines to use is 2.
-func makeMachinesFromTerraform(t *testing.T, clusterName string, terraform *terraformOutput, numMachines int) (ml []*clusterv1.Machine, bl []*capeiv1alpha3.ExistingInfraMachine) {
+func makeMachinesFromTerraform(t *testing.T, clusterName string, terraform *terraformOutput, numMachines int) (ml []*clusterv1.Machine, bl []*existinginfrav1.ExistingInfraMachine) {
 	publicIPs := terraform.stringArrayVar(keyPublicIPs)
 	privateIPs := terraform.stringArrayVar(keyPrivateIPs)
 	assert.True(t, len(publicIPs) >= 2) // One master and at least one node
@@ -145,7 +145,7 @@ func makeMachinesFromTerraform(t *testing.T, clusterName string, terraform *terr
 	return ml, bl
 }
 
-func writeYamlManifests(t *testing.T, path string, machines []*clusterv1.Machine, bml []*capeiv1alpha3.ExistingInfraMachine) {
+func writeYamlManifests(t *testing.T, path string, machines []*clusterv1.Machine, bml []*existinginfrav1.ExistingInfraMachine) {
 	var buf bytes.Buffer
 	err := machine.WriteMachines(&buf, machines, bml)
 	assert.NoError(t, err)
@@ -179,7 +179,7 @@ func setKubernetesVersion(l []*clusterv1.Machine, version string) {
 	}
 }
 
-func parseClusterManifest(t *testing.T, file string) (*clusterv1.Cluster, *capeiv1alpha3.ExistingInfraCluster) {
+func parseClusterManifest(t *testing.T, file string) (*clusterv1.Cluster, *existinginfrav1.ExistingInfraCluster) {
 	f, err := os.Open(file)
 	assert.NoError(t, err)
 	cluster, eiCluster, err := specs.ParseCluster(f)

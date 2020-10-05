@@ -1,6 +1,7 @@
 package apply
 
 import (
+	"io/ioutil"
 	"path/filepath"
 	"strings"
 
@@ -11,7 +12,6 @@ import (
 	capeios "github.com/weaveworks/cluster-api-provider-existinginfra/pkg/apis/wksprovider/machine/os"
 	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/utilities/kubeadm"
 	"github.com/weaveworks/wksctl/pkg/addons"
-	wksos "github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/os"
 	"github.com/weaveworks/wksctl/pkg/manifests"
 	"github.com/weaveworks/wksctl/pkg/plan/runners/ssh"
 	"github.com/weaveworks/wksctl/pkg/specs"
@@ -155,24 +155,41 @@ func (a *Applier) initiateCluster(clusterManifestPath, machinesManifestPath stri
 		}
 	}
 
-	if err := wksos.SetupSeedNode(installer, wksos.SeedNodeParams{
-		PublicIP:             sp.GetMasterPublicAddress(),
-		PrivateIP:            sp.GetMasterPrivateAddress(),
-		ServicesCIDRBlocks:   sp.Cluster.Spec.ClusterNetwork.Services.CIDRBlocks,
-		PodsCIDRBlocks:       sp.Cluster.Spec.ClusterNetwork.Pods.CIDRBlocks,
-		ClusterManifestPath:  clusterManifestPath,
-		MachinesManifestPath: machinesManifestPath,
-		SSHKeyPath:           a.Params.sshKeyPath,
-		BootstrapToken:       token,
+	// Read manifests and pass in the contents
+	clusterManifest, err := ioutil.ReadFile(clusterManifestPath)
+	if err != nil {
+		return errors.Wrap(err, "failed to read cluster manifest: ")
+	}
+
+	machinesManifest, err := ioutil.ReadFile(machinesManifestPath)
+	if err != nil {
+		return errors.Wrap(err, "failed to read machines manifest: ")
+	}
+
+	// Read ssh key
+	sshKey, err := ioutil.ReadFile(a.Params.sshKeyPath)
+	if err != nil {
+		return errors.Wrap(err, "failed to read ssh key: ")
+	}
+
+	if err := capeios.SetupSeedNode(installer, capeios.SeedNodeParams{
+		PublicIP:           sp.GetMasterPublicAddress(),
+		PrivateIP:          sp.GetMasterPrivateAddress(),
+		ServicesCIDRBlocks: sp.Cluster.Spec.ClusterNetwork.Services.CIDRBlocks,
+		PodsCIDRBlocks:     sp.Cluster.Spec.ClusterNetwork.Pods.CIDRBlocks,
+		ClusterManifest:    string(clusterManifest),
+		MachinesManifest:   string(machinesManifest),
+		SSHKey:             string(sshKey),
+		BootstrapToken:     token,
 		KubeletConfig: config.KubeletConfig{
 			NodeIP:         sp.GetMasterPrivateAddress(),
 			CloudProvider:  sp.GetCloudProvider(),
 			ExtraArguments: sp.GetKubeletArguments(),
 		},
-		Controller: wksos.ControllerParams{
+		Controller: capeios.ControllerParams{
 			ImageOverride: controllerImage,
 		},
-		GitData: wksos.GitParams{
+		GitData: capeios.GitParams{
 			GitURL:           a.Params.gitURL,
 			GitBranch:        a.Params.gitBranch,
 			GitPath:          a.Params.gitPath,
