@@ -1,6 +1,7 @@
 package apply
 
 import (
+	"bytes"
 	"io/ioutil"
 	"path/filepath"
 	"strings"
@@ -8,6 +9,7 @@ import (
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	existinginfrav1 "github.com/weaveworks/cluster-api-provider-existinginfra/apis/cluster.weave.works/v1alpha3"
 	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/apis/wksprovider/machine/config"
 	capeios "github.com/weaveworks/cluster-api-provider-existinginfra/pkg/apis/wksprovider/machine/os"
 	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/utilities/kubeadm"
@@ -95,6 +97,12 @@ func (a *Applier) Apply() error {
 	return a.initiateCluster(clusterPath, machinesPath)
 }
 
+// parseCluster converts the manifest file into a Cluster
+func parseCluster(clusterManifest []byte) (eic *existinginfrav1.ExistingInfraCluster, err error) {
+	_, b, err := specs.ParseCluster(ioutil.NopCloser(bytes.NewReader(clusterManifest)))
+	return b, err
+}
+
 func (a *Applier) initiateCluster(clusterManifestPath, machinesManifestPath string) error {
 	sp := specs.NewFromPaths(clusterManifestPath, machinesManifestPath)
 	sshClient, err := ssh.NewClientForMachine(sp.MasterSpec, sp.ClusterSpec.User, a.Params.sshKeyPath, log.GetLevel() > log.InfoLevel)
@@ -155,10 +163,15 @@ func (a *Applier) initiateCluster(clusterManifestPath, machinesManifestPath stri
 		}
 	}
 
-	// Read manifests and pass in the contents
 	clusterManifest, err := ioutil.ReadFile(clusterManifestPath)
 	if err != nil {
 		return errors.Wrap(err, "failed to read cluster manifest: ")
+	}
+
+	// Read manifests and pass in the contents
+	cluster, err := parseCluster(clusterManifest)
+	if err != nil {
+		return errors.Wrap(err, "failed to parse cluster manifest: ")
 	}
 
 	machinesManifest, err := ioutil.ReadFile(machinesManifestPath)
@@ -172,15 +185,17 @@ func (a *Applier) initiateCluster(clusterManifestPath, machinesManifestPath stri
 		return errors.Wrap(err, "failed to read ssh key: ")
 	}
 
+	log.Infof("CLUSTER SPEC: %s", clusterManifest)
 	if err := capeios.SetupSeedNode(installer, capeios.SeedNodeParams{
-		PublicIP:           sp.GetMasterPublicAddress(),
-		PrivateIP:          sp.GetMasterPrivateAddress(),
-		ServicesCIDRBlocks: sp.Cluster.Spec.ClusterNetwork.Services.CIDRBlocks,
-		PodsCIDRBlocks:     sp.Cluster.Spec.ClusterNetwork.Pods.CIDRBlocks,
-		ClusterManifest:    string(clusterManifest),
-		MachinesManifest:   string(machinesManifest),
-		SSHKey:             string(sshKey),
-		BootstrapToken:     token,
+		PublicIP:             sp.GetMasterPublicAddress(),
+		PrivateIP:            sp.GetMasterPrivateAddress(),
+		ServicesCIDRBlocks:   sp.Cluster.Spec.ClusterNetwork.Services.CIDRBlocks,
+		PodsCIDRBlocks:       sp.Cluster.Spec.ClusterNetwork.Pods.CIDRBlocks,
+		ExistingInfraCluster: *cluster,
+		ClusterManifest:      string(clusterManifest),
+		MachinesManifest:     string(machinesManifest),
+		SSHKey:               string(sshKey),
+		BootstrapToken:       token,
 		KubeletConfig: config.KubeletConfig{
 			NodeIP:         sp.GetMasterPrivateAddress(),
 			CloudProvider:  sp.GetCloudProvider(),
