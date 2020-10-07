@@ -196,7 +196,6 @@ func (a *Applier) initiateCluster(clusterManifestPath, machinesManifestPath stri
 		return errors.Wrap(err, "failed to read ssh key: ")
 	}
 
-	log.Infof("CLUSTER SPEC: %s", clusterManifest)
 	if err := capeios.SetupSeedNode(installer, capeios.SeedNodeParams{
 >>>>>>> ec613e0... Work with new capei provider
 		PublicIP:             sp.GetMasterPublicAddress(),
