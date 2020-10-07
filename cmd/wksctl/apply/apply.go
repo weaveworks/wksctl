@@ -1,7 +1,11 @@
 package apply
 
 import (
+<<<<<<< HEAD
 	"context"
+=======
+	"bytes"
+>>>>>>> ec613e0... Work with new capei provider
 	"io/ioutil"
 	"path/filepath"
 	"strings"
@@ -9,6 +13,7 @@ import (
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	existinginfrav1 "github.com/weaveworks/cluster-api-provider-existinginfra/apis/cluster.weave.works/v1alpha3"
 	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/apis/wksprovider/machine/config"
 	capeios "github.com/weaveworks/cluster-api-provider-existinginfra/pkg/apis/wksprovider/machine/os"
 	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/utilities/kubeadm"
@@ -96,7 +101,17 @@ func (a *Applier) Apply(ctx context.Context) error {
 	return a.initiateCluster(ctx, clusterPath, machinesPath)
 }
 
+<<<<<<< HEAD
 func (a *Applier) initiateCluster(ctx context.Context, clusterManifestPath, machinesManifestPath string) error {
+=======
+// parseCluster converts the manifest file into a Cluster
+func parseCluster(clusterManifest []byte) (eic *existinginfrav1.ExistingInfraCluster, err error) {
+	_, b, err := specs.ParseCluster(ioutil.NopCloser(bytes.NewReader(clusterManifest)))
+	return b, err
+}
+
+func (a *Applier) initiateCluster(clusterManifestPath, machinesManifestPath string) error {
+>>>>>>> ec613e0... Work with new capei provider
 	sp := specs.NewFromPaths(clusterManifestPath, machinesManifestPath)
 	sshClient, err := ssh.NewClientForMachine(sp.MasterSpec, sp.ClusterSpec.User, a.Params.sshKeyPath, log.GetLevel() > log.InfoLevel)
 
@@ -156,14 +171,48 @@ func (a *Applier) initiateCluster(ctx context.Context, clusterManifestPath, mach
 		}
 	}
 
+<<<<<<< HEAD
 	if err := wksos.SetupSeedNode(ctx, installer, wksos.SeedNodeParams{
+=======
+	clusterManifest, err := ioutil.ReadFile(clusterManifestPath)
+	if err != nil {
+		return errors.Wrap(err, "failed to read cluster manifest: ")
+	}
+
+	// Read manifests and pass in the contents
+	cluster, err := parseCluster(clusterManifest)
+	if err != nil {
+		return errors.Wrap(err, "failed to parse cluster manifest: ")
+	}
+
+	machinesManifest, err := ioutil.ReadFile(machinesManifestPath)
+	if err != nil {
+		return errors.Wrap(err, "failed to read machines manifest: ")
+	}
+
+	// Read ssh key
+	sshKey, err := ioutil.ReadFile(a.Params.sshKeyPath)
+	if err != nil {
+		return errors.Wrap(err, "failed to read ssh key: ")
+	}
+
+	log.Infof("CLUSTER SPEC: %s", clusterManifest)
+	if err := capeios.SetupSeedNode(installer, capeios.SeedNodeParams{
+>>>>>>> ec613e0... Work with new capei provider
 		PublicIP:             sp.GetMasterPublicAddress(),
 		PrivateIP:            sp.GetMasterPrivateAddress(),
 		ServicesCIDRBlocks:   sp.Cluster.Spec.ClusterNetwork.Services.CIDRBlocks,
 		PodsCIDRBlocks:       sp.Cluster.Spec.ClusterNetwork.Pods.CIDRBlocks,
+<<<<<<< HEAD
 		ClusterManifestPath:  clusterManifestPath,
 		MachinesManifestPath: machinesManifestPath,
 		SSHKeyPath:           a.Params.sshKeyPath,
+=======
+		ExistingInfraCluster: *cluster,
+		ClusterManifest:      string(clusterManifest),
+		MachinesManifest:     string(machinesManifest),
+		SSHKey:               string(sshKey),
+>>>>>>> ec613e0... Work with new capei provider
 		BootstrapToken:       token,
 		KubeletConfig: config.KubeletConfig{
 			NodeIP:         sp.GetMasterPrivateAddress(),
