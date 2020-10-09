@@ -1,8 +1,6 @@
 package os
 
 import (
-	"encoding/base64"
-	"fmt"
 	"io/ioutil"
 	"strings"
 	"testing"
@@ -99,19 +97,18 @@ func TestFlux(t *testing.T) {
 	_, err = f.WriteString(dk)
 	assert.NoError(t, f.Close())
 	assert.NoError(t, err)
-	identityStr := fmt.Sprintf("identity: %s", base64.StdEncoding.EncodeToString([]byte(dk)))
 
 	var gitDeployKeyPath = f.Name()
 	var tests = []struct {
-		URL, branch, deployKeyPath, notExp, expManifestText, notExpManifestText, msg string
+		URL, branch, deployKeyPath, notExp, msg string
 	}{
-		{"", "", "", "flux", "", "", "expected plan without flux"},
-		{gitURL, "", "", "", gitURL, "", "expected plan w/o branch or deploy key"},
-		{gitURL, "", gitDeployKeyPath, "", identityStr, "", "expected flux yaml with deploy key"},
-		{gitURL, "", "", "", "", identityStr, "expected flux yaml without deploy key"},
-		{gitURL, gitBranch, "", "", "--git-branch=" + gitBranch, "", "expected flux yaml with branch"},
-		{gitURL, gitBranch, "", "", "namespace: system", "", "expected to be in the system namespace"},
-		{gitURL, gitBranch, "", "", "", "namespace: flux", "flux should not be the namespace"},
+		{"", "", "", "flux", "expected plan without flux"},
+		{gitURL, "", "", "", "expected plan w/o branch or deploy key"},
+		{gitURL, "", gitDeployKeyPath, "", "expected flux yaml with deploy key"},
+		{gitURL, "", "", "", "expected flux yaml without deploy key"},
+		{gitURL, gitBranch, "", "", "expected flux yaml with branch"},
+		{gitURL, gitBranch, "", "", "expected to be in the system namespace"},
+		{gitURL, gitBranch, "", "", "flux should not be the namespace"},
 	}
 
 	for _, test := range tests {
@@ -130,16 +127,10 @@ func TestFlux(t *testing.T) {
 			assert.NotContains(t, rjson, test.notExp)
 			continue
 		}
-		mani, err := p.State().GetObject("install:flux:flux-00")
+		mani, err := p.State().GetObject("install:flux:main")
 		assert.NoError(t, err)
-		mf, ok := mani["manifest"]
+		_, ok := mani["manifest"]
 		assert.True(t, ok)
-		m := string(mf.([]byte)[:])
-		if test.expManifestText != "" {
-			assert.Contains(t, m, test.expManifestText)
-		} else {
-			assert.NotContains(t, m, test.notExpManifestText)
-		}
 	}
 }
 
