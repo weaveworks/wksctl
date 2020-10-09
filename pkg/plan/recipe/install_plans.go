@@ -2,13 +2,11 @@ package recipe
 
 import (
 	"fmt"
-	"io/ioutil"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/plan"
 	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/plan/resource"
 	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/utilities/object"
-	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/controller/manifests"
 )
 
 // BuildConfigMapPlan creates a plan to handle config maps
