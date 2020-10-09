@@ -12,12 +12,17 @@ import (
 	existinginfrav1 "github.com/weaveworks/cluster-api-provider-existinginfra/apis/cluster.weave.works/v1alpha3"
 	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/apis/wksprovider/machine/config"
 	capeios "github.com/weaveworks/cluster-api-provider-existinginfra/pkg/apis/wksprovider/machine/os"
+	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/scheme"
 	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/utilities/kubeadm"
+	"github.com/weaveworks/libgitops/pkg/serializer"
 	"github.com/weaveworks/wksctl/pkg/addons"
+	wksos "github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/os"
 	"github.com/weaveworks/wksctl/pkg/manifests"
 	"github.com/weaveworks/wksctl/pkg/plan/runners/ssh"
 	"github.com/weaveworks/wksctl/pkg/specs"
+	"github.com/weaveworks/wksctl/pkg/utilities"
 	"github.com/weaveworks/wksctl/pkg/utilities/manifest"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"
 )
 
 // Cmd represents the apply command
@@ -98,9 +103,19 @@ func (a *Applier) Apply() error {
 }
 
 // parseCluster converts the manifest file into a Cluster
-func parseCluster(clusterManifest []byte) (eic *existinginfrav1.ExistingInfraCluster, err error) {
-	_, b, err := specs.ParseCluster(ioutil.NopCloser(bytes.NewReader(clusterManifest)))
-	return b, err
+func parseCluster(clusterManifest []byte) (c *clusterv1.Cluster, eic *existinginfrav1.ExistingInfraCluster, err error) {
+	return specs.ParseCluster(ioutil.NopCloser(bytes.NewReader(clusterManifest)))
+}
+
+func unparseCluster(c *clusterv1.Cluster, eic *existinginfrav1.ExistingInfraCluster) ([]byte, error) {
+	var buf bytes.Buffer
+	s := serializer.NewSerializer(scheme.Scheme, nil)
+	fw := serializer.NewYAMLFrameWriter(&buf)
+	err := s.Encoder().Encode(fw, c, eic)
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }
 
 func (a *Applier) initiateCluster(clusterManifestPath, machinesManifestPath string) error {
@@ -169,9 +184,19 @@ func (a *Applier) initiateCluster(clusterManifestPath, machinesManifestPath stri
 	}
 
 	// Read manifests and pass in the contents
-	cluster, err := parseCluster(clusterManifest)
+	cluster, eic, err := parseCluster(clusterManifest)
 	if err != nil {
 		return errors.Wrap(err, "failed to parse cluster manifest: ")
+	}
+
+	// Mark the cluster as local so that it will not try to create other clusters
+	if eic.Annotations == nil {
+		eic.Annotations = map[string]string{}
+	}
+	eic.Annotations[capeios.LocalCluster] = "true"
+	clusterManifest, err = unparseCluster(cluster, eic)
+	if err != nil {
+		return errors.Wrap(err, "failed to annotate cluster manifest: ")
 	}
 
 	machinesManifest, err := ioutil.ReadFile(machinesManifestPath)
@@ -185,12 +210,27 @@ func (a *Applier) initiateCluster(clusterManifestPath, machinesManifestPath stri
 		return errors.Wrap(err, "failed to read ssh key: ")
 	}
 
-	if err := capeios.SetupSeedNode(installer, capeios.SeedNodeParams{
+	// Read sealed secret cert and key
+	var cert []byte
+	var key []byte
+	if utilities.FileExists(a.Params.sealedSecretCertPath) && utilities.FileExists(sealedSecretKeyPath) {
+		cert, err = ioutil.ReadFile(a.Params.sealedSecretCertPath)
+		if err != nil {
+			return errors.Wrap(err, "failed to read sealed secret certificate: ")
+		}
+
+		key, err = ioutil.ReadFile(sealedSecretKeyPath)
+		if err != nil {
+			return errors.Wrap(err, "failed to read sealed secret key: ")
+		}
+	}
+
+	if err := wksos.SetupSeedNode(installer, capeios.SeedNodeParams{
 		PublicIP:             sp.GetMasterPublicAddress(),
 		PrivateIP:            sp.GetMasterPrivateAddress(),
 		ServicesCIDRBlocks:   sp.Cluster.Spec.ClusterNetwork.Services.CIDRBlocks,
 		PodsCIDRBlocks:       sp.Cluster.Spec.ClusterNetwork.Pods.CIDRBlocks,
-		ExistingInfraCluster: *cluster,
+		ExistingInfraCluster: *eic,
 		ClusterManifest:      string(clusterManifest),
 		MachinesManifest:     string(machinesManifest),
 		SSHKey:               string(sshKey),
@@ -209,8 +249,8 @@ func (a *Applier) initiateCluster(clusterManifestPath, machinesManifestPath stri
 			GitPath:          a.Params.gitPath,
 			GitDeployKeyPath: a.Params.gitDeployKeyPath,
 		},
-		SealedSecretKeyPath:  sealedSecretKeyPath,
-		SealedSecretCertPath: a.Params.sealedSecretCertPath,
+		SealedSecretKey:      string(key),
+		SealedSecretCert:     string(cert),
 		ConfigDirectory:      configDir,
 		ImageRepository:      sp.ClusterSpec.ImageRepository,
 		ControlPlaneEndpoint: sp.ClusterSpec.ControlPlaneEndpoint,

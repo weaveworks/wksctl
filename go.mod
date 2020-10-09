@@ -9,6 +9,7 @@ require (
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-logr/zapr v0.1.1 // indirect
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
+	github.com/golangci/golangci-lint v1.27.0 // indirect
 	github.com/google/go-jsonnet v0.16.0
 	github.com/googleapis/gnostic v0.4.1 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.1 // indirect
