@@ -5,7 +5,7 @@ package assets
 import (
 	"net/http"
 
-	"github.com/weaveworks/wksctl/pkg/utilities/fixeddate"
+	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/utilities/fixeddate"
 )
 
 // Assets is the content of the addons directory.
