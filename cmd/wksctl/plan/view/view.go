@@ -13,6 +13,7 @@ import (
 	"github.com/weaveworks/wksctl/pkg/manifests"
 	"github.com/weaveworks/wksctl/pkg/plan/runners/ssh"
 	"github.com/weaveworks/wksctl/pkg/specs"
+	"github.com/weaveworks/wksctl/pkg/utilities"
 	"github.com/weaveworks/wksctl/pkg/utilities/manifest"
 )
 
@@ -35,6 +36,7 @@ var viewOptions struct {
 	gitDeployKeyPath     string
 	sshKeyPath           string
 	sealedSecretCertPath string
+	sealedSecretKeyPath  string
 	configDirectory      string
 	verbose              bool
 }
@@ -50,6 +52,7 @@ func init() {
 	Cmd.Flags().StringVar(&viewOptions.gitDeployKeyPath, "git-deploy-key", "", "Path to the Git deploy key")
 	Cmd.Flags().StringVar(&viewOptions.sshKeyPath, "ssh-key", "./cluster-key", "Path to a key authorized to log in to machines by SSH")
 	Cmd.Flags().StringVar(&viewOptions.sealedSecretCertPath, "sealed-secret-cert", "", "Path to a certificate used to encrypt sealed secrets")
+	Cmd.Flags().StringVar(&viewOptions.sealedSecretKeyPath, "sealed-secret-key", "", "Path to a key used to encrypt sealed secrets")
 	Cmd.Flags().StringVar(&viewOptions.configDirectory, "config-directory", ".", "Directory containing configuration information for the cluster")
 
 	// Intentionally shadows the globally defined --verbose flag.
@@ -119,6 +122,27 @@ func displayPlan(ctx context.Context, clusterManifestPath, machinesManifestPath 
 		return errors.Wrap(err, "failed to read ssh key: ")
 	}
 
+	sealedSecretKeyPath := viewOptions.sealedSecretKeyPath
+	if sealedSecretKeyPath == "" {
+		// Default to using the git deploy key to decrypt sealed secrets
+		sealedSecretKeyPath = viewOptions.gitDeployKeyPath
+	}
+
+	// Read sealed secret cert and key
+	var cert []byte
+	var key []byte
+	if utilities.FileExists(viewOptions.sealedSecretCertPath) && utilities.FileExists(viewOptions.sealedSecretKeyPath) {
+		cert, err = ioutil.ReadFile(viewOptions.sealedSecretCertPath)
+		if err != nil {
+			return errors.Wrap(err, "failed to read sealed secret certificate: ")
+		}
+
+		key, err = ioutil.ReadFile(viewOptions.sealedSecretKeyPath)
+		if err != nil {
+			return errors.Wrap(err, "failed to read sealed secret key: ")
+		}
+	}
+
 	params := capeios.SeedNodeParams{
 		PublicIP:         sp.GetMasterPublicAddress(),
 		PrivateIP:        sp.GetMasterPrivateAddress(),
@@ -138,10 +162,11 @@ func displayPlan(ctx context.Context, clusterManifestPath, machinesManifestPath 
 			GitPath:          viewOptions.gitPath,
 			GitDeployKeyPath: viewOptions.gitDeployKeyPath,
 		},
-		SealedSecretCertPath: viewOptions.sealedSecretCertPath,
-		Namespace:            manifest.DefaultNamespace,
-		AddonNamespaces:      manifest.DefaultAddonNamespaces,
-		ConfigDirectory:      configDir,
+		SealedSecretCert: string(cert),
+		SealedSecretKey:  string(key),
+		Namespace:        manifest.DefaultNamespace,
+		AddonNamespaces:  manifest.DefaultAddonNamespaces,
+		ConfigDirectory:  configDir,
 	}
 	plan, err := wksos.CreateSeedNodeSetupPlan(ctx, installer, params)
 	if err != nil {

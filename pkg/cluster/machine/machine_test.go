@@ -8,9 +8,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	existinginfrav1 "github.com/weaveworks/cluster-api-provider-existinginfra/apis/cluster.weave.works/v1alpha3"
-	capeimachine "github.com/weaveworks/cluster-api-provider-existinginfra/pkg/cluster/machine"
+	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/cluster/machine"
 	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/kubernetes"
-	"github.com/weaveworks/wksctl/pkg/cluster/machine"
+	//	"github.com/weaveworks/wksctl/pkg/cluster/machine"
 	"github.com/weaveworks/wksctl/pkg/utilities/manifest"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -321,6 +321,6 @@ func TestGetKubernetesVersionFromMasterInGetsControlPlaneVersion(t *testing.T) {
 
 func TestGetKubernetesVersionDefaultsVersionWhenMachinesDoNotSpecifyAny(t *testing.T) {
 	machines, _ := machinesFromString(t, machinesWithoutVersions)
-	version := capeimachine.GetKubernetesVersion(machines[0])
+	version := machine.GetKubernetesVersion(machines[0])
 	assert.Equal(t, kubernetes.DefaultVersion, version)
 }
