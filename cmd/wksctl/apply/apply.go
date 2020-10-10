@@ -156,7 +156,57 @@ func (a *Applier) initiateCluster(ctx context.Context, clusterManifestPath, mach
 		}
 	}
 
+<<<<<<< HEAD
 	if err := wksos.SetupSeedNode(ctx, installer, wksos.SeedNodeParams{
+=======
+	clusterManifest, err := ioutil.ReadFile(clusterManifestPath)
+	if err != nil {
+		return errors.Wrap(err, "failed to read cluster manifest: ")
+	}
+
+	// Read manifests and pass in the contents
+	cluster, eic, err := parseCluster(clusterManifest)
+	if err != nil {
+		return errors.Wrap(err, "failed to parse cluster manifest: ")
+	}
+
+	// Mark the cluster as local so that it will not try to create other clusters
+	if eic.Annotations == nil {
+		eic.Annotations = map[string]string{}
+	}
+	clusterManifest, err = unparseCluster(cluster, eic)
+	if err != nil {
+		return errors.Wrap(err, "failed to annotate cluster manifest: ")
+	}
+
+	machinesManifest, err := ioutil.ReadFile(machinesManifestPath)
+	if err != nil {
+		return errors.Wrap(err, "failed to read machines manifest: ")
+	}
+
+	// Read ssh key
+	sshKey, err := ioutil.ReadFile(a.Params.sshKeyPath)
+	if err != nil {
+		return errors.Wrap(err, "failed to read ssh key: ")
+	}
+
+	// Read sealed secret cert and key
+	var cert []byte
+	var key []byte
+	if utilities.FileExists(a.Params.sealedSecretCertPath) && utilities.FileExists(sealedSecretKeyPath) {
+		cert, err = ioutil.ReadFile(a.Params.sealedSecretCertPath)
+		if err != nil {
+			return errors.Wrap(err, "failed to read sealed secret certificate: ")
+		}
+
+		key, err = ioutil.ReadFile(sealedSecretKeyPath)
+		if err != nil {
+			return errors.Wrap(err, "failed to read sealed secret key: ")
+		}
+	}
+
+	if err := wksos.SetupSeedNode(installer, capeios.SeedNodeParams{
+>>>>>>> 1201fbb... switch to marking workload clusters in spec
 		PublicIP:             sp.GetMasterPublicAddress(),
 		PrivateIP:            sp.GetMasterPrivateAddress(),
 		ServicesCIDRBlocks:   sp.Cluster.Spec.ClusterNetwork.Services.CIDRBlocks,
