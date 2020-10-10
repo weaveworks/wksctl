@@ -193,7 +193,6 @@ func (a *Applier) initiateCluster(clusterManifestPath, machinesManifestPath stri
 	if eic.Annotations == nil {
 		eic.Annotations = map[string]string{}
 	}
-	eic.Annotations[capeios.LocalCluster] = "true"
 	clusterManifest, err = unparseCluster(cluster, eic)
 	if err != nil {
 		return errors.Wrap(err, "failed to annotate cluster manifest: ")
