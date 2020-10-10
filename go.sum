@@ -891,6 +891,8 @@ github.com/weaveworks/cluster-api-provider-existinginfra v0.0.3-0.20201007173108
 github.com/weaveworks/cluster-api-provider-existinginfra v0.0.3-0.20201007173108-fe66c657d75d/go.mod h1:6mhYEk63PCUY7Mb9xvFcs606HWMqaAtKX5lgH/hGeGI=
 github.com/weaveworks/cluster-api-provider-existinginfra v0.0.3-0.20201009193405-484e006fe0f4 h1:/5Epojb/Nd90rDJFc0ZaTD65ktF96N5HfMHewh2CdsY=
 github.com/weaveworks/cluster-api-provider-existinginfra v0.0.3-0.20201009193405-484e006fe0f4/go.mod h1:98HLocudnw5vDbdA4rtIwu5sHjnt0XPeXC3zpW98LYc=
+github.com/weaveworks/cluster-api-provider-existinginfra v0.0.3-0.20201010130039-17dfcfeda8b7 h1:9Q4bDTDUz0QYjvxZnV5kwfXNPuQbOa8Ed1V1Eq6dxO8=
+github.com/weaveworks/cluster-api-provider-existinginfra v0.0.3-0.20201010130039-17dfcfeda8b7/go.mod h1:98HLocudnw5vDbdA4rtIwu5sHjnt0XPeXC3zpW98LYc=
 github.com/weaveworks/cluster-api-provider-existinginfra v0.0.3/go.mod h1:1+bY5QfDcvqYDHCLF7a57X+/Zt3OSqyL/x7wayf+Wbo=
 github.com/weaveworks/footloose v0.0.0-20200609124411-8f3df89ea188 h1:BuiVM+91YRjWUSMvF93A7Sm7s7IHrxjrPcc/5boO2V0=
 github.com/weaveworks/footloose v0.0.0-20200609124411-8f3df89ea188/go.mod h1:nxDdCjg1kb5+luh4mUCp+mtBZIWrhzoLIArrD99y+Sc=
