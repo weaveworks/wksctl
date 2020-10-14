@@ -14,6 +14,7 @@ import (
 	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/apis/wksprovider/machine/config"
 	capeios "github.com/weaveworks/cluster-api-provider-existinginfra/pkg/apis/wksprovider/machine/os"
 	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/scheme"
+	capeispecs "github.com/weaveworks/cluster-api-provider-existinginfra/pkg/specs"
 	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/utilities/kubeadm"
 	"github.com/weaveworks/libgitops/pkg/serializer"
 	"github.com/weaveworks/wksctl/pkg/addons"
@@ -105,7 +106,7 @@ func (a *Applier) Apply(ctx context.Context) error {
 
 // parseCluster converts the manifest file into a Cluster
 func parseCluster(clusterManifest []byte) (c *clusterv1.Cluster, eic *existinginfrav1.ExistingInfraCluster, err error) {
-	return specs.ParseCluster(ioutil.NopCloser(bytes.NewReader(clusterManifest)))
+	return capeispecs.ParseCluster(ioutil.NopCloser(bytes.NewReader(clusterManifest)))
 }
 
 func unparseCluster(c *clusterv1.Cluster, eic *existinginfrav1.ExistingInfraCluster) ([]byte, error) {
@@ -190,10 +191,7 @@ func (a *Applier) initiateCluster(ctx context.Context, clusterManifestPath, mach
 		return errors.Wrap(err, "failed to parse cluster manifest: ")
 	}
 
-	// Mark the cluster as local so that it will not try to create other clusters
-	if eic.Annotations == nil {
-		eic.Annotations = map[string]string{}
-	}
+	eic.Spec.DeprecatedSSHKeyPath = a.Params.sshKeyPath
 	clusterManifest, err = unparseCluster(cluster, eic)
 	if err != nil {
 		return errors.Wrap(err, "failed to annotate cluster manifest: ")
@@ -202,12 +200,6 @@ func (a *Applier) initiateCluster(ctx context.Context, clusterManifestPath, mach
 	machinesManifest, err := ioutil.ReadFile(machinesManifestPath)
 	if err != nil {
 		return errors.Wrap(err, "failed to read machines manifest: ")
-	}
-
-	// Read ssh key
-	sshKey, err := ioutil.ReadFile(a.Params.sshKeyPath)
-	if err != nil {
-		return errors.Wrap(err, "failed to read ssh key: ")
 	}
 
 	// Read sealed secret cert and key
@@ -233,7 +225,6 @@ func (a *Applier) initiateCluster(ctx context.Context, clusterManifestPath, mach
 		ExistingInfraCluster: *eic,
 		ClusterManifest:      string(clusterManifest),
 		MachinesManifest:     string(machinesManifest),
-		SSHKey:               string(sshKey),
 		BootstrapToken:       token,
 		KubeletConfig: config.KubeletConfig{
 			NodeIP:         sp.GetMasterPrivateAddress(),
