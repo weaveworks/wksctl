@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
+	"strings"
 
 	ssv1alpha1 "github.com/bitnami-labs/sealed-secrets/pkg/apis/sealed-secrets/v1alpha1"
 	"github.com/bitnami-labs/sealed-secrets/pkg/crypto"
@@ -15,9 +16,11 @@ import (
 	log "github.com/sirupsen/logrus"
 	existinginfrav1 "github.com/weaveworks/cluster-api-provider-existinginfra/apis/cluster.weave.works/v1alpha3"
 	capeios "github.com/weaveworks/cluster-api-provider-existinginfra/pkg/apis/wksprovider/machine/os"
+	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/cluster/machine"
 	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/plan"
 	capeiresource "github.com/weaveworks/cluster-api-provider-existinginfra/pkg/plan/resource"
 	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/scheme"
+	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/specs"
 	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/utilities/object"
 	"github.com/weaveworks/libgitops/pkg/serializer"
 	v1 "k8s.io/api/core/v1"
@@ -364,6 +367,7 @@ func getAPIServerArgs(providerSpec *capeiv1alpha3.ClusterSpec, pemSecretResource
 
 func addClusterAPICRDs(b *plan.Builder) ([]string, error) {
 	crds, err := getCRDs()
+
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to list cluster API CRDs")
 	}

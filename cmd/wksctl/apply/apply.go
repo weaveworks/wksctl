@@ -11,6 +11,8 @@ import (
 	existinginfrav1 "github.com/weaveworks/cluster-api-provider-existinginfra/apis/cluster.weave.works/v1alpha3"
 	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/apis/wksprovider/machine/config"
 	capeios "github.com/weaveworks/cluster-api-provider-existinginfra/pkg/apis/wksprovider/machine/os"
+	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/scheme"
+	capeispecs "github.com/weaveworks/cluster-api-provider-existinginfra/pkg/specs"
 	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/utilities/kubeadm"
 	"github.com/weaveworks/wksctl/pkg/addons"
 	"github.com/weaveworks/wksctl/pkg/manifests"
@@ -96,7 +98,23 @@ func (a *Applier) Apply(ctx context.Context) error {
 	return a.initiateCluster(ctx, clusterPath, machinesPath)
 }
 
-func (a *Applier) initiateCluster(ctx context.Context, clusterManifestPath, machinesManifestPath string) error {
+// parseCluster converts the manifest file into a Cluster
+func parseCluster(clusterManifest []byte) (c *clusterv1.Cluster, eic *existinginfrav1.ExistingInfraCluster, err error) {
+	return capeispecs.ParseCluster(ioutil.NopCloser(bytes.NewReader(clusterManifest)))
+}
+
+func unparseCluster(c *clusterv1.Cluster, eic *existinginfrav1.ExistingInfraCluster) ([]byte, error) {
+	var buf bytes.Buffer
+	s := serializer.NewSerializer(scheme.Scheme, nil)
+	fw := serializer.NewYAMLFrameWriter(&buf)
+	err := s.Encoder().Encode(fw, c, eic)
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
+func (a *Applier) initiateCluster(clusterManifestPath, machinesManifestPath string) error {
 	sp := specs.NewFromPaths(clusterManifestPath, machinesManifestPath)
 	sshClient, err := ssh.NewClientForMachine(sp.MasterSpec, sp.ClusterSpec.User, a.Params.sshKeyPath, log.GetLevel() > log.InfoLevel)
 
@@ -156,9 +174,6 @@ func (a *Applier) initiateCluster(ctx context.Context, clusterManifestPath, mach
 		}
 	}
 
-<<<<<<< HEAD
-	if err := wksos.SetupSeedNode(ctx, installer, wksos.SeedNodeParams{
-=======
 	clusterManifest, err := ioutil.ReadFile(clusterManifestPath)
 	if err != nil {
 		return errors.Wrap(err, "failed to read cluster manifest: ")
@@ -170,10 +185,7 @@ func (a *Applier) initiateCluster(ctx context.Context, clusterManifestPath, mach
 		return errors.Wrap(err, "failed to parse cluster manifest: ")
 	}
 
-	// Mark the cluster as local so that it will not try to create other clusters
-	if eic.Annotations == nil {
-		eic.Annotations = map[string]string{}
-	}
+	eic.Spec.DeprecatedSSHKeyPath = a.Params.sshKeyPath
 	clusterManifest, err = unparseCluster(cluster, eic)
 	if err != nil {
 		return errors.Wrap(err, "failed to annotate cluster manifest: ")
@@ -182,12 +194,6 @@ func (a *Applier) initiateCluster(ctx context.Context, clusterManifestPath, mach
 	machinesManifest, err := ioutil.ReadFile(machinesManifestPath)
 	if err != nil {
 		return errors.Wrap(err, "failed to read machines manifest: ")
-	}
-
-	// Read ssh key
-	sshKey, err := ioutil.ReadFile(a.Params.sshKeyPath)
-	if err != nil {
-		return errors.Wrap(err, "failed to read ssh key: ")
 	}
 
 	// Read sealed secret cert and key
@@ -206,14 +212,13 @@ func (a *Applier) initiateCluster(ctx context.Context, clusterManifestPath, mach
 	}
 
 	if err := wksos.SetupSeedNode(installer, capeios.SeedNodeParams{
->>>>>>> 1201fbb... switch to marking workload clusters in spec
 		PublicIP:             sp.GetMasterPublicAddress(),
 		PrivateIP:            sp.GetMasterPrivateAddress(),
 		ServicesCIDRBlocks:   sp.Cluster.Spec.ClusterNetwork.Services.CIDRBlocks,
 		PodsCIDRBlocks:       sp.Cluster.Spec.ClusterNetwork.Pods.CIDRBlocks,
-		ClusterManifestPath:  clusterManifestPath,
-		MachinesManifestPath: machinesManifestPath,
-		SSHKeyPath:           a.Params.sshKeyPath,
+		ExistingInfraCluster: *eic,
+		ClusterManifest:      string(clusterManifest),
+		MachinesManifest:     string(machinesManifest),
 		BootstrapToken:       token,
 		KubeletConfig: config.KubeletConfig{
 			NodeIP:         sp.GetMasterPrivateAddress(),
