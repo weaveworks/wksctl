@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
+	"strings"
 
 	ssv1alpha1 "github.com/bitnami-labs/sealed-secrets/pkg/apis/sealed-secrets/v1alpha1"
 	"github.com/bitnami-labs/sealed-secrets/pkg/crypto"
@@ -13,9 +14,11 @@ import (
 	log "github.com/sirupsen/logrus"
 	existinginfrav1 "github.com/weaveworks/cluster-api-provider-existinginfra/apis/cluster.weave.works/v1alpha3"
 	capeios "github.com/weaveworks/cluster-api-provider-existinginfra/pkg/apis/wksprovider/machine/os"
+	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/cluster/machine"
 	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/plan"
 	capeiresource "github.com/weaveworks/cluster-api-provider-existinginfra/pkg/plan/resource"
 	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/scheme"
+	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/specs"
 	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/utilities/object"
 	"github.com/weaveworks/libgitops/pkg/serializer"
 	v1 "k8s.io/api/core/v1"
@@ -53,6 +56,10 @@ func SetupSeedNode(o *capeios.OS, params capeios.SeedNodeParams) error {
 	if err != nil {
 		return err
 	}
+	updatedParams, err = createMachinePoolInfo(params)
+	if err != nil {
+		return err
+	}
 	p, err := capeios.CreateSeedNodeSetupPlan(o, updatedParams)
 	if err != nil {
 		return err
@@ -68,6 +75,34 @@ func SetupSeedNode(o *capeios.OS, params capeios.SeedNodeParams) error {
 		p = &plan
 	}
 	return capeios.ApplyPlan(o, p)
+}
+
+// createMachinePoolInfo turns the specified machines into a connection pool
+// that can be used to contact the machines
+func createMachinePoolInfo(params capeios.SeedNodeParams) (capeios.SeedNodeParams, error) {
+	_, eic, err := specs.ParseCluster(ioutil.NopCloser(strings.NewReader(params.ClusterManifest)))
+	if err != nil {
+		return capeios.SeedNodeParams{}, err
+	}
+	_, eims, err := machine.Parse(ioutil.NopCloser(strings.NewReader(params.MachinesManifest)))
+	if err != nil {
+		return capeios.SeedNodeParams{}, err
+	}
+	sshKey, err := ioutil.ReadFile(eic.Spec.DeprecatedSSHKeyPath)
+	if err != nil {
+		return capeios.SeedNodeParams{}, err
+	}
+	encodedKey := base64.StdEncoding.EncodeToString(sshKey)
+	return augmentParamsWithPool(eic.Spec.User, encodedKey, eims, params), nil
+}
+
+func augmentParamsWithPool(user, key string, eim []*existinginfrav1.ExistingInfraMachine, params capeios.SeedNodeParams) capeios.SeedNodeParams {
+	info := []capeios.MachineInfo{}
+	for _, m := range eim {
+		info = append(info, capeios.MachineInfo{user, key, m.Spec.Public.Address, fmt.Sprintf("%d", m.Spec.Public.Port), m.Spec.Private.Address, fmt.Sprintf("%d", m.Spec.Private.Port)})
+	}
+	params.ConnectionInfo = info
+	return params
 }
 
 // createSecretPlan constructs the seed node plan used to setup auth secrets

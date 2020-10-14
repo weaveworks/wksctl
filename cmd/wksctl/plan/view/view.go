@@ -115,12 +115,6 @@ func displayPlan(clusterManifestPath, machinesManifestPath string) error {
 		return errors.Wrap(err, "failed to read machines manifest: ")
 	}
 
-	// Read ssh key
-	sshKey, err := ioutil.ReadFile(viewOptions.sshKeyPath)
-	if err != nil {
-		return errors.Wrap(err, "failed to read ssh key: ")
-	}
-
 	sealedSecretKeyPath := viewOptions.sealedSecretKeyPath
 	if sealedSecretKeyPath == "" {
 		// Default to using the git deploy key to decrypt sealed secrets
@@ -147,7 +141,6 @@ func displayPlan(clusterManifestPath, machinesManifestPath string) error {
 		PrivateIP:        sp.GetMasterPrivateAddress(),
 		ClusterManifest:  string(clusterManifest),
 		MachinesManifest: string(machinesManifest),
-		SSHKey:           string(sshKey),
 		KubeletConfig: config.KubeletConfig{
 			NodeIP:        sp.GetMasterPrivateAddress(),
 			CloudProvider: sp.GetCloudProvider(),
