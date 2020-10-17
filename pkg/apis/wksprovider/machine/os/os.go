@@ -58,16 +58,7 @@ func SetupSeedNode(ctx context.Context, o *capeios.OS, params SeedNodeParams) er
 	if err != nil {
 		return err
 	}
-	return applySeedNodePlan(ctx, o, p)
-}
-
-// CreateSeedNodeSetupPlan constructs the seed node plan used to setup the initial node
-// prior to turning control over to wks-controller
-func CreateSeedNodeSetupPlan(ctx context.Context, o *capeios.OS, params SeedNodeParams) (*plan.Plan, error) {
-	if err := params.Validate(); err != nil {
-		return nil, err
-	}
-	cfg, err := envcfg.GetEnvSpecificConfig(ctx, o.PkgType, params.Namespace, params.KubeletConfig.CloudProvider, o.Runner)
+	updatedParams, err = createMachinePoolInfo(updatedParams)
 	if err != nil {
 		return nil, err
 	}
