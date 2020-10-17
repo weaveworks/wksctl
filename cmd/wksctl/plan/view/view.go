@@ -124,13 +124,13 @@ func displayPlan(clusterManifestPath, machinesManifestPath string) error {
 	// Read sealed secret cert and key
 	var cert []byte
 	var key []byte
-	if utilities.FileExists(viewOptions.sealedSecretCertPath) && utilities.FileExists(viewOptions.sealedSecretKeyPath) {
+	if utilities.FileExists(viewOptions.sealedSecretCertPath) && utilities.FileExists(sealedSecretKeyPath) {
 		cert, err = ioutil.ReadFile(viewOptions.sealedSecretCertPath)
 		if err != nil {
 			return errors.Wrap(err, "failed to read sealed secret certificate: ")
 		}
 
-		key, err = ioutil.ReadFile(viewOptions.sealedSecretKeyPath)
+		key, err = ioutil.ReadFile(sealedSecretKeyPath)
 		if err != nil {
 			return errors.Wrap(err, "failed to read sealed secret key: ")
 		}

@@ -56,7 +56,7 @@ func SetupSeedNode(o *capeios.OS, params capeios.SeedNodeParams) error {
 	if err != nil {
 		return err
 	}
-	updatedParams, err = createMachinePoolInfo(params)
+	updatedParams, err = createMachinePoolInfo(updatedParams)
 	if err != nil {
 		return err
 	}
