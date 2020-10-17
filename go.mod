@@ -84,14 +84,12 @@ replace (
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-logr/zapr v0.1.1 // indirect
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
-	github.com/golangci/golangci-lint v1.27.0 // indirect
 	github.com/google/go-jsonnet v0.16.0
 	github.com/googleapis/gnostic v0.4.1 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.1 // indirect
 	github.com/pelletier/go-toml v1.8.0
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.5.1 // indirect
-	github.com/shurcooL/httpfs v0.0.0-20190707220628-8d4bc4ba7749 // indirect
 	github.com/shurcooL/vfsgen v0.0.0-20200824052919-0d455de96546
 	github.com/sirupsen/logrus v1.6.0
 	github.com/spf13/cobra v1.0.0
@@ -113,11 +111,8 @@ replace (
 	k8s.io/api v0.18.6
 	k8s.io/apimachinery v0.18.6
 	k8s.io/client-go v0.18.6
-	k8s.io/kube-proxy v0.0.0
 	k8s.io/kubernetes v1.18.6
-	k8s.io/utils v0.0.0-20200619165400-6e3d28b6ed19
 	sigs.k8s.io/cluster-api v0.3.6
-	sigs.k8s.io/controller-runtime v0.6.0
 	sigs.k8s.io/kustomize/kyaml v0.6.0 // indirect
 	sigs.k8s.io/yaml v1.2.0
 )
