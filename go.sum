@@ -895,6 +895,8 @@ github.com/weaveworks/cluster-api-provider-existinginfra v0.0.3-0.20201010130039
 github.com/weaveworks/cluster-api-provider-existinginfra v0.0.3-0.20201010130039-17dfcfeda8b7/go.mod h1:98HLocudnw5vDbdA4rtIwu5sHjnt0XPeXC3zpW98LYc=
 github.com/weaveworks/cluster-api-provider-existinginfra v0.0.3-0.20201010160446-1cca68d74314 h1:p5jw1m7MfELh26Yx3CLhtzMx55+DQzPG9NdQBiAr5sI=
 github.com/weaveworks/cluster-api-provider-existinginfra v0.0.3-0.20201010160446-1cca68d74314/go.mod h1:98HLocudnw5vDbdA4rtIwu5sHjnt0XPeXC3zpW98LYc=
+github.com/weaveworks/cluster-api-provider-existinginfra v0.0.3-0.20201014233641-727a85ff4e68 h1:TX1oAiNhJultslGlZ0d5wiuz8mDAF6tQDI3/fCG2UQ0=
+github.com/weaveworks/cluster-api-provider-existinginfra v0.0.3-0.20201014233641-727a85ff4e68/go.mod h1:UZkF4dw1GEm5doPVqh1cpoONk/LYQ4HAgGm9PpDUwDE=
 github.com/weaveworks/cluster-api-provider-existinginfra v0.0.3/go.mod h1:1+bY5QfDcvqYDHCLF7a57X+/Zt3OSqyL/x7wayf+Wbo=
 github.com/weaveworks/cluster-api-provider-existinginfra v0.0.4-0.20201019151825-abde7d1650ca h1:HdYzEPKXEtm2USHNAqQ08DuoFbNpyaayaYiOvkFjTl8=
 github.com/weaveworks/cluster-api-provider-existinginfra v0.0.4-0.20201019151825-abde7d1650ca/go.mod h1:cXfxwXYmVybouksAJn3ftDNwYQ5RYG3cTVEKPYb9DGk=
