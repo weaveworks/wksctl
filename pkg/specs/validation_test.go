@@ -2,7 +2,7 @@ package specs
 
 import (
 	"io/ioutil"
-	"strings"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -274,8 +274,14 @@ spec:
 `
 
 func clusterFromString(t *testing.T, s string) (*clusterv1.Cluster, *existinginfrav1.ExistingInfraCluster) {
-	r := ioutil.NopCloser(strings.NewReader(s))
-	cluster, eic, err := ParseCluster(r)
+	f, err := ioutil.TempFile("", "")
+	assert.NoError(t, err)
+	defer os.Remove(f.Name())
+	_, err = f.WriteString(s)
+	assert.NoError(t, err)
+	err = f.Close()
+	assert.NoError(t, err)
+	cluster, eic, err := ParseClusterManifest(f.Name())
 	assert.NoError(t, err)
 	return cluster, eic
 }
