@@ -9,6 +9,7 @@ require (
     github.com/ghodss/yaml v1.0.0
     github.com/go-logr/zapr v0.1.1 // indirect
     github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
+    github.com/golangci/golangci-lint v1.27.0 // indirect
     github.com/google/go-jsonnet v0.16.0
     github.com/googleapis/gnostic v0.4.1 // indirect
     github.com/hashicorp/go-cleanhttp v0.5.1 // indirect
@@ -22,7 +23,7 @@ require (
     github.com/spf13/pflag v1.0.5
     github.com/stretchr/testify v1.6.1
     github.com/thanhpk/randstr v1.0.4
-    github.com/weaveworks/cluster-api-provider-existinginfra v0.0.4-0.20201019151825-abde7d1650ca
+    github.com/weaveworks/cluster-api-provider-existinginfra v0.0.3-0.20201014233641-727a85ff4e68
     github.com/weaveworks/footloose v0.0.0-20200609124411-8f3df89ea188
     github.com/weaveworks/go-checkpoint v0.0.0-20170503165305-ebbb8b0518ab
     github.com/weaveworks/launcher v0.0.0-20180824102238-59a4fcc32c9c
