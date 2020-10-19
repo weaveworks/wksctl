@@ -1,6 +1,7 @@
 package testutils
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"log"
@@ -31,9 +32,9 @@ type TestRunner struct {
 var _ plan.Runner = &TestRunner{}
 
 // RunCommand implements plan.Runner.
-func (r *TestRunner) RunCommand(cmd string, stdin io.Reader) (stdouterr string, err error) {
+func (r *TestRunner) RunCommand(ctx context.Context, cmd string, stdin io.Reader) (stdouterr string, err error) {
 	r.T.Log("RunCommand:", cmd)
-	stdouterr, err = r.Runner.RunCommand(cmd, stdin)
+	stdouterr, err = r.Runner.RunCommand(ctx, cmd, stdin)
 	r.T.Logf("Output:\n%s", stdouterr)
 
 	r.pushRunCommand(cmd, stdouterr)
@@ -160,8 +161,8 @@ func (r *FootlooseRunner) Start() error {
 	return nil
 }
 
-func (r *FootlooseRunner) RunCommand(command string, stdin io.Reader) (string, error) {
-	return r.ssh.RunCommand(command, stdin)
+func (r *FootlooseRunner) RunCommand(ctx context.Context, command string, stdin io.Reader) (string, error) {
+	return r.ssh.RunCommand(ctx, command, stdin)
 }
 
 func MakeFootlooseTestRunner(t *testing.T, image string, sshPort uint16) (*TestRunner, func()) {
@@ -205,7 +206,7 @@ func (pa *PortAllocator) Allocate() uint16 {
 
 // Other utilities
 func AssertEmptyState(t *testing.T, s plan.Resource, r plan.Runner) {
-	state, err := s.QueryState(r)
+	state, err := s.QueryState(context.Background(), r)
 	assert.NoError(t, err)
 	assert.Equal(t, plan.EmptyState, state)
 }

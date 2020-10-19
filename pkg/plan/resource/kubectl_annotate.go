@@ -1,6 +1,7 @@
 package resource
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -25,8 +26,8 @@ func (ka *KubectlAnnotateSingleNode) State() plan.State {
 }
 
 // Apply fetches the node name and performs a "kubectl annotate".
-func (ka *KubectlAnnotateSingleNode) Apply(runner plan.Runner, diff plan.Diff) (bool, error) {
-	output, err := runner.RunCommand(resource.WithoutProxy("kubectl get nodes -o name"), nil)
+func (ka *KubectlAnnotateSingleNode) Apply(ctx context.Context, runner plan.Runner, diff plan.Diff) (bool, error) {
+	output, err := runner.RunCommand(ctx, resource.WithoutProxy("kubectl get nodes -o name"), nil)
 	if err != nil {
 		return false, errors.Wrapf(err, "could not fetch node name to annotate")
 	}
@@ -38,7 +39,7 @@ func (ka *KubectlAnnotateSingleNode) Apply(runner plan.Runner, diff plan.Diff) (
 
 	cmd := fmt.Sprintf("kubectl annotate %q %s=%q", nodeName, ka.Key, ka.Value)
 
-	if stdouterr, err := runner.RunCommand(resource.WithoutProxy(cmd), nil); err != nil {
+	if stdouterr, err := runner.RunCommand(ctx, resource.WithoutProxy(cmd), nil); err != nil {
 		return false, errors.Wrapf(err, "failed to apply annotation %s on %s; output %s", ka.Key, nodeName, stdouterr)
 	}
 

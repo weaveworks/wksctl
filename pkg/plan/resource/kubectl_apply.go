@@ -1,6 +1,7 @@
 package resource
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -86,16 +87,16 @@ func (ka *KubectlApply) content() ([]byte, error) {
 	return nil, errors.New("no content provided")
 }
 
-func writeTempFile(r plan.Runner, c []byte, fname string) (string, error) {
-	pathDirty, err := r.RunCommand(fmt.Sprintf("mktemp -t %sXXXXXXXXXX", fname), nil)
+func writeTempFile(ctx context.Context, r plan.Runner, c []byte, fname string) (string, error) {
+	pathDirty, err := r.RunCommand(ctx, fmt.Sprintf("mktemp -t %sXXXXXXXXXX", fname), nil)
 	if err != nil {
 		return "", errors.Wrap(err, "mktemp")
 	}
 	path := strings.Trim(pathDirty, "\n")
 
-	if err := scripts.WriteFile(c, path, 0660, r); err != nil {
+	if err := scripts.WriteFile(ctx, c, path, 0660, r); err != nil {
 		// Try to delete the temp file.
-		if _, rmErr := r.RunCommand(fmt.Sprintf("rm -vf %q", path), nil); rmErr != nil {
+		if _, rmErr := r.RunCommand(ctx, fmt.Sprintf("rm -vf %q", path), nil); rmErr != nil {
 			log.WithField("path", path).Errorf("failed to clean up the temp file: %v", rmErr)
 		}
 
@@ -106,7 +107,7 @@ func writeTempFile(r plan.Runner, c []byte, fname string) (string, error) {
 }
 
 // Apply performs a "kubectl apply" as specified in the receiver.
-func (ka *KubectlApply) Apply(runner plan.Runner, diff plan.Diff) (bool, error) {
+func (ka *KubectlApply) Apply(ctx context.Context, runner plan.Runner, diff plan.Diff) (bool, error) {
 
 	// Get the manifest content.
 	c, err := ka.content()
@@ -124,7 +125,7 @@ func (ka *KubectlApply) Apply(runner plan.Runner, diff plan.Diff) (bool, error) 
 		}
 	}
 
-	if err := RunKubectlApply(runner, KubectlApplyArgs{
+	if err := RunKubectlApply(ctx, runner, KubectlApplyArgs{
 		Content:       c,
 		WaitCondition: ka.WaitCondition,
 	}, str(ka.Filename)); err != nil {
@@ -141,24 +142,24 @@ type KubectlApplyArgs struct {
 	WaitCondition string
 }
 
-func RunKubectlApply(r plan.Runner, args KubectlApplyArgs, fname string) error {
+func RunKubectlApply(ctx context.Context, r plan.Runner, args KubectlApplyArgs, fname string) error {
 	// Write the manifest content to the remote filesystem.
-	path, err := writeTempFile(r, args.Content, fname)
+	path, err := writeTempFile(ctx, r, args.Content, fname)
 	if err != nil {
 		return errors.Wrap(err, "writeTempFile")
 	}
 	//nolint:errcheck
-	defer r.RunCommand(fmt.Sprintf("rm -vf %q", path), nil) // TODO: Deferred error checking
+	defer r.RunCommand(ctx, fmt.Sprintf("rm -vf %q", path), nil) // TODO: Deferred error checking
 
 	// Run kubectl apply.
-	if err := RunKubectlRemoteApply(path, r); err != nil {
+	if err := RunKubectlRemoteApply(ctx, path, r); err != nil {
 		return errors.Wrap(err, "kubectl apply")
 	}
 
 	// Run kubectl wait, if requested.
 	if args.WaitCondition != "" {
 		cmd := fmt.Sprintf("kubectl wait --for=%q -f %q", args.WaitCondition, path)
-		if _, err := r.RunCommand(resource.WithoutProxy(cmd), nil); err != nil {
+		if _, err := r.RunCommand(ctx, resource.WithoutProxy(cmd), nil); err != nil {
 			return errors.Wrap(err, "kubectl wait")
 		}
 	}
@@ -167,10 +168,10 @@ func RunKubectlApply(r plan.Runner, args KubectlApplyArgs, fname string) error {
 	return nil
 }
 
-func RunKubectlRemoteApply(remoteURL string, runner plan.Runner) error {
+func RunKubectlRemoteApply(ctx context.Context, remoteURL string, runner plan.Runner) error {
 	cmd := fmt.Sprintf("kubectl apply -f %q", remoteURL)
 
-	if stdouterr, err := runner.RunCommand(resource.WithoutProxy(cmd), nil); err != nil {
+	if stdouterr, err := runner.RunCommand(ctx, resource.WithoutProxy(cmd), nil); err != nil {
 		log.WithField("stdouterr", stdouterr).WithField("URL", remoteURL).Debug("failed to apply Kubernetes manifest")
 		return errors.Wrapf(err, "failed to apply manifest %s; output %s", remoteURL, stdouterr)
 	}

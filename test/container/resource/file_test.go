@@ -1,6 +1,7 @@
 package resource
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"testing"
@@ -29,10 +30,10 @@ func TestFile(t *testing.T) {
 	testutils.AssertEmptyState(t, file, r)
 
 	// Go create that file and check that it exists and has the right content.
-	_, err := file.Apply(r, emptyDiff)
+	_, err := file.Apply(context.Background(), r, emptyDiff)
 	assert.NoError(t, err)
 
-	remoteContent, err := r.RunCommand(fmt.Sprintf("cat %q", file.Destination), nil)
+	remoteContent, err := r.RunCommand(context.Background(), fmt.Sprintf("cat %q", file.Destination), nil)
 	assert.NoError(t, err)
 
 	localContent, err := ioutil.ReadFile(srcPath)
@@ -43,12 +44,12 @@ func TestFile(t *testing.T) {
 	assert.Equal(t, string(localContent), remoteContent)
 
 	// Query the state and ensures it's consistent.
-	realizedState, err := file.QueryState(r)
+	realizedState, err := file.QueryState(context.Background(), r)
 	assert.NoError(t, err)
 	assert.Equal(t, realizedState, file.State())
 
 	// Undo and check the file isn't there.
-	err = file.Undo(r, realizedState)
+	err = file.Undo(context.Background(), r, realizedState)
 	assert.NoError(t, err)
 
 }

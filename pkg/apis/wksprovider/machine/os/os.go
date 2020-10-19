@@ -2,6 +2,7 @@ package os
 
 import (
 	"bytes"
+	"context"
 	"crypto/rsa"
 	"encoding/base64"
 	"fmt"
@@ -168,21 +169,21 @@ func (params SeedNodeParams) GetAddonNamespace(name string) string {
 // SetupSeedNode installs Kubernetes on this machine, and store the provided
 // manifests in the API server, so that the rest of the cluster can then be
 // set up by the WKS controller.
-func SetupSeedNode(o *capeios.OS, params SeedNodeParams) error {
-	p, err := CreateSeedNodeSetupPlan(o, params)
+func SetupSeedNode(ctx context.Context, o *capeios.OS, params SeedNodeParams) error {
+	p, err := CreateSeedNodeSetupPlan(ctx, o, params)
 	if err != nil {
 		return err
 	}
-	return applySeedNodePlan(o, p)
+	return applySeedNodePlan(ctx, o, p)
 }
 
 // CreateSeedNodeSetupPlan constructs the seed node plan used to setup the initial node
 // prior to turning control over to wks-controller
-func CreateSeedNodeSetupPlan(o *capeios.OS, params SeedNodeParams) (*plan.Plan, error) {
+func CreateSeedNodeSetupPlan(ctx context.Context, o *capeios.OS, params SeedNodeParams) (*plan.Plan, error) {
 	if err := params.Validate(); err != nil {
 		return nil, err
 	}
-	cfg, err := envcfg.GetEnvSpecificConfig(o.PkgType, params.Namespace, params.KubeletConfig.CloudProvider, o.Runner)
+	cfg, err := envcfg.GetEnvSpecificConfig(ctx, o.PkgType, params.Namespace, params.KubeletConfig.CloudProvider, o.Runner)
 	if err != nil {
 		return nil, err
 	}
@@ -213,7 +214,7 @@ func CreateSeedNodeSetupPlan(o *capeios.OS, params SeedNodeParams) (*plan.Plan, 
 		return nil, err
 	}
 
-	criRes := capeirecipe.BuildCRIPlan(&cluster.Spec.CRI, cfg, o.PkgType)
+	criRes := capeirecipe.BuildCRIPlan(ctx, &cluster.Spec.CRI, cfg, o.PkgType)
 	b.AddResource("install:cri", criRes, plan.DependOn("install:config"))
 
 	k8sRes := capeirecipe.BuildK8SPlan(kubernetesVersion, params.KubeletConfig.NodeIP, cfg.SELinuxInstalled, cfg.SetSELinuxPermissive, cfg.DisableSwap, cfg.LockYUMPkgs, o.PkgType, params.KubeletConfig.CloudProvider, params.KubeletConfig.ExtraArguments)
@@ -296,7 +297,7 @@ func CreateSeedNodeSetupPlan(o *capeios.OS, params SeedNodeParams) (*plan.Plan, 
 	}
 
 	// Set plan as an annotation on node, just like controller does
-	seedNodePlan, err := seedNodeSetupPlan(o, params, &cluster.Spec, configMaps, authConfigMap, pemSecretResources, kubernetesVersion, kubernetesNamespace)
+	seedNodePlan, err := seedNodeSetupPlan(ctx, o, params, &cluster.Spec, configMaps, authConfigMap, pemSecretResources, kubernetesVersion, kubernetesNamespace)
 	if err != nil {
 		return nil, err
 	}
@@ -539,7 +540,7 @@ func addClusterAPICRDs(b *plan.Builder) ([]string, error) {
 	return crdIDs, nil
 }
 
-func seedNodeSetupPlan(o *capeios.OS, params SeedNodeParams, providerSpec *capeiv1alpha3.ClusterSpec, providerConfigMaps map[string]*v1.ConfigMap, authConfigMap *v1.ConfigMap, secretResources map[string]*secretResourceSpec, kubernetesVersion, kubernetesNamespace string) (*plan.Plan, error) {
+func seedNodeSetupPlan(ctx context.Context, o *capeios.OS, params SeedNodeParams, providerSpec *capeiv1alpha3.ClusterSpec, providerConfigMaps map[string]*v1.ConfigMap, authConfigMap *v1.ConfigMap, secretResources map[string]*secretResourceSpec, kubernetesVersion, kubernetesNamespace string) (*plan.Plan, error) {
 	secrets := map[string]capeiresource.SecretData{}
 	for k, v := range secretResources {
 		secrets[k] = v.decrypted
@@ -559,17 +560,17 @@ func seedNodeSetupPlan(o *capeios.OS, params SeedNodeParams, providerSpec *capei
 		AddonNamespaces:      params.AddonNamespaces,
 		ControlPlaneEndpoint: providerSpec.ControlPlaneEndpoint,
 	}
-	return o.CreateNodeSetupPlan(nodeParams)
+	return o.CreateNodeSetupPlan(ctx, nodeParams)
 }
 
-func applySeedNodePlan(o *capeios.OS, p *plan.Plan) error {
-	err := p.Undo(o.Runner, plan.EmptyState)
+func applySeedNodePlan(ctx context.Context, o *capeios.OS, p *plan.Plan) error {
+	err := p.Undo(ctx, o.Runner, plan.EmptyState)
 	if err != nil {
 		log.Infof("Pre-plan cleanup failed:\n%s\n", err)
 		return err
 	}
 
-	_, err = p.Apply(o.Runner, plan.EmptyDiff())
+	_, err = p.Apply(ctx, o.Runner, plan.EmptyDiff())
 	if err != nil {
 		log.Errorf("Apply of Plan failed:\n%s\n", err)
 		return err

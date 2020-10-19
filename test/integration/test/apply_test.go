@@ -2,6 +2,7 @@ package test
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -359,7 +360,7 @@ func configPath(filename string) string {
 func writeFile(content []byte, dstPath string, perm os.FileMode, runner *ssh.Client) error {
 	input := bytes.NewReader(content)
 	cmd := fmt.Sprintf("mkdir -pv $(dirname %q) && sed -n 'w %s' && chmod 0%o %q", dstPath, dstPath, perm, dstPath)
-	_, err := runner.RunCommand(cmd, input)
+	_, err := runner.RunCommand(context.Background(), cmd, input)
 	return err
 }
 
@@ -411,7 +412,7 @@ func TestApply(t *testing.T) {
 		assert.NoError(t, err)
 	}
 	go func() {
-		_, err := sshClient.RunCommand("/tmp/authserver --pem-dir=/tmp", nil)
+		_, err := sshClient.RunCommand(context.Background(), "/tmp/authserver --pem-dir=/tmp", nil)
 		if err != nil {
 			fmt.Printf("AUTHZ ERROR: %v", err)
 		}

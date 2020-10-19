@@ -1,6 +1,7 @@
 package resource
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -26,7 +27,7 @@ func TestRun(t *testing.T) {
 	}
 
 	emptyDiff := plan.EmptyDiff()
-	_, err := run.Apply(r, emptyDiff)
+	_, err := run.Apply(context.Background(), r, emptyDiff)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(r.Operations()))
 	assert.Equal(t, "success\n", r.Operation(-1).Output)

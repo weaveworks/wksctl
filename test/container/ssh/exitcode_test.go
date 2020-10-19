@@ -1,6 +1,7 @@
 package ssh
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -24,7 +25,7 @@ func TestExitCode(t *testing.T) {
 		wantError := (tt.wantExitCode != 0)
 
 		t.Run(tt.command, func(t *testing.T) {
-			_, gotErr := r.RunCommand(tt.command, nil)
+			_, gotErr := r.RunCommand(context.Background(), tt.command, nil)
 
 			assert.Equal(t, wantError, gotErr != nil)
 

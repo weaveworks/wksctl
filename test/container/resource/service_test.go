@@ -1,6 +1,7 @@
 package resource
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -20,7 +21,7 @@ func TestService(t *testing.T) {
 	}
 
 	// Ensure the service isn't started when this tests begins.
-	startingState, err := service.QueryState(r)
+	startingState, err := service.QueryState(context.Background(), r)
 	startingDiff := plan.Diff{
 		CurrentState:    startingState,
 		InvalidatedDeps: []plan.Resource{}}
@@ -31,11 +32,11 @@ func TestService(t *testing.T) {
 	assert.Equal(t, "inactive", startingState.String("status"))
 
 	// Apply the desired state.
-	_, err = service.Apply(r, startingDiff)
+	_, err = service.Apply(context.Background(), r, startingDiff)
 	assert.NoError(t, err)
 
 	// Verify the state is correctly applied.
-	realizedState, err := service.QueryState(r)
+	realizedState, err := service.QueryState(context.Background(), r)
 	assert.NoError(t, err)
 	assert.Equal(t, "httpd", realizedState.String("name"))
 	assert.Equal(t, true, realizedState.Bool("enabled"))
@@ -47,14 +48,14 @@ func TestService(t *testing.T) {
 		InvalidatedDeps: []plan.Resource{}}
 
 	r.ResetOperations()
-	_, err = service.Apply(r, realizedDiff)
+	_, err = service.Apply(context.Background(), r, realizedDiff)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, len(r.Operations()))
 
 	// Undo the install.
-	err = service.Undo(r, realizedState)
+	err = service.Undo(context.Background(), r, realizedState)
 	assert.NoError(t, err)
-	undoState, err := service.QueryState(r)
+	undoState, err := service.QueryState(context.Background(), r)
 	assert.NoError(t, err)
 	assert.Equal(t, startingState, undoState)
 }
