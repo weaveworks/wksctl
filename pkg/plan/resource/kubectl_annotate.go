@@ -37,7 +37,14 @@ func (ka *KubectlAnnotateSingleNode) Apply(ctx context.Context, runner plan.Runn
 		return false, fmt.Errorf("unexpected output in node name: %q", output)
 	}
 
-	cmd := fmt.Sprintf("kubectl annotate %q %s=%q", nodeName, ka.Key, ka.Value)
+	path, err := writeTempFile(ctx, runner, []byte(ka.Value), "node_annotation")
+	if err != nil {
+		return false, errors.Wrap(err, "writeTempFile")
+	}
+	//nolint:errcheck
+	defer runner.RunCommand(ctx, fmt.Sprintf("rm -vf %q", path), nil)
+
+	cmd := fmt.Sprintf("kubectl annotate %q %s=\"$(cat %s)\"", nodeName, ka.Key, path)
 
 	if stdouterr, err := runner.RunCommand(ctx, resource.WithoutProxy(cmd), nil); err != nil {
 		return false, errors.Wrapf(err, "failed to apply annotation %s on %s; output %s", ka.Key, nodeName, stdouterr)
