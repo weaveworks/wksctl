@@ -21,7 +21,7 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.6.1
 	github.com/thanhpk/randstr v1.0.4
-	github.com/weaveworks/cluster-api-provider-existinginfra v0.0.3-0.20201014233641-727a85ff4e68
+	github.com/weaveworks/cluster-api-provider-existinginfra v0.0.3-0.20201020203221-5ac2786b616c
 	github.com/weaveworks/footloose v0.0.0-20200609124411-8f3df89ea188
 	github.com/weaveworks/go-checkpoint v0.0.0-20170503165305-ebbb8b0518ab
 	github.com/weaveworks/launcher v0.0.0-20180824102238-59a4fcc32c9c
@@ -71,4 +71,5 @@ replace (
 	k8s.io/sample-apiserver => k8s.io/sample-apiserver v0.18.5
 	k8s.io/sample-cli-plugin => k8s.io/sample-cli-plugin v0.18.5
 	k8s.io/sample-controller => k8s.io/sample-controller v0.18.5
+
 )
