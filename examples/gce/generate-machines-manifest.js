@@ -32,37 +32,43 @@ function getInstance(instances, name) {
 // Machine returns a WKS machine description from a `gcloud compute instances
 // list` instance JSON.
 const Machine = (instance, role) => ({
-  apiVersion: 'cluster.k8s.io/v1alpha1',
+  apiVersion: 'cluster.x-k8s.io/v1alpha3',
   kind: 'Machine',
   metadata: {
-    generateName: `${role}-`,
+    name: `${role}-`+instance.networkInterfaces[0].accessConfigs[0].natIP,
     labels: {
       set: role,
     },
   },
   spec: {
-    providerSpec: {
-      value: {
-        apiVersion: 'baremetalproviderspec/v1alpha1',
-        kind: 'BareMetalMachineProviderSpec',
-        public: {
-          address: instance.networkInterfaces[0].accessConfigs[0].natIP,
-          port: 22,
-        },
-        private: {
-          address: instance.networkInterfaces[0].networkIP,
-          port: 22,
-        }
-      }
+    clusterName: 'example-gce',
+    infrastructureRef: {
+      apiVersion: 'cluster.weave.works/v1alpha3',
+      kind: 'ExistingInfraMachine',
+      name: `${role}-`+instance.networkInterfaces[0].accessConfigs[0].natIP,
     }
   }
 });
 
-// List is a Kubernetes list.
-const List = items => ({
-  apiVersion: "v1",
-  kind: "List",
-  items
+const ExistingInfraMachine = (instance, role) => ({
+  apiVersion: 'cluster.weave.works/v1alpha3',
+  kind: 'ExistingInfraMachine',
+  metadata: {
+    name: `${role}-`+instance.networkInterfaces[0].accessConfigs[0].natIP,
+    labels: {
+      set: role,
+    },
+  },
+  spec: {
+    public: {
+      address: instance.networkInterfaces[0].accessConfigs[0].natIP,
+      port: 22,
+    },
+    private: {
+      address: instance.networkInterfaces[0].networkIP,
+      port: 22,
+    }
+  }
 });
 
 std.read(input).then(instances => {
@@ -70,12 +76,15 @@ std.read(input).then(instances => {
 
   for (let i = 1; i < numMasters + 1; i++) {
     machines.push(Machine(getInstance(instances, vm(i)), 'master'));
+    machines.push(ExistingInfraMachine(getInstance(instances, vm(i)), 'master'));
   }
 
   for (let i = numMasters + 1; i < numMasters + numWorkers + 1; i++) {
     machines.push(Machine(getInstance(instances, vm(i)), 'worker'));
+    machines.push(ExistingInfraMachine(getInstance(instances, vm(i)), 'worker'));
   }
 
-  std.write(List(machines), "machines.yaml");
+  std.write(machines, "machines.yaml", {format: std.Format.YAMLStream});
 });
+
 
