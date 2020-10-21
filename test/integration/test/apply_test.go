@@ -16,10 +16,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	existinginfrav1 "github.com/weaveworks/cluster-api-provider-existinginfra/apis/cluster.weave.works/v1alpha3"
+	capeimachine "github.com/weaveworks/cluster-api-provider-existinginfra/pkg/cluster/machine"
 	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/kubernetes"
 	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/plan/runners/ssh"
+	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/specs"
 	"github.com/weaveworks/wksctl/pkg/cluster/machine"
-	"github.com/weaveworks/wksctl/pkg/specs"
 	spawn "github.com/weaveworks/wksctl/test/integration/spawn"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -157,7 +158,7 @@ func writeYamlManifests(t *testing.T, path string, machines []*clusterv1.Machine
 func numMasters(l []*clusterv1.Machine) int {
 	n := 0
 	for _, m := range l {
-		if machine.IsMaster(m) {
+		if capeimachine.IsMaster(m) {
 			n++
 		}
 	}
@@ -167,7 +168,7 @@ func numMasters(l []*clusterv1.Machine) int {
 func numWorkers(l []*clusterv1.Machine) int {
 	n := 0
 	for _, m := range l {
-		if machine.IsNode(m) {
+		if capeimachine.IsNode(m) {
 			n++
 		}
 	}
@@ -393,7 +394,7 @@ func TestApply(t *testing.T) {
 	eiMachines[0].Spec.Private.Address = savedAddress
 
 	machinesManifestPath := configPath("machines.yaml")
-	_, m := machine.FirstMaster(machines, eiMachines)
+	_, m := capeimachine.FirstMaster(machines, eiMachines)
 	assert.NotNil(t, m)
 	ip := m.Spec.Public.Address
 	port := m.Spec.Public.Port
