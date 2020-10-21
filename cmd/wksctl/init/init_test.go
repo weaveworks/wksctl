@@ -286,12 +286,3 @@ spec:
             cpu: 100m
             memory: 20Mi
 `
-
-func TestControllerTranslate(t *testing.T) {
-	res, err := updateControllerManifests([]byte(controllerInputs),
-		initOptionType{
-			version: "version1.2.3",
-		})
-	assert.NoError(t, err)
-	assert.Equal(t, string(res), controllerOutputs)
-}
