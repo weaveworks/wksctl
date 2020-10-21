@@ -10,7 +10,6 @@ import (
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/apis/wksprovider/machine/config"
-	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/apis/wksprovider/machine/scripts"
 	capeiplan "github.com/weaveworks/cluster-api-provider-existinginfra/pkg/plan"
 	capeiresource "github.com/weaveworks/cluster-api-provider-existinginfra/pkg/plan/resource"
 	capeimanifest "github.com/weaveworks/cluster-api-provider-existinginfra/pkg/utilities/manifest"
@@ -141,7 +140,7 @@ func (ki *KubeadmInit) Apply(ctx context.Context, runner capeiplan.Runner, diff 
 	configBytes := buf.Bytes()
 
 	remotePath := "/tmp/wks_kubeadm_init_config.yaml"
-	if err = scripts.WriteFile(ctx, configBytes, remotePath, 0660, runner); err != nil {
+	if err = capeiresource.WriteFile(ctx, configBytes, remotePath, 0660, runner); err != nil {
 		return false, errors.Wrap(err, "failed to upload kubeadm's configuration")
 	}
 	log.WithField("yaml", string(configBytes)).Debug("uploaded kubeadm's configuration")
