@@ -6,7 +6,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	existinginfra1 "github.com/weaveworks/cluster-api-provider-existinginfra/apis/cluster.weave.works/v1alpha3"
 	capeimachine "github.com/weaveworks/cluster-api-provider-existinginfra/pkg/cluster/machine"
-	capeispecs "github.com/weaveworks/cluster-api-provider-existinginfra/pkg/specs"
+	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/specs"
 	"github.com/weaveworks/wksctl/pkg/utilities"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"
@@ -17,12 +17,12 @@ import (
 // Common code for commands that need to run ssh commands on master cluster nodes.
 
 // Get a "capeispecs.Specs" object that can create an SSHClient (and retrieve useful nested fields)
-func NewFromPaths(clusterManifestPath, machinesManifestPath string) *capeispecs.Specs {
+func NewFromPaths(clusterManifestPath, machinesManifestPath string) *specs.Specs {
 	cluster, eic, machines, bml, err := parseManifests(clusterManifestPath, machinesManifestPath)
 	if err != nil {
 		log.Fatal("Error parsing manifest: ", err)
 	}
-	return capeispecs.New(cluster, eic, machines, bml)
+	return specs.New(cluster, eic, machines, bml)
 }
 
 func parseManifests(clusterManifestPath, machinesManifestPath string) (*clusterv1.Cluster, *existinginfra1.ExistingInfraCluster, []*clusterv1.Machine, []*existinginfra1.ExistingInfraMachine, error) {
@@ -63,5 +63,5 @@ func ParseClusterManifest(file string) (*clusterv1.Cluster, *existinginfra1.Exis
 	}
 	defer f.Close()
 
-	return capeispecs.ParseCluster(f)
+	return specs.ParseCluster(f)
 }
