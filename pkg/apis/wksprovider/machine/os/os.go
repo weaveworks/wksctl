@@ -317,6 +317,10 @@ func CreateSeedNodeSetupPlan(ctx context.Context, o *capeios.OS, params SeedNode
 	span, _ := ot.StartSpanFromContext(ctx, "apply-manifests")
 	defer span.Finish()
 
+	// Set up the address to find Jaeger agent
+	b.AddResource("kubectl:apply:jaeger-service", jaegerAgentService(), plan.DependOn("install:configmaps"))
+	b.AddResource("kubectl:apply:jaeger-endpoints", jaegerAgentEndpoints(), plan.DependOn("install:configmaps"))
+
 	clusterManifest, err := tracingmanifest.WithTraceAnnotation(serializer.FromFile(params.ClusterManifestPath), span)
 	if err != nil {
 		return nil, err
@@ -1164,4 +1168,40 @@ func processDeps(deps []string, manifests [][]byte, namespace string) ([][]byte,
 		retManifests = append(retManifests, content)
 	}
 	return retManifests, nil
+}
+
+func jaegerAgentService() plan.Resource {
+	svcManifest := []byte(`
+apiVersion: v1
+kind: Service
+metadata:
+  name: jaeger-agent
+  namespace: default
+spec:
+  clusterIP: None
+  ports:
+  - name: agent
+    protocol: UDP
+    port: 6831
+`)
+	return &resource.KubectlApply{Manifest: svcManifest, Filename: object.String("jaeger-svc.yaml")}
+}
+
+// HACK: Address hard-coded for now.
+func jaegerAgentEndpoints() plan.Resource {
+	endpointsManifest := []byte(`
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: jaeger-agent
+  namespace: default
+subsets:
+- addresses:
+  - ip: 172.16.0.4
+  ports:
+  - name: agent
+    port: 6831
+    protocol: UDP
+`)
+	return &resource.KubectlApply{Manifest: endpointsManifest, Filename: object.String("jaeger-endpoints.yaml")}
 }
