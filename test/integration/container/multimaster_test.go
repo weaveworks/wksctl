@@ -45,18 +45,161 @@ spec:
   imageRepository: %s:%d
   os:
     files:
-    - destination: /etc/docker/daemon.json
-      source:
-        configmap: docker
-        key: daemon.json
-    - destination: /etc/yum.repos.d/local.repo
-      source:
+    - source:
+        configmap: repo
+        key: kubernetes.repo
+        contents: |
+          [kubernetes]
+          name=Kubernetes
+          baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-x86_64
+          enabled=1
+          gpgcheck=1
+          repo_gpgcheck=1
+          gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+          exclude=kube*
+      destination: /etc/yum.repos.d/kubernetes.repo
+    - source:
         configmap: repo
         key: local.repo
-    - destination: /tmp/cloud-google-com.gpg.b64
-      source:
+        contents: |
+          [local]
+          name=Local
+          baseurl=http://%s
+          enabled=1
+          gpgcheck=0
+      destination: /etc/yum.repos.d/local.repo
+    - source:
+        configmap: repo
+        key: docker-ce.repo
+        contents: |
+          [docker-ce-stable]
+          name=Docker CE Stable - \$basearch
+          baseurl=https://download.docker.com/linux/centos/7/\$basearch/stable
+          enabled=1
+          gpgcheck=1
+          gpgkey=https://download.docker.com/linux/centos/gpg
+
+          [docker-ce-stable-debuginfo]
+          name=Docker CE Stable - Debuginfo \$basearch
+          baseurl=https://download.docker.com/linux/centos/7/debug-\$basearch/stable
+          enabled=0
+          gpgcheck=1
+          gpgkey=https://download.docker.com/linux/centos/gpg
+
+          [docker-ce-stable-source]
+          name=Docker CE Stable - Sources
+          baseurl=https://download.docker.com/linux/centos/7/source/stable
+          enabled=0
+          gpgcheck=1
+          gpgkey=https://download.docker.com/linux/centos/gpg
+
+          [docker-ce-edge]
+          name=Docker CE Edge - \$basearch
+          baseurl=https://download.docker.com/linux/centos/7/\$basearch/edge
+          enabled=0
+          gpgcheck=1
+          gpgkey=https://download.docker.com/linux/centos/gpg
+
+          [docker-ce-edge-debuginfo]
+          name=Docker CE Edge - Debuginfo \$basearch
+          baseurl=https://download.docker.com/linux/centos/7/debug-\$basearch/edge
+          enabled=0
+          gpgcheck=1
+          gpgkey=https://download.docker.com/linux/centos/gpg
+
+          [docker-ce-edge-source]
+          name=Docker CE Edge - Sources
+          baseurl=https://download.docker.com/linux/centos/7/source/edge
+          enabled=0
+          gpgcheck=1
+          gpgkey=https://download.docker.com/linux/centos/gpg
+
+          [docker-ce-test]
+          name=Docker CE Test - \$basearch
+          baseurl=https://download.docker.com/linux/centos/7/\$basearch/test
+          enabled=0
+          gpgcheck=1
+          gpgkey=https://download.docker.com/linux/centos/gpg
+
+          [docker-ce-test-debuginfo]
+          name=Docker CE Test - Debuginfo \$basearch
+          baseurl=https://download.docker.com/linux/centos/7/debug-\$basearch/test
+          enabled=0
+          gpgcheck=1
+          gpgkey=https://download.docker.com/linux/centos/gpg
+
+          [docker-ce-test-source]
+          name=Docker CE Test - Sources
+          baseurl=https://download.docker.com/linux/centos/7/source/test
+          enabled=0
+          gpgcheck=1
+          gpgkey=https://download.docker.com/linux/centos/gpg
+
+          [docker-ce-nightly]
+          name=Docker CE Nightly - \$basearch
+          baseurl=https://download.docker.com/linux/centos/7/\$basearch/nightly
+          enabled=0
+          gpgcheck=1
+          gpgkey=https://download.docker.com/linux/centos/gpg
+
+          [docker-ce-nightly-debuginfo]
+          name=Docker CE Nightly - Debuginfo \$basearch
+          baseurl=https://download.docker.com/linux/centos/7/debug-\$basearch/nightly
+          enabled=0
+          gpgcheck=1
+          gpgkey=https://download.docker.com/linux/centos/gpg
+
+          [docker-ce-nightly-source]
+          name=Docker CE Nightly - Sources
+          baseurl=https://download.docker.com/linux/centos/7/source/nightly
+          enabled=0
+          gpgcheck=1
+          gpgkey=https://download.docker.com/linux/centos/gpg
+      destination: /etc/yum.repos.d/docker-ce.repo
+    - source:
         configmap: repo
         key: cloud-google-com.gpg.b64
+        contents: |
+          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
+          r5KO10VrsLFNd8KwAgAD
+      destination: /tmp/cloud-google-com.gpg.b64
+    - source:
+        configmap: docker
+        key: daemon.json
+        contents: |
+          {
+            "insecure-registries" : ["%s:%d"],
+            "log-driver": "json-file",
+            "log-opts": {
+              "max-size": "100m"
+            },
+            "exec-opts": [
+              "native.cgroupdriver=cgroupfs"
+            ]
+          }
+      destination: /etc/docker/daemon.json
   cri:
     kind: docker
     package: docker-ce
@@ -182,159 +325,6 @@ var machinesYAML = `
           port: 22
 `
 
-const dockerConfigMap = `apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: docker
-  namespace: system
-data:
-  daemon.json: |
-    {
-      "insecure-registries" : ["%s:%d"],
-      "log-driver": "json-file",
-      "log-opts": {
-        "max-size": "100m"
-      },
-      "exec-opts": [
-        "native.cgroupdriver=cgroupfs"
-      ]
-    }
-`
-
-const repoConfigMap = `apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: repo
-  namespace: system
-data:
-  kubernetes.repo: |
-    [kubernetes]
-    name=Kubernetes
-    baseurl=https://packages.cloud.google.com/yum/repos/kubernetes-el7-x86_64
-    enabled=1
-    gpgcheck=1
-    repo_gpgcheck=1
-    gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
-    exclude=kube*
-  docker-ce.repo: |
-    [docker-ce-stable]
-    name=Docker CE Stable - $basearch
-    baseurl=https://download.docker.com/linux/centos/7/$basearch/stable
-    enabled=1
-    gpgcheck=1
-    gpgkey=https://download.docker.com/linux/centos/gpg
-
-    [docker-ce-stable-debuginfo]
-    name=Docker CE Stable - Debuginfo $basearch
-    baseurl=https://download.docker.com/linux/centos/7/debug-$basearch/stable
-    enabled=0
-    gpgcheck=1
-    gpgkey=https://download.docker.com/linux/centos/gpg
-
-    [docker-ce-stable-source]
-    name=Docker CE Stable - Sources
-    baseurl=https://download.docker.com/linux/centos/7/source/stable
-    enabled=0
-    gpgcheck=1
-    gpgkey=https://download.docker.com/linux/centos/gpg
-
-    [docker-ce-edge]
-    name=Docker CE Edge - $basearch
-    baseurl=https://download.docker.com/linux/centos/7/$basearch/edge
-    enabled=0
-    gpgcheck=1
-    gpgkey=https://download.docker.com/linux/centos/gpg
-
-    [docker-ce-edge-debuginfo]
-    name=Docker CE Edge - Debuginfo $basearch
-    baseurl=https://download.docker.com/linux/centos/7/debug-$basearch/edge
-    enabled=0
-    gpgcheck=1
-    gpgkey=https://download.docker.com/linux/centos/gpg
-
-    [docker-ce-edge-source]
-    name=Docker CE Edge - Sources
-    baseurl=https://download.docker.com/linux/centos/7/source/edge
-    enabled=0
-    gpgcheck=1
-    gpgkey=https://download.docker.com/linux/centos/gpg
-
-    [docker-ce-test]
-    name=Docker CE Test - $basearch
-    baseurl=https://download.docker.com/linux/centos/7/$basearch/test
-    enabled=0
-    gpgcheck=1
-    gpgkey=https://download.docker.com/linux/centos/gpg
-
-    [docker-ce-test-debuginfo]
-    name=Docker CE Test - Debuginfo $basearch
-    baseurl=https://download.docker.com/linux/centos/7/debug-$basearch/test
-    enabled=0
-    gpgcheck=1
-    gpgkey=https://download.docker.com/linux/centos/gpg
-
-    [docker-ce-test-source]
-    name=Docker CE Test - Sources
-    baseurl=https://download.docker.com/linux/centos/7/source/test
-    enabled=0
-    gpgcheck=1
-    gpgkey=https://download.docker.com/linux/centos/gpg
-
-    [docker-ce-nightly]
-    name=Docker CE Nightly - $basearch
-    baseurl=https://download.docker.com/linux/centos/7/$basearch/nightly
-    enabled=0
-    gpgcheck=1
-    gpgkey=https://download.docker.com/linux/centos/gpg
-
-    [docker-ce-nightly-debuginfo]
-    name=Docker CE Nightly - Debuginfo $basearch
-    baseurl=https://download.docker.com/linux/centos/7/debug-$basearch/nightly
-    enabled=0
-    gpgcheck=1
-    gpgkey=https://download.docker.com/linux/centos/gpg
-
-    [docker-ce-nightly-source]
-    name=Docker CE Nightly - Sources
-    baseurl=https://download.docker.com/linux/centos/7/source/nightly
-    enabled=0
-    gpgcheck=1
-    gpgkey=https://download.docker.com/linux/centos/gpg
-
-  local.repo: |
-    [local]
-    name=Local
-    baseurl=http://%s
-    enabled=1
-    gpgcheck=0
-
-  cloud-google-com.gpg.b64: |
-    mQENBFUd6rIBCAD6mhKRHDn3UrCeLDp7U5IE7AhhrOCPpqGF7mfTemZYHf/5JdjxcOxoSFlK7zwm
-    Fr3lVqJ+tJ9L1wd1K6P7RrtaNwCiZyeNPf/Y86AJ5NJwBe0VD0xHTXzPNTqRSByVYtdN94NoltXU
-    YFAAPZYQls0x0nUD1hLMlOlC2HdTPrD1PMCnYq/NuL/Vk8sWrcUt4DIS+0RDQ8tKKe5PSV0+Pnma
-    JvdF5CKawhh0qGTklS2MXTyKFoqjXgYDfY2EodI9ogT/LGr9Lm/+u4OFPvmN9VN6UG+s0DgJjWvp
-    bmuHL/ZIRwMEn/tpuneaLTO7h1dCrXC849PiJ8wSkGzBnuJQUbXnABEBAAG0QEdvb2dsZSBDbG91
-    ZCBQYWNrYWdlcyBBdXRvbWF0aWMgU2lnbmluZyBLZXkgPGdjLXRlYW1AZ29vZ2xlLmNvbT6JAT4E
-    EwECACgFAlUd6rICGy8FCQWjmoAGCwkIBwMCBhUIAgkKCwQWAgMBAh4BAheAAAoJEDdGwginMXsP
-    cLcIAKi2yNhJMbu4zWQ2tM/rJFovazcY28MF2rDWGOnc9giHXOH0/BoMBcd8rw0lgjmOosBdM2JT
-    0HWZIxC/Gdt7NSRA0WOlJe04u82/o3OHWDgTdm9MS42noSP0mvNzNALBbQnlZHU0kvt3sV1Ysnrx
-    ljoIuvxKWLLwren/GVshFLPwONjw3f9Fan6GWxJyn/dkX3OSUGaduzcygw51vksBQiUZLCD2Tlxy
-    r9NvkZYTqiaWW78L6regvATsLc9L/dQUiSMQZIK6NglmHE+cuSaoK0H4ruNKeTiQUw/EGFaLecay
-    6Qy/s3Hk7K0QLd+gl0hZ1w1VzIeXLo2BRlqnjOYFX4CwAgADmQENBFrBaNsBCADrF18KCbsZlo4N
-    jAvVecTBCnp6WcBQJ5oSh7+E98jX9YznUCrNrgmeCcCMUvTDRDxfTaDJybaHugfba43nqhkbNpJ4
-    7YXsIa+YL6eEE9emSmQtjrSWIiY+2YJYwsDgsgckF3duqkb02OdBQlh6IbHPoXB6H//b1PgZYsom
-    B+841XW1LSJPYlYbIrWfwDfQvtkFQI90r6NknVTQlpqQh5GLNWNYqRNrGQPmsB+NrUYrkl1nUt1L
-    RGu+rCe4bSaSmNbwKMQKkROE4kTiB72DPk7zH4Lm0uo0YFFWG4qsMIuqEihJ/9KNX8GYBr+tWgyL
-    ooLlsdK3l+4dVqd8cjkJM1ExABEBAAG0QEdvb2dsZSBDbG91ZCBQYWNrYWdlcyBBdXRvbWF0aWMg
-    U2lnbmluZyBLZXkgPGdjLXRlYW1AZ29vZ2xlLmNvbT6JAT4EEwECACgFAlrBaNsCGy8FCQWjmoAG
-    CwkIBwMCBhUIAgkKCwQWAgMBAh4BAheAAAoJEGoDCyG6B/T78e8H/1WH2LN/nVNhm5TS1VYJG8B+
-    IW8zS4BqyozxC9iJAJqZIVHXl8g8a/Hus8RfXR7cnYHcg8sjSaJfQhqO9RbKnffiuQgGrqwQxuC2
-    jBa6M/QKzejTeP0Mgi67pyrLJNWrFI71RhritQZmzTZ2PoWxfv6b+Tv5v0rPaG+ut1J47pn+kYgt
-    UaKdsJz1umi6HzK6AacDf0C0CksJdKG7MOWsZcB4xeOxJYuy6NuO6KcdEz8/XyEUjIuIOlhYTd0h
-    H8E/SEBbXXft7/VBQC5wNq40izPi+6WFK/e1O42DIpzQ749ogYQ1eodexPNhLzekKR3XhGrNXJ95
-    r5KO10VrsLFNd8KwAgAD
-`
-
 const CENTOS = `centos`
 const UBUNTU = `ubuntu`
 
@@ -345,7 +335,16 @@ var (
 	tag                                string
 	node_os, node_version              string
 	node0IP, node1IP, node2IP, node3IP string
+	rootDir, testTempDir               string
 )
+
+func init() {
+	dir, err := filepath.Abs("../../..")
+	if err != nil {
+		log.Fatal("Could not compute base directory")
+	}
+	rootDir = dir
+}
 
 func TestMultimasterSetup(t *testing.T) {
 	// Set env var NODE_OS to either "centos" or "ubuntu" to choose a node running that OS
@@ -357,8 +356,12 @@ func TestMultimasterSetup(t *testing.T) {
 
 	fmt.Printf("Running MultiMasterTest with %s:%s nodes", node_os, node_version)
 	tag = imageTag(t)
+	testTempDir = tempDir(t)
 	registryPort = port(t, "REGISTRY_PORT", 5000)
 	repositoryPort := port(t, "REPOSITORY_PORT", 8080)
+	if err := os.Chdir(testTempDir); err != nil {
+		log.Fatal("Could not change directory")
+	}
 
 	// Ensure the local Docker registry is running:
 	if out := runIgnoreError(t, "docker", "inspect", "-f", "'{{.State.Running}}'", "registry"); !strings.Contains(out, "true") {
@@ -366,9 +369,9 @@ func TestMultimasterSetup(t *testing.T) {
 		waitForLocalRegistryToStart(t, registryPort)
 	}
 	if shouldRetagPush(t, registryPort) {
-		run(t, "../../../environments/local-docker-registry/retag_push.sh", "-p", strconv.Itoa(registryPort))
+		run(t, filepath.Join(rootDir, "environments/local-docker-registry/retag_push.sh"), "-p", strconv.Itoa(registryPort))
 	}
-	const capeiImage = "weaveworks/cluster-api-existinginfra-controller:v0.0.2"
+	const capeiImage = "weaveworks/cluster-api-existinginfra-controller:v0.0.6"
 	run(t, "docker", "pull", capeiImage)
 	run(t, "docker", "tag", capeiImage, fmt.Sprintf("localhost:%d/%s", registryPort, capeiImage))
 	run(t, "docker", "push", fmt.Sprintf("localhost:%d/%s", registryPort, capeiImage))
@@ -388,12 +391,12 @@ func TestMultimasterSetup(t *testing.T) {
 	}{
 		{
 			name: CENTOS,
-			path: "../../../examples/footloose/centos7/docker/multimaster.yaml",
+			path: filepath.Join(rootDir, "examples/footloose/centos7/docker/multimaster.yaml"),
 			skip: !strings.Contains(node_os, CENTOS),
 		},
 		{
 			name: UBUNTU,
-			path: "../../../examples/footloose/ubuntu18.04/docker/multimaster.yaml",
+			path: filepath.Join(rootDir, "examples/footloose/ubuntu18.04/docker/multimaster.yaml"),
 			skip: !strings.Contains(node_os, UBUNTU),
 		},
 	}
@@ -412,20 +415,16 @@ func TestMultimasterSetup(t *testing.T) {
 			node2IP = sanitizeIP(run(t, "docker", "inspect", fmt.Sprintf("%s-multimaster-node2", tc.name), "--format='{{.NetworkSettings.IPAddress}}'"))
 			node3IP = sanitizeIP(run(t, "docker", "inspect", fmt.Sprintf("%s-multimaster-node3", tc.name), "--format='{{.NetworkSettings.IPAddress}}'"))
 
-			dirName := tempDir(t)
-			clusterYAML := saveToFile(t, dirName, "cluster.yaml", fmt.Sprintf(clusterYAML, registryIP, registryPort))
-			machinesYAML := saveToFile(t, dirName, "machines.yaml", fmt.Sprintf(machinesYAML, node0IP, node1IP, node2IP, node3IP))
-			_ = saveToFile(t, dirName, "repo-config.yaml", fmt.Sprintf(repoConfigMap, yumRepoIP))
-			_ = saveToFile(t, dirName, "docker-config.yaml", fmt.Sprintf(dockerConfigMap, registryIP, registryPort))
-
-			run(t, "../../../cmd/wksctl/wksctl", "apply",
-				fmt.Sprintf("--cluster=%s", clusterYAML), fmt.Sprintf("--machines=%s", machinesYAML),
-				fmt.Sprintf("--config-directory=%s", dirName),
+			clusterYAMLFile := saveToFile(t, testTempDir, "cluster.yaml", fmt.Sprintf(clusterYAML, registryIP, registryPort, yumRepoIP, registryIP, registryPort))
+			machinesYAMLFile := saveToFile(t, testTempDir, "machines.yaml", fmt.Sprintf(machinesYAML, node0IP, node1IP, node2IP, node3IP))
+			runShowingOutput(t, filepath.Join(rootDir, "cmd/wksctl/wksctl"), "apply",
+				fmt.Sprintf("--cluster=%s", clusterYAMLFile), fmt.Sprintf("--machines=%s", machinesYAMLFile),
+				fmt.Sprintf("--config-directory=%s", testTempDir),
 				"--verbose",
 				fmt.Sprintf("--controller-image=%s", capeiImage))
 
-			out := run(t, "../../../cmd/wksctl/wksctl", "kubeconfig",
-				fmt.Sprintf("--cluster=%s", clusterYAML), fmt.Sprintf("--machines=%s", machinesYAML))
+			out := run(t, filepath.Join(rootDir, "cmd/wksctl/wksctl"), "kubeconfig",
+				fmt.Sprintf("--cluster=%s", clusterYAMLFile), fmt.Sprintf("--machines=%s", machinesYAMLFile))
 
 			var nodeList corev1.NodeList
 			for {
@@ -455,8 +454,9 @@ func TestMultimasterSetup(t *testing.T) {
 				for _, kubeletArg := range expectedKubeletArgs {
 					log.Infof("Checking kubelet arg (%s) on node%d", kubeletArg, i)
 					run(t, "footloose",
-						"-c", "../../../examples/footloose/"+node_os+node_version+"/docker/multimaster.yaml",
-						"ssh", fmt.Sprintf("root@node%d", i), fmt.Sprintf("ps -ef | grep -v 'ps -ef' | grep /usr/bin/kubelet | grep %s", kubeletArg))
+						"-c", filepath.Join(rootDir, "examples/footloose/"+node_os+node_version+"/docker/multimaster.yaml"),
+						"ssh", "-o", "UserKnownHostsFile /dev/null",
+						"-o", "StrictHostKeyChecking=no", fmt.Sprintf("root@node%d", i), fmt.Sprintf("ps -ef | grep -v 'ps -ef' | grep /usr/bin/kubelet | grep %s", kubeletArg))
 				}
 
 				// node0 - node2 are masters
@@ -464,19 +464,17 @@ func TestMultimasterSetup(t *testing.T) {
 					for _, apiServerArg := range expectedApiServerArgs {
 						log.Infof("Checking api server arg (%s) on node%d", apiServerArg, i)
 						run(t, "footloose",
-							"-c", "../../../examples/footloose/"+node_os+node_version+"/docker/multimaster.yaml",
-							"ssh", fmt.Sprintf("root@node%d", i), fmt.Sprintf("ps -ef | grep -v 'ps -ef' | grep kube-apiserver | grep %s", apiServerArg))
+							"-c", filepath.Join(rootDir, "examples/footloose/"+node_os+node_version+"/docker/multimaster.yaml"),
+							"ssh", "-o", "UserKnownHostsFile /dev/null",
+							"-o", "StrictHostKeyChecking=no", fmt.Sprintf("root@node%d", i), fmt.Sprintf("ps -ef | grep -v 'ps -ef' | grep kube-apiserver | grep %s", apiServerArg))
 					}
 				}
 			}
 
 			if !t.Failed() { // Otherwise leave the footloose "VMs" & config files around for debugging purposes.
 				// Clean up:
-				defer runIgnoreError(t, "footloose", "delete", "-c", "../../../examples/footloose/"+node_os+node_version+"/docker/multimaster.yaml")
-				defer os.Remove(dirName)
-				defer os.Remove(clusterYAML)
-				defer os.Remove(machinesYAML)
-				defer os.Remove(repoConfigMap)
+				defer runIgnoreError(t, "footloose", "delete", "-c", filepath.Join(rootDir, "examples/footloose/"+node_os+node_version+"/docker/multimaster.yaml"))
+				defer os.Remove(testTempDir)
 			}
 		})
 	}
@@ -489,7 +487,7 @@ func imageTag(t *testing.T) string {
 	tag, tagIsPresent := os.LookupEnv("IMAGE_TAG")
 	if !tagIsPresent {
 		log.Debug("no tag provided via the IMAGE_TAG env. var., now running tools/image-tag")
-		tag = run(t, "../../../tools/image-tag")
+		tag = run(t, filepath.Join(rootDir, "tools/image-tag"))
 	}
 	tag = strings.TrimSpace(tag)
 	assert.NotEmpty(t, tag)
@@ -523,7 +521,9 @@ func runIgnoreError(t *testing.T, name string, arg ...string) string {
 
 func doRun(name string, arg ...string) (string, string) {
 	log.Infof("running %s %s", name, strings.Join(arg, " "))
-	out, err := exec.Command(name, arg...).Output()
+	cmd := exec.Command(name, arg...)
+	cmd.Dir = testTempDir
+	out, err := cmd.Output()
 	if err != nil {
 		if ee, ok := err.(*exec.ExitError); ok {
 			return string(out), string(ee.Stderr)
@@ -531,6 +531,15 @@ func doRun(name string, arg ...string) (string, string) {
 		return string(out), err.Error()
 	}
 	return string(out), ""
+}
+func runShowingOutput(t *testing.T, name string, arg ...string) {
+	log.Infof("running %s %s", name, strings.Join(arg, " "))
+	cmd := exec.Command(name, arg...)
+	cmd.Dir = testTempDir
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	err := cmd.Run()
+	assert.NoError(t, err)
 }
 
 func sanitizeIP(ip string) string {
@@ -551,7 +560,7 @@ func waitForLocalRegistryToStart(t *testing.T, port int) {
 }
 
 func shouldRetagPush(t *testing.T, port int) bool {
-	images := run(t, "../../../environments/local-docker-registry/retag_push.sh", "-p", strconv.Itoa(port), "--print-local")
+	images := run(t, filepath.Join(rootDir, "environments/local-docker-registry/retag_push.sh"), "-p", strconv.Itoa(port), "--print-local")
 	for _, image := range strings.Split(images, "\n") {
 		if image == "" {
 			continue
