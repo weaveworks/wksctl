@@ -11,7 +11,6 @@ require (
 	github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e // indirect
 	github.com/google/go-jsonnet v0.16.0
 	github.com/googleapis/gnostic v0.4.1 // indirect
-	github.com/hashicorp/go-cleanhttp v0.5.1 // indirect
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/pelletier/go-toml v1.8.0
 	github.com/pkg/errors v0.9.1
@@ -23,9 +22,7 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.6.1
 	github.com/thanhpk/randstr v1.0.4
-	github.com/uber/jaeger-client-go v2.25.0+incompatible // indirect
-	github.com/uber/jaeger-lib v2.4.0+incompatible // indirect
-	github.com/weaveworks/cluster-api-provider-existinginfra v0.0.4-0.20201019151825-abde7d1650ca
+	github.com/weaveworks/cluster-api-provider-existinginfra v0.0.4-0.20201022134757-9265a295f8a1
 	github.com/weaveworks/footloose v0.0.0-20200609124411-8f3df89ea188
 	github.com/weaveworks/go-checkpoint v0.0.0-20170503165305-ebbb8b0518ab
 	github.com/weaveworks/launcher v0.0.0-20180824102238-59a4fcc32c9c
@@ -33,7 +30,6 @@ require (
 	github.com/whilp/git-urls v0.0.0-20191001220047-6db9661140c0
 	golang.org/x/crypto v0.0.0-20200707235045-ab33eee955e0
 	golang.org/x/sys v0.0.0-20200625212154-ddb9806d33ae // indirect
-	golang.org/x/tools v0.0.0-20200708003708-134513de8882 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.1.0 // indirect
 	google.golang.org/appengine v1.6.5 // indirect
 	gopkg.in/src-d/go-git.v4 v4.13.1
@@ -78,5 +74,5 @@ replace (
 	k8s.io/sample-apiserver => k8s.io/sample-apiserver v0.18.5
 	k8s.io/sample-cli-plugin => k8s.io/sample-cli-plugin v0.18.5
 	k8s.io/sample-controller => k8s.io/sample-controller v0.18.5
-	sigs.k8s.io/controller-runtime => github.com/bboreham/controller-runtime v0.6.1-0.20200928172814-668ca5e9234c
+	sigs.k8s.io/controller-runtime => github.com/bboreham/controller-runtime v0.6.4-0.20201021142033-b7613e6bd7ff
 )
