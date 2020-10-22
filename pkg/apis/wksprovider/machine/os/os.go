@@ -15,6 +15,7 @@ import (
 
 	ssv1alpha1 "github.com/bitnami-labs/sealed-secrets/pkg/apis/sealed-secrets/v1alpha1"
 	"github.com/bitnami-labs/sealed-secrets/pkg/crypto"
+	ot "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	capeiv1alpha3 "github.com/weaveworks/cluster-api-provider-existinginfra/apis/cluster.weave.works/v1alpha3"
@@ -35,6 +36,7 @@ import (
 	"github.com/weaveworks/wksctl/pkg/plan/resource"
 	"github.com/weaveworks/wksctl/pkg/scheme"
 	"github.com/weaveworks/wksctl/pkg/specs"
+	tracingmanifest "github.com/weaveworks/wksctl/pkg/utilities/manifest"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/api/apps/v1beta2"
 	v1 "k8s.io/api/core/v1"
@@ -180,6 +182,8 @@ func SetupSeedNode(ctx context.Context, o *capeios.OS, params SeedNodeParams) er
 // CreateSeedNodeSetupPlan constructs the seed node plan used to setup the initial node
 // prior to turning control over to wks-controller
 func CreateSeedNodeSetupPlan(ctx context.Context, o *capeios.OS, params SeedNodeParams) (*plan.Plan, error) {
+	sp, ctx := ot.StartSpanFromContext(ctx, "CreateSeedNodeSetupPlan")
+	defer sp.Finish()
 	if err := params.Validate(); err != nil {
 		return nil, err
 	}
@@ -310,7 +314,19 @@ func CreateSeedNodeSetupPlan(ctx context.Context, o *capeios.OS, params SeedNode
 
 	b.AddResource("install:configmaps", configMapPlan, plan.DependOn(configDeps[0], configDeps[1:]...))
 
-	applyClstrRsc := &resource.KubectlApply{ManifestPath: object.String(params.ClusterManifestPath), Namespace: object.String(params.Namespace)}
+	span, _ := ot.StartSpanFromContext(ctx, "apply-manifests")
+	defer span.Finish()
+
+	// Set up the address to find Jaeger agent
+	b.AddResource("kubectl:apply:jaeger-service", jaegerAgentService(), plan.DependOn("install:configmaps"))
+	b.AddResource("kubectl:apply:jaeger-endpoints", jaegerAgentEndpoints(), plan.DependOn("install:configmaps"))
+
+	clusterManifest, err := tracingmanifest.WithTraceAnnotation(serializer.FromFile(params.ClusterManifestPath), span)
+	if err != nil {
+		return nil, err
+	}
+
+	applyClstrRsc := &resource.KubectlApply{Manifest: clusterManifest, Filename: object.String("clustermanifest"), Namespace: object.String(params.Namespace)}
 
 	b.AddResource("kubectl:apply:cluster", applyClstrRsc, plan.DependOn("install:configmaps"))
 
@@ -318,7 +334,11 @@ func CreateSeedNodeSetupPlan(ctx context.Context, o *capeios.OS, params SeedNode
 	if err != nil {
 		return nil, err
 	}
-	mManRsc := &resource.KubectlApply{Manifest: []byte(machinesManifest), Filename: object.String("machinesmanifest"), Namespace: object.String(params.Namespace)}
+	newMachinesManifest, err := tracingmanifest.WithTraceAnnotation(serializer.FromBytes([]byte(machinesManifest)), span)
+	if err != nil {
+		return nil, err
+	}
+	mManRsc := &resource.KubectlApply{Manifest: newMachinesManifest, Filename: object.String("machinesmanifest"), Namespace: object.String(params.Namespace)}
 	b.AddResource("kubectl:apply:machines", mManRsc, plan.DependOn(kubectlApplyDeps[0], kubectlApplyDeps[1:]...))
 
 	dep := addSealedSecretWaitIfNecessary(b, params.SealedSecretKeyPath, params.SealedSecretCertPath)
@@ -564,6 +584,8 @@ func seedNodeSetupPlan(ctx context.Context, o *capeios.OS, params SeedNodeParams
 }
 
 func applySeedNodePlan(ctx context.Context, o *capeios.OS, p *plan.Plan) error {
+	span, ctx := ot.StartSpanFromContext(ctx, "applySeedNodePlan")
+	defer span.Finish()
 	err := p.Undo(ctx, o.Runner, plan.EmptyState)
 	if err != nil {
 		log.Infof("Pre-plan cleanup failed:\n%s\n", err)
@@ -1146,4 +1168,40 @@ func processDeps(deps []string, manifests [][]byte, namespace string) ([][]byte,
 		retManifests = append(retManifests, content)
 	}
 	return retManifests, nil
+}
+
+func jaegerAgentService() plan.Resource {
+	svcManifest := []byte(`
+apiVersion: v1
+kind: Service
+metadata:
+  name: jaeger-agent
+  namespace: default
+spec:
+  clusterIP: None
+  ports:
+  - name: agent
+    protocol: UDP
+    port: 6831
+`)
+	return &resource.KubectlApply{Manifest: svcManifest, Filename: object.String("jaeger-svc.yaml")}
+}
+
+// HACK: Address hard-coded for now.
+func jaegerAgentEndpoints() plan.Resource {
+	endpointsManifest := []byte(`
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: jaeger-agent
+  namespace: default
+subsets:
+- addresses:
+  - ip: 172.16.0.4
+  ports:
+  - name: agent
+    port: 6831
+    protocol: UDP
+`)
+	return &resource.KubectlApply{Manifest: endpointsManifest, Filename: object.String("jaeger-endpoints.yaml")}
 }
