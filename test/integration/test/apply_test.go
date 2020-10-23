@@ -207,6 +207,7 @@ func testApplyKubernetesVersion(t *testing.T, versionNumber string) {
 	assert.NoError(t, err)
 	assert.Equal(t, version, v.GitVersion)
 	nodes := test.ListNodes(metav1.ListOptions{})
+	log.Printf("NODES: %#v", nodes)
 	for _, n := range nodes.Items {
 		assert.Equal(t, version, n.Status.NodeInfo.KubeletVersion)
 	}
