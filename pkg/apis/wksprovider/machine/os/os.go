@@ -116,11 +116,9 @@ func augmentParamsWithPool(user, key string, eim []*existinginfrav1.ExistingInfr
 	return params
 }
 
-// createSecretPlan constructs the seed node plan used to setup auth secrets
-// prior to turning control over to wks-controller
-func createSecretPlan(o *capeios.OS, params capeios.SeedNodeParams) (*plan.Plan, capeios.SeedNodeParams, error) {
-	b := plan.NewBuilder()
-	pemSecretResources, authConfigMap, authConfigManifest, err := processPemFilesIfAny(b, &params.ExistingInfraCluster.Spec, params.ConfigDirectory, params.Namespace, params.SealedSecretKey, params.SealedSecretCert)
+//updateSecretParams creates secret resources for auth(n/z) which get added to the seed node plan
+func createSecretPlan(o *capeios.OS, params capeios.SeedNodeParams) (plan.Resource, capeios.SeedNodeParams, error) {
+	pemPlan, pemSecretResources, authConfigMap, authConfigManifest, err := processPemFilesIfAny(&params.ExistingInfraCluster.Spec, params.ConfigDirectory, params.Namespace, params.SealedSecretKey, params.SealedSecretCert)
 	if err != nil {
 		return nil, params, err
 	}
@@ -130,31 +128,27 @@ func createSecretPlan(o *capeios.OS, params capeios.SeedNodeParams) (*plan.Plan,
 	info := &capeios.AuthParams{PEMSecretResources: pemSecretResources, AuthConfigMap: authConfigMap, AuthConfigManifest: authConfigManifest}
 	newParams := params
 	newParams.AuthInfo = info
-	p, err := b.Plan()
-	if err != nil {
-		return nil, params, err
-	}
-	return &p, newParams, nil
+	return pemPlan, newParams, nil
 }
 
 // processPemFilesIfAny reads the SealedSecret from the config
 // directory, decrypts it using the GitHub deploy key, creates file
 // resources for .pem files stored in the secret, and creates a SealedSecret resource
 // for them that can be used by the machine actuator
-func processPemFilesIfAny(builder *plan.Builder, providerSpec *existinginfrav1.ClusterSpec, configDir string, ns, privateKey, cert string) (map[string]*capeios.SecretResourceSpec, *v1.ConfigMap, []byte, error) {
+func processPemFilesIfAny(providerSpec *existinginfrav1.ClusterSpec, configDir string, ns, privateKey, cert string) (plan.Resource, map[string]*capeios.SecretResourceSpec, *v1.ConfigMap, []byte, error) {
 	if err := checkPemValues(providerSpec, privateKey, cert); err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 	if providerSpec.Authentication == nil && providerSpec.Authorization == nil {
 		// no auth specified
-		return nil, nil, nil, nil
+		return nil, nil, nil, nil, nil
 	}
 	b := plan.NewBuilder()
 	b.AddResource("create:pem-dir", &capeiresource.Dir{Path: object.String(capeios.PemDestDir)})
 	b.AddResource("set-perms:pem-dir", &capeiresource.Run{Script: object.String(fmt.Sprintf("chmod 600 %s", capeios.PemDestDir))}, plan.DependOn("create:pem-dir"))
 	rsaPrivateKey, err := getPrivateKey(privateKey)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 	var authenticationSecretFileName, authorizationSecretFileName, authenticationSecretName, authorizationSecretName string
 	var authenticationSecretManifest, authorizationSecretManifest, authenticationConfig, authorizationConfig []byte
@@ -165,7 +159,7 @@ func processPemFilesIfAny(builder *plan.Builder, providerSpec *existinginfrav1.C
 		authenticationSecretManifest, decrypted, authenticationSecretName, authenticationConfig, err = processSecret(
 			b, rsaPrivateKey, configDir, authenticationSecretFileName, providerSpec.Authentication.URL)
 		if err != nil {
-			return nil, nil, nil, err
+			return nil, nil, nil, nil, err
 		}
 		secretResources["authentication"] = &capeios.SecretResourceSpec{
 			SecretName: authenticationSecretName,
@@ -177,7 +171,7 @@ func processPemFilesIfAny(builder *plan.Builder, providerSpec *existinginfrav1.C
 		authorizationSecretManifest, decrypted, authorizationSecretName, authorizationConfig, err = processSecret(
 			b, rsaPrivateKey, configDir, authorizationSecretFileName, providerSpec.Authorization.URL)
 		if err != nil {
-			return nil, nil, nil, err
+			return nil, nil, nil, nil, err
 		}
 		secretResources["authorization"] = &capeios.SecretResourceSpec{
 			SecretName: authorizationSecretName,
@@ -187,15 +181,14 @@ func processPemFilesIfAny(builder *plan.Builder, providerSpec *existinginfrav1.C
 	filePlan, err := b.Plan()
 	if err != nil {
 		log.Infof("Plan creation failed:\n%s\n", err)
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
-	builder.AddResource("install:pem-files", &filePlan, plan.DependOn("install:config"))
 	authConfigMap, authConfigMapManifest, err := createAuthConfigMapManifest(authenticationSecretName, authorizationSecretName,
 		authenticationConfig, authorizationConfig)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
-	return secretResources, authConfigMap, authConfigMapManifest, nil
+	return &filePlan, secretResources, authConfigMap, authConfigMapManifest, nil
 }
 
 func getPrivateKey(privateKey string) (*rsa.PrivateKey, error) {
