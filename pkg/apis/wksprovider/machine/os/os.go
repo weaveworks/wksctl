@@ -372,27 +372,19 @@ func addClusterAPICRDs(b *plan.Builder) ([]string, error) {
 	return crdIDs, nil
 }
 
-func seedNodeSetupPlan(ctx context.Context, o *capeios.OS, params SeedNodeParams, providerSpec *capeiv1alpha3.ClusterSpec, providerConfigMaps map[string]*v1.ConfigMap, authConfigMap *v1.ConfigMap, secretResources map[string]*secretResourceSpec, kubernetesVersion, kubernetesNamespace string) (*plan.Plan, error) {
-	secrets := map[string]capeiresource.SecretData{}
-	for k, v := range secretResources {
-		secrets[k] = v.decrypted
+func augmentParamsWithPool(user, key string, eim []*existinginfrav1.ExistingInfraMachine, params capeios.SeedNodeParams) capeios.SeedNodeParams {
+	info := []capeios.MachineInfo{}
+	for _, m := range eim {
+		info = append(info, capeios.MachineInfo{
+			SSHUser:     user,
+			SSHKey:      key,
+			PublicIP:    m.Spec.Public.Address,
+			PublicPort:  fmt.Sprintf("%d", m.Spec.Public.Port),
+			PrivateIP:   m.Spec.Private.Address,
+			PrivatePort: fmt.Sprintf("%d", m.Spec.Private.Port)})
 	}
-	nodeParams := capeios.NodeParams{
-		IsMaster:             true,
-		MasterIP:             params.PrivateIP,
-		MasterPort:           6443, // See TODO in machine_actuator.go
-		KubeletConfig:        params.KubeletConfig,
-		KubernetesVersion:    kubernetesVersion,
-		CRI:                  providerSpec.CRI,
-		ConfigFileSpecs:      providerSpec.OS.Files,
-		ProviderConfigMaps:   providerConfigMaps,
-		AuthConfigMap:        authConfigMap,
-		Secrets:              secrets,
-		Namespace:            params.Namespace,
-		AddonNamespaces:      params.AddonNamespaces,
-		ControlPlaneEndpoint: providerSpec.ControlPlaneEndpoint,
-	}
-	return o.CreateNodeSetupPlan(ctx, nodeParams)
+	params.ConnectionInfo = info
+	return params
 }
 
 func applySeedNodePlan(ctx context.Context, o *capeios.OS, p *plan.Plan) error {
@@ -400,8 +392,10 @@ func applySeedNodePlan(ctx context.Context, o *capeios.OS, p *plan.Plan) error {
 	if err != nil {
 		return nil, nil, err
 	}
-
-	_, err = p.Apply(ctx, o.Runner, plan.EmptyDiff())
+	info := &capeios.AuthParams{PEMSecretResources: pemSecretResources, AuthConfigMap: authConfigMap, AuthConfigManifest: authConfigManifest}
+	newParams := params
+	newParams.AuthInfo = info
+	p, err := b.Plan()
 	if err != nil {
 		return nil, params, err
 	}
@@ -412,8 +406,8 @@ func applySeedNodePlan(ctx context.Context, o *capeios.OS, p *plan.Plan) error {
 // directory, decrypts it using the GitHub deploy key, creates file
 // resources for .pem files stored in the secret, and creates a SealedSecret resource
 // for them that can be used by the machine actuator
-func processPemFilesIfAny(builder *plan.Builder, providerSpec *existinginfrav1.ClusterSpec, configDir string, ns, privateKeyPath, certPath string) (map[string]*capeios.SecretResourceSpec, *v1.ConfigMap, []byte, error) {
-	if err := checkPemValues(providerSpec, privateKeyPath, certPath); err != nil {
+func processPemFilesIfAny(builder *plan.Builder, providerSpec *existinginfrav1.ClusterSpec, configDir string, ns, privateKey, cert string) (map[string]*capeios.SecretResourceSpec, *v1.ConfigMap, []byte, error) {
+	if err := checkPemValues(providerSpec, privateKey, cert); err != nil {
 		return nil, nil, nil, err
 	}
 	if providerSpec.Authentication == nil && providerSpec.Authorization == nil {
@@ -423,7 +417,7 @@ func processPemFilesIfAny(builder *plan.Builder, providerSpec *existinginfrav1.C
 	b := plan.NewBuilder()
 	b.AddResource("create:pem-dir", &capeiresource.Dir{Path: object.String(capeios.PemDestDir)})
 	b.AddResource("set-perms:pem-dir", &capeiresource.Run{Script: object.String(fmt.Sprintf("chmod 600 %s", capeios.PemDestDir))}, plan.DependOn("create:pem-dir"))
-	privateKey, err := getPrivateKey(privateKeyPath)
+	rsaPrivateKey, err := getPrivateKey(privateKey)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -434,7 +428,7 @@ func processPemFilesIfAny(builder *plan.Builder, providerSpec *existinginfrav1.C
 	if providerSpec.Authentication != nil {
 		authenticationSecretFileName = providerSpec.Authentication.SecretFile
 		authenticationSecretManifest, decrypted, authenticationSecretName, authenticationConfig, err = processSecret(
-			b, privateKey, configDir, authenticationSecretFileName, providerSpec.Authentication.URL)
+			b, rsaPrivateKey, configDir, authenticationSecretFileName, providerSpec.Authentication.URL)
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -446,7 +440,7 @@ func processPemFilesIfAny(builder *plan.Builder, providerSpec *existinginfrav1.C
 	if providerSpec.Authorization != nil {
 		authorizationSecretFileName = providerSpec.Authorization.SecretFile
 		authorizationSecretManifest, decrypted, authorizationSecretName, authorizationConfig, err = processSecret(
-			b, privateKey, configDir, authorizationSecretFileName, providerSpec.Authorization.URL)
+			b, rsaPrivateKey, configDir, authorizationSecretFileName, providerSpec.Authorization.URL)
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -469,24 +463,21 @@ func processPemFilesIfAny(builder *plan.Builder, providerSpec *existinginfrav1.C
 	return secretResources, authConfigMap, authConfigMapManifest, nil
 }
 
-func getPrivateKey(privateKeyPath string) (*rsa.PrivateKey, error) {
-	privateKeyBytes, err := getConfigFileContents(privateKeyPath)
-	if err != nil {
-		return nil, errors.Wrap(err, "Could not read private key")
-	}
+func getPrivateKey(privateKey string) (*rsa.PrivateKey, error) {
+	privateKeyBytes := []byte(privateKey)
 	privateKeyData, err := keyutil.ParsePrivateKeyPEM(privateKeyBytes)
 	if err != nil {
 		return nil, err
 	}
-	privateKey, ok := privateKeyData.(*rsa.PrivateKey)
+	rsaPrivateKey, ok := privateKeyData.(*rsa.PrivateKey)
 	if !ok {
-		return nil, fmt.Errorf("Private key file %q did not contain valid private key", privateKeyPath)
+		return nil, errors.New("Invalid private key")
 	}
-	return privateKey, nil
+	return rsaPrivateKey, nil
 }
 
-func checkPemValues(providerSpec *existinginfrav1.ClusterSpec, privateKeyPath, certPath string) error {
-	if privateKeyPath == "" || certPath == "" {
+func checkPemValues(providerSpec *existinginfrav1.ClusterSpec, privateKey, cert string) error {
+	if privateKey == "" || cert == "" {
 		if providerSpec.Authentication != nil || providerSpec.Authorization != nil {
 			return errors.New("Encryption keys not specified; cannot process authentication and authorization specifications.")
 		}
