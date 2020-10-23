@@ -19,6 +19,7 @@ kind: "ExistingInfraCluster"
 metadata:
   name: integration-tests
 spec:
+  kubernetesVersion: 1.19.3
   user: "wksctl-cit"
   os:
     files:
