@@ -386,6 +386,8 @@ func TestApply(t *testing.T) {
 	setKubernetesVersion(machines, kubernetes.DefaultVersion)
 	writeYamlManifests(t, configPath("machines.yaml"), machines, eiMachines)
 
+	log.Printf("M: %#v, E: %#v\n", machines, eiMachines)
+
 	// Generate bad version to check failure return codes
 	savedAddress := eiMachines[0].Spec.Private.Address
 	eiMachines[0].Spec.Private.Address = "192.168.111.111"
