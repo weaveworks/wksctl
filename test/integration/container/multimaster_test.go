@@ -433,6 +433,11 @@ func TestMultimasterSetup(t *testing.T) {
 					log.Warnf("error from kubectl; ignoring: %s", stderr)
 					continue
 				}
+				logcmd := exec.Command("sh", "-c", "kubectl logs -f $(kubectl get pods -A | grep wks-controller | awk '{print($2)}') -n weavek8sops")
+				logcmd.Stdout = os.Stdout
+				logcmd.Stderr = os.Stderr
+				go logcmd.Run()
+
 				if err := json.Unmarshal([]byte(jsonOut), &nodeList); err != nil {
 					log.Warnf("Error deserialising output of kubectl get nodes: %s", err)
 				}
