@@ -451,6 +451,8 @@ func TestApply(t *testing.T) {
 	t.Run("Nodes", func(t *testing.T) {
 		testNodes(t, numMasters(machines), numWorkers(machines), kubeconfig)
 		logcmd := exec.Command("sh", "-c", "kubectl logs -f $(kubectl get pods -A | grep wks-controller | awk '{print($2)}') -n default")
+		logcmd.Stdout = os.Stdout
+		logcmd.Stderr = os.Stderr
 		go logcmd.Run()
 	})
 
