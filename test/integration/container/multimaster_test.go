@@ -456,7 +456,7 @@ func TestMultimasterSetup(t *testing.T) {
 					log.Infof("Checking kubelet arg (%s) on node%d", kubeletArg, i)
 					run(t, "footloose",
 						"-c", filepath.Join(rootDir, "examples/footloose/"+node_os+node_version+"/docker/multimaster.yaml"),
-						"ssh", "-o", "UserKnownHostsFile /dev/null",
+						"ssh", "-o", "'UserKnownHostsFile /dev/null'",
 						"-o", "StrictHostKeyChecking=no", fmt.Sprintf("root@node%d", i), fmt.Sprintf("ps -ef | grep -v 'ps -ef' | grep /usr/bin/kubelet | grep %s", kubeletArg))
 				}
 
@@ -466,7 +466,7 @@ func TestMultimasterSetup(t *testing.T) {
 						log.Infof("Checking api server arg (%s) on node%d", apiServerArg, i)
 						run(t, "footloose",
 							"-c", filepath.Join(rootDir, "examples/footloose/"+node_os+node_version+"/docker/multimaster.yaml"),
-							"ssh", "-o", "UserKnownHostsFile /dev/null",
+							"ssh", "-o", "'UserKnownHostsFile /dev/null'",
 							"-o", "StrictHostKeyChecking=no", fmt.Sprintf("root@node%d", i), fmt.Sprintf("ps -ef | grep -v 'ps -ef' | grep kube-apiserver | grep %s", apiServerArg))
 					}
 				}
