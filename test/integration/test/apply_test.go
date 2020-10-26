@@ -450,14 +450,15 @@ func TestApply(t *testing.T) {
 	// Test we have the number of nodes we asked for.
 	t.Run("Nodes", func(t *testing.T) {
 		testNodes(t, numMasters(machines), numWorkers(machines), kubeconfig)
-		logcmd := exec.Command("sh", "-c", "kubectl logs -f $(kubectl get pods -A | grep wks-controller | awk '{print($2)}') -n default")
-		logcmd.Stdout = os.Stdout
-		logcmd.Stderr = os.Stderr
-		go logcmd.Run()
 	})
 
 	t.Log("Waiting 1 minute for nodes to settle")
 	time.Sleep(1 * time.Minute)
+
+	logcmd := exec.Command("sh", "-c", "kubectl logs $(kubectl get pods -A | grep wks-controller | awk '{print($2)}') -n weavek8sops")
+	logcmd.Stdout = os.Stdout
+	logcmd.Stderr = os.Stderr
+	logcmd.Run()
 
 	//Test we have installed the specified version.
 	t.Run("KubernetesVersion", func(t *testing.T) {
