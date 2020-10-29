@@ -1,11 +1,6 @@
 package os
 
 import (
-<<<<<<< HEAD
-	"bytes"
-	"context"
-=======
->>>>>>> 34b9a64... Fix wksctl os to correctly handle file and flux configuration
 	"crypto/rsa"
 	"encoding/base64"
 	"fmt"
