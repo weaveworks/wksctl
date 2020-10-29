@@ -21,7 +21,7 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.6.1
 	github.com/thanhpk/randstr v1.0.4
-	github.com/weaveworks/cluster-api-provider-existinginfra v0.0.3-0.20201027191654-e41cafc56c2f
+	github.com/weaveworks/cluster-api-provider-existinginfra v0.0.3-0.20201029035853-336ee106be9c
 	github.com/weaveworks/footloose v0.0.0-20200918140536-ff126705213e
 	github.com/weaveworks/go-checkpoint v0.0.0-20170503165305-ebbb8b0518ab
 	github.com/weaveworks/launcher v0.0.0-20180824102238-59a4fcc32c9c
