@@ -45,7 +45,6 @@ replace (
     github.com/appscode/jsonpatch => gomodules.xyz/jsonpatch/v2 v2.0.0+incompatible
     github.com/docker/docker => github.com/docker/docker v0.7.3-0.20190327010347-be7ac8be2ae0
     github.com/googleapis/gnostic => github.com/googleapis/gnostic v0.3.0
-    github.com/weaveworks/cluster-api-provider-existinginfra => /home/jerry/src/github.com/weaveworks/cluster-api-provider-existinginfra
     k8s.io/api => k8s.io/api v0.18.5
     k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.18.5
     k8s.io/apimachinery => k8s.io/apimachinery v0.18.5
