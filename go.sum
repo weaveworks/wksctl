@@ -862,6 +862,10 @@ github.com/weaveworks/cluster-api-provider-existinginfra v0.0.3-0.20201027191654
 github.com/weaveworks/cluster-api-provider-existinginfra v0.0.3-0.20201027191654-e41cafc56c2f/go.mod h1:ZFXd0YRjr5436b3aY3CMqqVn239RNPsshOc5Gi6QYaI=
 github.com/weaveworks/cluster-api-provider-existinginfra v0.0.3-0.20201029035853-336ee106be9c h1:Jh6M6FeqVgFFt9F9Na+FGblHYsh686Q4f9qzBcbVEWw=
 github.com/weaveworks/cluster-api-provider-existinginfra v0.0.3-0.20201029035853-336ee106be9c/go.mod h1:nnqvEposdqHGD1tap7bSMa4WzC00mq9EoWgbzfF6Ahs=
+github.com/weaveworks/cluster-api-provider-existinginfra v0.0.3-0.20201029200543-87e8058111a8 h1:OJIIXtMtPVcX++cmvPU8qWhYefIkD7gnkJ6Ea1WClZI=
+github.com/weaveworks/cluster-api-provider-existinginfra v0.0.3-0.20201029200543-87e8058111a8/go.mod h1:nnqvEposdqHGD1tap7bSMa4WzC00mq9EoWgbzfF6Ahs=
+github.com/weaveworks/cluster-api-provider-existinginfra v0.0.3-0.20201030033840-01581587c155 h1:qignZv0yCYUbp3M9qoA1Z2HmQx9Go4ppfbiDgTX1Tpo=
+github.com/weaveworks/cluster-api-provider-existinginfra v0.0.3-0.20201030033840-01581587c155/go.mod h1:nnqvEposdqHGD1tap7bSMa4WzC00mq9EoWgbzfF6Ahs=
 github.com/weaveworks/footloose v0.0.0-20200918140536-ff126705213e h1:lW0k9X2U0S+6Kq5qoYQaDKrUCS50x2M7ZivVpOFgTso=
 github.com/weaveworks/footloose v0.0.0-20200918140536-ff126705213e/go.mod h1:nxDdCjg1kb5+luh4mUCp+mtBZIWrhzoLIArrD99y+Sc=
 github.com/weaveworks/go-checkpoint v0.0.0-20170503165305-ebbb8b0518ab h1:mW+hgchD9qUUBqnuaDBj7BkcpFPk/FxeFcUFI5lvvUw=
