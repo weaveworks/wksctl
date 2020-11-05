@@ -94,7 +94,11 @@ func displayPlan(ctx context.Context, clusterManifestPath, machinesManifestPath 
 		return errors.Wrap(err, "failed to create SSH client: ")
 	}
 	defer sshClient.Close()
+<<<<<<< HEAD
 	installer, err := capeios.Identify(ctx, sshClient)
+=======
+	installer, err := capeios.Identify(context.TODO(), sshClient)
+>>>>>>> a2f045e... propagate context into plan calls
 	if err != nil {
 		return errors.Wrapf(err, "failed to identify operating system for seed node (%s)", sp.GetMasterPublicAddress())
 	}
