@@ -42,7 +42,6 @@ metadata:
   name: test-multimaster
 spec:
   user: root
-  kubernetesVersion: 1.19.3
   imageRepository: %s:%d
   os:
     files:
