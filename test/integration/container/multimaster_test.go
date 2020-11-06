@@ -444,6 +444,7 @@ func TestMultimasterSetup(t *testing.T) {
 			}
 
 			assert.Len(t, nodeList.Items, 4)
+			log.Infof("IL: %#v", nodeList.Items)
 			assert.Len(t, nodes.Masters(nodeList).Items, 3)
 			assert.Len(t, nodes.Workers(nodeList).Items, 1)
 
