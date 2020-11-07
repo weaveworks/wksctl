@@ -456,11 +456,6 @@ func TestApply(t *testing.T) {
 	t.Log("Waiting 1 minute for nodes to settle")
 	time.Sleep(1 * time.Minute)
 
-	logcmd := exec.Command("sh", "-c", "kubectl logs $(kubectl get pods -A | grep wks-controller | awk '{print($2)}') -n weavek8sops")
-	logcmd.Stdout = os.Stdout
-	logcmd.Stderr = os.Stderr
-	logcmd.Run()
-
 	//Test we have installed the specified version.
 	t.Run("KubernetesVersion", func(t *testing.T) {
 		testApplyKubernetesVersion(t, "1.17.13")

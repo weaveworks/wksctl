@@ -11,7 +11,6 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/pelletier/go-toml"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	capeios "github.com/weaveworks/cluster-api-provider-existinginfra/pkg/apis/wksprovider/machine/os"
@@ -55,7 +54,6 @@ var (
 
 	namespacePrefixPattern = "kind: Namespace\n  metadata:\n    name: "
 	namespaceNamePattern   = multiLineRegexp(namespacePrefixPattern + `\S+`)
-	controllerImageSegment = multiLineRegexp(`(image:\s*\S*[-]controller)(:\s*\S+)?`)
 	namespacePattern       = multiLineRegexp(`namespace:\s*\S+`)
 	gitURLPattern          = multiLineRegexp(`(--git-url)=\S+`)
 	gitBranchPattern       = multiLineRegexp(`(--git-branch)=\S+`)
@@ -64,8 +62,6 @@ var (
 	updates = []manifestUpdate{
 		{name: "weave-net", selector: equal("weave-net.yaml"), updater: updateWeaveNetManifests},
 		{name: "flux", selector: and(prefix("flux"), extension("yaml")), updater: updateFluxManifests}}
-
-	dependencies = &toml.Tree{}
 )
 
 func multiLineRegexp(pattern string) *regexp.Regexp {
@@ -191,14 +187,6 @@ func updateManifests(options initOptionType) error {
 func initRun(cmd *cobra.Command, args []string) error {
 	if initOptions.version == "" {
 		initOptions.version = version.Version // from main command
-	}
-	bytes, err := ioutil.ReadFile(initOptions.dependencyPath)
-	if err != nil {
-		return err
-	}
-	dependencies, err = toml.Load(string(bytes))
-	if err != nil {
-		return err
 	}
 	return updateManifests(initOptions)
 }

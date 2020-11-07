@@ -29,21 +29,6 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-const (
-	sealedSecretVersion       = "v0.11.0"
-	sealedSecretKeySecretName = "sealed-secrets-key"
-	fluxSecretTemplate        = `apiVersion: v1
-{{ if .SecretValue }}
-data:
-  identity: {{.SecretValue}}
-{{ end }}
-kind: Secret
-metadata:
-  name: flux-git-deploy
-  namespace: {{.Namespace}}
-type: Opaque`
-)
-
 var (
 	pemKeys = []string{"certificate-authority", "client-certificate", "client-key"}
 )
@@ -309,40 +294,6 @@ func processSecret(b *plan.Builder, key *rsa.PrivateKey, configDir, secretFileNa
 	b.AddResource("install:"+secretName, configResource, plan.DependOn("set-perms:pem-dir"))
 
 	return contents, decrypted, secretName, authConfig, nil
-}
-
-func createSealedSecretKeySecretManifest(privateKey, cert, ns string) ([]byte, error) {
-	secret := &v1.Secret{
-		TypeMeta:   metav1.TypeMeta{Kind: "Secret", APIVersion: "v1"},
-		ObjectMeta: metav1.ObjectMeta{Name: sealedSecretKeySecretName, Namespace: "kube-system"},
-		Type:       v1.SecretTypeOpaque,
-	}
-	secret.Data = map[string][]byte{}
-	secret.StringData = map[string]string{}
-	secret.StringData[v1.TLSPrivateKeyKey] = privateKey
-	secret.StringData[v1.TLSCertKey] = cert
-	return yaml.Marshal(secret)
-}
-
-// processDeployKey adds the encoded deploy key to the set of parameters used to configure flux
-func processDeployKey(params map[string]string, gitDeployKeyPath string) error {
-	if gitDeployKeyPath == "" {
-		return nil
-	}
-	b64Key, err := readAndBase64EncodeKey(gitDeployKeyPath)
-	if err != nil {
-		return err
-	}
-	params["gitDeployKey"] = b64Key
-	return nil
-}
-
-func readAndBase64EncodeKey(keypath string) (string, error) {
-	content, err := ioutil.ReadFile(keypath)
-	if err != nil {
-		return "", err
-	}
-	return base64.StdEncoding.EncodeToString(content), nil
 }
 
 // getConfigFileContents reads a config manifest from a file in the config directory.
