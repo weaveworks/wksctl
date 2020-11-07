@@ -94,15 +94,7 @@ func displayPlan(ctx context.Context, clusterManifestPath, machinesManifestPath 
 		return errors.Wrap(err, "failed to create SSH client: ")
 	}
 	defer sshClient.Close()
-<<<<<<< HEAD
-<<<<<<< HEAD
-	installer, err := capeios.Identify(ctx, sshClient)
-=======
-	installer, err := capeios.Identify(context.TODO(), sshClient)
->>>>>>> a2f045e... propagate context into plan calls
-=======
-	installer, err := capeios.Identify(ctx, sshClient)
->>>>>>> bc66adb... Plumb Context through 'plan' steps
+	installer, err := capeios.Identify(context.Background(), sshClient)
 	if err != nil {
 		return errors.Wrapf(err, "failed to identify operating system for seed node (%s)", sp.GetMasterPublicAddress())
 	}
@@ -169,7 +161,7 @@ func displayPlan(ctx context.Context, clusterManifestPath, machinesManifestPath 
 		AddonNamespaces:  manifest.DefaultAddonNamespaces,
 		ConfigDirectory:  configDir,
 	}
-	plan, err := wksos.CreateSeedNodeSetupPlan(ctx, installer, params)
+	plan, err := capeios.CreateSeedNodeSetupPlan(installer, params)
 	if err != nil {
 		return errors.Wrap(err, "could not generate plan")
 	}

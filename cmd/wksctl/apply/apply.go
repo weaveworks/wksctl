@@ -217,7 +217,7 @@ func (a *Applier) initiateCluster(ctx context.Context, clusterManifestPath, mach
 		}
 	}
 
-	if err := wksos.SetupSeedNode(ctx, installer, capeios.SeedNodeParams{
+	if err := wksos.SetupSeedNode(installer, capeios.SeedNodeParams{
 		PublicIP:             sp.GetMasterPublicAddress(),
 		PrivateIP:            sp.GetMasterPrivateAddress(),
 		ServicesCIDRBlocks:   sp.Cluster.Spec.ClusterNetwork.Services.CIDRBlocks,

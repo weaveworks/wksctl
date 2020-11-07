@@ -1,8 +1,6 @@
 package os
 
 import (
-	"bytes"
-	"context"
 	"crypto/rsa"
 	"encoding/base64"
 	"fmt"
