@@ -1,7 +1,6 @@
 package os
 
 import (
-	"bytes"
 	"context"
 	"crypto/rsa"
 	"encoding/base64"
@@ -53,271 +52,16 @@ var (
 // SetupSeedNode installs Kubernetes on this machine, and store the provided
 // manifests in the API server, so that the rest of the cluster can then be
 // set up by the WKS controller.
-func SetupSeedNode(ctx context.Context, o *capeios.OS, params SeedNodeParams) error {
-	p, err := CreateSeedNodeSetupPlan(ctx, o, params)
+func SetupSeedNode(ctx context.Context, o *capeios.OS, params capeios.SeedNodeParams) error {
+	sp, updatedParams, err := createSecretPlan(o, params)
 	if err != nil {
 		return err
 	}
 	updatedParams, err = createMachinePoolInfo(updatedParams)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	kubernetesVersion, kubernetesNamespace, err := machine.GetKubernetesVersionFromManifest(params.MachinesManifestPath)
-	if err != nil {
-		return nil, err
-	}
-	cluster, err := parseCluster(params.ClusterManifestPath)
-	if err != nil {
-		return nil, err
-	}
-	// Get configuration file resources from config map manifests referenced by the cluster spec
-	configMapManifests, configMaps, configFileResources, err := createConfigFileResourcesFromFiles(&cluster.Spec, params.ConfigDirectory, params.Namespace)
-	if err != nil {
-		return nil, err
-	}
-
-	b := plan.NewBuilder()
-
-	baseRes := capeirecipe.BuildBasePlan(o.PkgType)
-	b.AddResource("install:base", baseRes)
-
-	configRes := capeirecipe.BuildConfigPlan(configFileResources)
-	b.AddResource("install:config", configRes, plan.DependOn("install:base"))
-
-	pemSecretResources, authConfigMap, authConfigManifest, err := processPemFilesIfAny(b, &cluster.Spec, params.ConfigDirectory, params.Namespace, params.SealedSecretKeyPath, params.SealedSecretCertPath)
-	if err != nil {
-		return nil, err
-	}
-
-	criRes := capeirecipe.BuildCRIPlan(ctx, &cluster.Spec.CRI, cfg, o.PkgType)
-	b.AddResource("install:cri", criRes, plan.DependOn("install:config"))
-
-	k8sRes := capeirecipe.BuildK8SPlan(kubernetesVersion, params.KubeletConfig.NodeIP, cfg.SELinuxInstalled, cfg.SetSELinuxPermissive, cfg.DisableSwap, cfg.LockYUMPkgs, o.PkgType, params.KubeletConfig.CloudProvider, params.KubeletConfig.ExtraArguments)
-	b.AddResource("install:k8s", k8sRes, plan.DependOn("install:cri"))
-
-	apiServerArgs := getAPIServerArgs(&cluster.Spec, pemSecretResources)
-
-	// Backwards-compatibility: fall back if not specified
-	controlPlaneEndpoint := params.ControlPlaneEndpoint
-	if controlPlaneEndpoint == "" {
-		// TODO: dynamically inject the API server's port.
-		controlPlaneEndpoint = params.PrivateIP + ":6443"
-	}
-
-	kubeadmInitResource :=
-		&capeiresource.KubeadmInit{
-			PublicIP:              params.PublicIP,
-			PrivateIP:             params.PrivateIP,
-			KubeletConfig:         &params.KubeletConfig,
-			ConntrackMax:          cfg.ConntrackMax,
-			UseIPTables:           cfg.UseIPTables,
-			SSHKeyPath:            params.SSHKeyPath,
-			BootstrapToken:        params.BootstrapToken,
-			ControlPlaneEndpoint:  controlPlaneEndpoint,
-			IgnorePreflightErrors: cfg.IgnorePreflightErrors,
-			KubernetesVersion:     kubernetesVersion,
-			CloudProvider:         params.KubeletConfig.CloudProvider,
-			ImageRepository:       params.ImageRepository,
-			AdditionalSANs:        params.AdditionalSANs,
-			Namespace:             object.String(params.Namespace),
-			NodeName:              cfg.HostnameOverride,
-			ExtraAPIServerArgs:    apiServerArgs,
-			// kubeadm currently accepts a single subnet for services and pods
-			// ref: https://godoc.org/k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm/v1beta1#Networking
-			// this should be ensured in the validation step in pkg.specs.validation.validateCIDRBlocks()
-			ServiceCIDRBlock: params.ServicesCIDRBlocks[0],
-			PodCIDRBlock:     params.PodsCIDRBlocks[0],
-		}
-	b.AddResource("kubeadm:init", kubeadmInitResource, plan.DependOn("install:k8s"))
-
-	// TODO(damien): Add a CNI section in cluster.yaml once we support more than one CNI plugin.
-	const cni = "weave-net"
-
-	cniAdddon := capeiv1alpha3.Addon{Name: cni}
-
-	// we use the namespace defined in addon-namespace map to make weave-net run in kube-system
-	// as weave-net requires to run in the kube-system namespace *only*.
-	manifests, err := buildAddon(cniAdddon, params.ImageRepository, params.ClusterManifestPath, params.GetAddonNamespace(cni))
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to generate manifests for CNI plugin")
-	}
-
-	if len(params.PodsCIDRBlocks) > 0 && params.PodsCIDRBlocks[0] != "" {
-		// setting the pod CIDR block is currently only supported for the weave-net CNI
-		if cni == "weave-net" {
-			manifests, err = SetWeaveNetPodCIDRBlock(manifests, params.PodsCIDRBlocks[0])
-			if err != nil {
-				return nil, errors.Wrap(err, "failed to inject ipalloc_range")
-			}
-		}
-	}
-
-	cniRsc := capeirecipe.BuildCNIPlan(cni, manifests)
-	b.AddResource("install:cni", cniRsc, plan.DependOn("kubeadm:init"))
-
-	// Add resources to apply the cluster API's CRDs so that Kubernetes
-	// understands objects like Cluster, Machine, etc.
-
-	crdIDs, err := capeios.AddClusterAPICRDs(b, crds.CRDs)
-	if err != nil {
-		return nil, err
-	}
-
-	kubectlApplyDeps := append([]string{"kubeadm:init"}, crdIDs...)
-
-	// If we're pulling data out of GitHub, we install sealed secrets and any auth secrets stored in sealed secrets
-	configDeps, err := addSealedSecretResourcesIfNecessary(b, kubectlApplyDeps, pemSecretResources, sealedSecretVersion, params.SealedSecretKeyPath, params.SealedSecretCertPath, params.Namespace)
-	if err != nil {
-		return nil, err
-	}
-
-	// Set plan as an annotation on node, just like controller does
-	seedNodePlan, err := seedNodeSetupPlan(ctx, o, params, &cluster.Spec, configMaps, authConfigMap, pemSecretResources, kubernetesVersion, kubernetesNamespace)
-	if err != nil {
-		return nil, err
-	}
-	b.AddResource("node:plan", &capeiresource.KubectlAnnotateSingleNode{Key: capeirecipe.PlanKey, Value: seedNodePlan.ToJSON()}, plan.DependOn("kubeadm:init"))
-
-	addAuthConfigMapIfNecessary(configMapManifests, authConfigManifest)
-
-	// Add config maps to system so controller can use them
-	configMapPlan := recipe.BuildConfigMapPlan(configMapManifests, params.Namespace)
-
-	b.AddResource("install:configmaps", configMapPlan, plan.DependOn(configDeps[0], configDeps[1:]...))
-
-	applyClstrRsc := &capeiresource.KubectlApply{ManifestPath: object.String(params.ClusterManifestPath), Namespace: object.String(params.Namespace)}
-
-	b.AddResource("kubectl:apply:cluster", applyClstrRsc, plan.DependOn("install:configmaps"))
-
-	machinesManifest, err := machine.GetMachinesManifest(params.MachinesManifestPath)
-	if err != nil {
-		return nil, err
-	}
-	mManRsc := &capeiresource.KubectlApply{Manifest: []byte(machinesManifest), Filename: object.String("machinesmanifest"), Namespace: object.String(params.Namespace)}
-	b.AddResource("kubectl:apply:machines", mManRsc, plan.DependOn(kubectlApplyDeps[0], kubectlApplyDeps[1:]...))
-
-	dep := addSealedSecretWaitIfNecessary(b, params.SealedSecretKeyPath, params.SealedSecretCertPath)
-
-	{
-		capiCtlrManifest, err := capiControllerManifest(params.Controller, params.Namespace, params.ConfigDirectory)
-		if err != nil {
-			return nil, err
-		}
-		ctlrRsc := &capeiresource.KubectlApply{Manifest: capiCtlrManifest, Filename: object.String("capi_controller.yaml")}
-		b.AddResource("install:capi", ctlrRsc, plan.DependOn("kubectl:apply:cluster", dep))
-	}
-
-	wksCtlrManifest, err := wksControllerManifest(params.Controller, params.Namespace, params.ConfigDirectory)
-	if err != nil {
-		return nil, err
-	}
-
-	ctlrRsc := &capeiresource.KubectlApply{Manifest: wksCtlrManifest, Filename: object.String("wks_controller.yaml")}
-	b.AddResource("install:wks", ctlrRsc, plan.DependOn("kubectl:apply:cluster", dep))
-
-	if err := configureFlux(b, params); err != nil {
-		return nil, errors.Wrap(err, "Failed to configure flux")
-	}
-
-	// TODO move so this can also be performed when the user updates the cluster.  See issue https://github.com/weaveworks/wksctl/issues/440
-	addons, err := parseAddons(params.ClusterManifestPath, params.Namespace, params.AddonNamespaces)
-	if err != nil {
-		return nil, err
-	}
-
-	addonRsc := recipe.BuildAddonPlan(params.ClusterManifestPath, addons)
-	b.AddResource("install:addons", addonRsc, plan.DependOn("kubectl:apply:cluster", "kubectl:apply:machines"))
-
-	return capeios.CreatePlan(b)
-}
-
-// Sets the pod CIDR block in the weave-net manifest
-func SetWeaveNetPodCIDRBlock(manifests [][]byte, podsCIDRBlock string) ([][]byte, error) {
-	// Weave-Net has a container named weave in its daemonset
-	containerName := "weave"
-	// The pod CIDR block is set via the IPALLOC_RANGE env var
-	podCIDRBlock := &v1.EnvVar{
-		Name:  "IPALLOC_RANGE",
-		Value: podsCIDRBlock,
-	}
-
-	manifestList := &v1.List{}
-	err := yaml.Unmarshal(manifests[0], manifestList)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to unmarshal weave-net manifest")
-	}
-
-	// Find and parse the DaemonSet included in the manifest list into an object
-	idx, daemonSet, err := findDaemonSet(manifestList)
-	if err != nil {
-		return nil, errors.New("failed to find daemonset in weave-net manifest")
-	}
-
-	err = injectEnvVarToContainer(daemonSet.Spec.Template.Spec.Containers, containerName, *podCIDRBlock)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to inject env var to weave container")
-	}
-
-	manifestList.Items[idx] = runtime.RawExtension{Object: daemonSet}
-
-	manifests[0], err = yaml.Marshal(manifestList)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to marshal weave-net manifest list")
-	}
-
-	return manifests, nil
-}
-
-// Finds container in the list by name, adds an env var, fails if env var exists with different value
-func injectEnvVarToContainer(
-	containers []v1.Container, name string, newEnvVar v1.EnvVar) error {
-	var targetContainer v1.Container
-	containerFound := false
-	var idx int
-	var container v1.Container
-
-	for idx, container = range containers {
-		if container.Name == name {
-			targetContainer = container
-			containerFound = true
-			break
-		}
-	}
-	if !containerFound {
-		return errors.New(fmt.Sprintf("did not find container %s in manifest", name))
-	}
-
-	envVars := targetContainer.Env
-	for _, envVar := range envVars {
-		if envVar.Name == newEnvVar.Name {
-			if envVar.Value != newEnvVar.Value {
-				return errors.New(
-					fmt.Sprintf("manifest already contains env var %s, and cannot overwrite", newEnvVar.Name))
-			}
-			return nil
-		}
-	}
-	targetContainer.Env = append(envVars, newEnvVar)
-	containers[idx] = targetContainer
-
-	return nil
-}
-
-// Returns a daemonset manifest from a list
-func findDaemonSet(manifest *v1.List) (int, *appsv1.DaemonSet, error) {
-	if manifest == nil {
-		return -1, nil, errors.New("manifest is nil")
-	}
-	daemonSet := &appsv1.DaemonSet{}
-	var err error
-	var idx int
-	var item runtime.RawExtension
-	for idx, item = range manifest.Items {
-		err := yaml.Unmarshal(item.Raw, daemonSet)
-		if err == nil && daemonSet.Kind == "DaemonSet" {
-			break
-		}
-	}
+	p, err := capeios.CreateSeedNodeSetupPlan(o, updatedParams)
 	if err != nil {
 		return err
 	}
@@ -334,42 +78,23 @@ func findDaemonSet(manifest *v1.List) (int, *appsv1.DaemonSet, error) {
 	return capeios.ApplyPlan(o, p)
 }
 
-func getAPIServerArgs(providerSpec *capeiv1alpha3.ClusterSpec, pemSecretResources map[string]*secretResourceSpec) map[string]string {
-	result := map[string]string{}
-	authnResourceSpec := pemSecretResources["authentication"]
-	if authnResourceSpec != nil {
-		storeIfNotEmpty(result, "authentication-token-webhook-config-file", filepath.Join(capeios.ConfigDestDir, authnResourceSpec.secretName+".yaml"))
-		storeIfNotEmpty(result, "authentication-token-webhook-cache-ttl", providerSpec.Authentication.CacheTTL)
-	}
-	authzResourceSpec := pemSecretResources["authorization"]
-	if authzResourceSpec != nil {
-		result["authorization-mode"] = "Webhook"
-		storeIfNotEmpty(result, "authorization-webhook-config-file", filepath.Join(capeios.ConfigDestDir, authzResourceSpec.secretName+".yaml"))
-		storeIfNotEmpty(result, "authorization-webhook-cache-unauthorized-ttl", providerSpec.Authorization.CacheUnauthorizedTTL)
-		storeIfNotEmpty(result, "authorization-webhook-cache-authorized-ttl", providerSpec.Authorization.CacheAuthorizedTTL)
-	}
-
-	// Also add any explicit api server arguments from the generic section
-	for _, arg := range providerSpec.APIServer.ExtraArguments {
-		result[arg.Name] = arg.Value
-	}
-	return result
-}
-
-func addClusterAPICRDs(b *plan.Builder) ([]string, error) {
-	crds, err := getCRDs()
-
+// createMachinePoolInfo turns the specified machines into a connection pool
+// that can be used to contact the machines
+func createMachinePoolInfo(params capeios.SeedNodeParams) (capeios.SeedNodeParams, error) {
+	_, eic, err := specs.ParseCluster(ioutil.NopCloser(strings.NewReader(params.ClusterManifest)))
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to list cluster API CRDs")
+		return capeios.SeedNodeParams{}, err
 	}
-	crdIDs := make([]string, 0)
-	for _, crdFile := range crds {
-		id := fmt.Sprintf("kubectl:apply:%s", crdFile.fname)
-		crdIDs = append(crdIDs, id)
-		rsrc := &resource.KubectlApply{Filename: object.String(crdFile.fname), Manifest: crdFile.data, WaitCondition: "condition=Established"}
-		b.AddResource(id, rsrc, plan.DependOn("kubeadm:init"))
+	_, eims, err := machine.Parse(ioutil.NopCloser(strings.NewReader(params.MachinesManifest)))
+	if err != nil {
+		return capeios.SeedNodeParams{}, err
 	}
-	return crdIDs, nil
+	sshKey, err := ioutil.ReadFile(eic.Spec.DeprecatedSSHKeyPath)
+	if err != nil {
+		return capeios.SeedNodeParams{}, err
+	}
+	encodedKey := base64.StdEncoding.EncodeToString(sshKey)
+	return augmentParamsWithPool(eic.Spec.User, encodedKey, eims, params), nil
 }
 
 func augmentParamsWithPool(user, key string, eim []*existinginfrav1.ExistingInfraMachine, params capeios.SeedNodeParams) capeios.SeedNodeParams {
@@ -391,7 +116,10 @@ func augmentParamsWithPool(user, key string, eim []*existinginfrav1.ExistingInfr
 func createSecretPlan(o *capeios.OS, params capeios.SeedNodeParams) (plan.Resource, capeios.SeedNodeParams, error) {
 	pemPlan, pemSecretResources, authConfigMap, authConfigManifest, err := processPemFilesIfAny(&params.ExistingInfraCluster.Spec, params.ConfigDirectory, params.Namespace, params.SealedSecretKey, params.SealedSecretCert)
 	if err != nil {
-		return nil, nil, err
+		return nil, params, err
+	}
+	if pemSecretResources == nil {
+		return nil, params, nil
 	}
 	info := &capeios.AuthParams{PEMSecretResources: pemSecretResources, AuthConfigMap: authConfigMap, AuthConfigManifest: authConfigManifest}
 	newParams := params

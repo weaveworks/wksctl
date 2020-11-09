@@ -161,7 +161,7 @@ func displayPlan(ctx context.Context, clusterManifestPath, machinesManifestPath 
 		AddonNamespaces:  manifest.DefaultAddonNamespaces,
 		ConfigDirectory:  configDir,
 	}
-	plan, err := wksos.CreateSeedNodeSetupPlan(ctx, installer, params)
+	plan, err := capeios.CreateSeedNodeSetupPlan(installer, params)
 	if err != nil {
 		return errors.Wrap(err, "could not generate plan")
 	}

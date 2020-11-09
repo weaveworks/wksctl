@@ -1,7 +1,9 @@
 package apply
 
 import (
+	"bytes"
 	"context"
+	"io/ioutil"
 	"path/filepath"
 	"strings"
 
@@ -14,11 +16,15 @@ import (
 	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/scheme"
 	capeispecs "github.com/weaveworks/cluster-api-provider-existinginfra/pkg/specs"
 	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/utilities/kubeadm"
+	"github.com/weaveworks/libgitops/pkg/serializer"
 	"github.com/weaveworks/wksctl/pkg/addons"
+	wksos "github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/os"
 	"github.com/weaveworks/wksctl/pkg/manifests"
 	"github.com/weaveworks/wksctl/pkg/plan/runners/ssh"
 	"github.com/weaveworks/wksctl/pkg/specs"
+	"github.com/weaveworks/wksctl/pkg/utilities"
 	"github.com/weaveworks/wksctl/pkg/utilities/manifest"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"
 )
 
 // Cmd represents the apply command
@@ -114,7 +120,7 @@ func unparseCluster(c *clusterv1.Cluster, eic *existinginfrav1.ExistingInfraClus
 	return buf.Bytes(), nil
 }
 
-func (a *Applier) initiateCluster(clusterManifestPath, machinesManifestPath string) error {
+func (a *Applier) initiateCluster(ctx context.Context, clusterManifestPath, machinesManifestPath string) error {
 	sp := specs.NewFromPaths(clusterManifestPath, machinesManifestPath)
 	sshClient, err := ssh.NewClientForMachine(sp.MasterSpec, sp.ClusterSpec.User, a.Params.sshKeyPath, log.GetLevel() > log.InfoLevel)
 
@@ -211,7 +217,7 @@ func (a *Applier) initiateCluster(clusterManifestPath, machinesManifestPath stri
 		}
 	}
 
-	if err := wksos.SetupSeedNode(installer, capeios.SeedNodeParams{
+	if err := wksos.SetupSeedNode(ctx, installer, capeios.SeedNodeParams{
 		PublicIP:             sp.GetMasterPublicAddress(),
 		PrivateIP:            sp.GetMasterPrivateAddress(),
 		ServicesCIDRBlocks:   sp.Cluster.Spec.ClusterNetwork.Services.CIDRBlocks,
@@ -234,8 +240,8 @@ func (a *Applier) initiateCluster(clusterManifestPath, machinesManifestPath stri
 			GitPath:          a.Params.gitPath,
 			GitDeployKeyPath: a.Params.gitDeployKeyPath,
 		},
-		SealedSecretKeyPath:  sealedSecretKeyPath,
-		SealedSecretCertPath: a.Params.sealedSecretCertPath,
+		SealedSecretKey:      string(key),
+		SealedSecretCert:     string(cert),
 		ConfigDirectory:      configDir,
 		ImageRepository:      sp.ClusterSpec.ImageRepository,
 		ControlPlaneEndpoint: sp.ClusterSpec.ControlPlaneEndpoint,
