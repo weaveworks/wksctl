@@ -61,7 +61,7 @@ func SetupSeedNode(ctx context.Context, o *capeios.OS, params capeios.SeedNodePa
 	if err != nil {
 		return err
 	}
-	p, err := capeios.CreateSeedNodeSetupPlan(o, updatedParams)
+	p, err := capeios.CreateSeedNodeSetupPlan(ctx, o, updatedParams)
 	if err != nil {
 		return err
 	}
@@ -75,7 +75,7 @@ func SetupSeedNode(ctx context.Context, o *capeios.OS, params capeios.SeedNodePa
 		}
 		p = &plan
 	}
-	return capeios.ApplyPlan(o, p)
+	return capeios.ApplyPlan(ctx, o, p)
 }
 
 // createMachinePoolInfo turns the specified machines into a connection pool
