@@ -297,39 +297,43 @@ func fieldsInError(errors field.ErrorList) []string {
 
 func TestValidateCluster(t *testing.T) {
 	tests := []struct {
+		name   string
 		input  string
 		errors []string
 	}{
-		{clusterMinimumValid, []string{}},
-		{clusterHasSSHKey, []string{
+		{"Min valid", clusterMinimumValid, []string{}},
+		{"Has sshKeyPath", clusterHasSSHKey, []string{
 			"cluster.spec.providerSpec.value.sshKeyPath",
 		}},
-		{clusterNonDefaultServiceDomain, []string{
+		{"Non default serviceDomain", clusterNonDefaultServiceDomain, []string{
 			"cluster.spec.clusterNetwork.serviceDomain",
 		}},
-		{clusterBadCIDRBlocks, []string{
+		{"Bad cidrBlocks", clusterBadCIDRBlocks, []string{
 			"cluster.spec.clusterNetwork.services.cidrBlocks",
 			"cluster.spec.clusterNetwork.pods.cidrBlocks",
 		}},
-		{clusterServicePodNetworksOverlap, []string{
+		{"Pod networks overlaps", clusterServicePodNetworksOverlap, []string{
 			"cluster.spec.clusterNetwork.services.cidrBlocks",
 		}},
-		{ClusterAddonBadName, []string{
+		{"with bad name", ClusterAddonBadName, []string{
 			"cluster.spec.providerSpec.value.addons[0].foo",
 		}},
 	}
 
 	for _, test := range tests {
-		cluster, eic := clusterFromString(t, test.input)
-		populateCluster(cluster)
-		errors := validateCluster(cluster, eic, "/tmp/test.yaml")
-		assert.Equal(t, len(test.errors), len(errors))
-		assert.Equal(t, test.errors, fieldsInError(errors))
+		t.Run(test.name, func(t *testing.T) {
 
-		if t.Failed() {
-			t.Log(errors)
-			t.FailNow()
-		}
+			cluster, eic := clusterFromString(t, test.input)
+			populateCluster(cluster)
+			errors := validateCluster(cluster, eic, "/tmp/test.yaml")
+			assert.Equal(t, len(test.errors), len(errors))
+			assert.Equal(t, test.errors, fieldsInError(errors))
+
+			if t.Failed() {
+				t.Log(errors)
+				t.FailNow()
+			}
+		})
 	}
 }
 
