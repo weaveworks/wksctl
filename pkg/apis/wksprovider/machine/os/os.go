@@ -1,6 +1,7 @@
 package os
 
 import (
+	"context"
 	"crypto/rsa"
 	"encoding/base64"
 	"fmt"
@@ -37,6 +38,7 @@ var (
 // manifests in the API server, so that the rest of the cluster can then be
 // set up by the WKS controller.
 func SetupSeedNode(o *capeios.OS, params capeios.SeedNodeParams) error {
+	ctx := context.Background()
 	sp, updatedParams, err := createSecretPlan(o, params)
 	if err != nil {
 		return err
@@ -45,7 +47,7 @@ func SetupSeedNode(o *capeios.OS, params capeios.SeedNodeParams) error {
 	if err != nil {
 		return err
 	}
-	p, err := capeios.CreateSeedNodeSetupPlan(o, updatedParams)
+	p, err := capeios.CreateSeedNodeSetupPlan(ctx, o, updatedParams)
 	if err != nil {
 		return err
 	}
@@ -59,7 +61,7 @@ func SetupSeedNode(o *capeios.OS, params capeios.SeedNodeParams) error {
 		}
 		p = &plan
 	}
-	return capeios.ApplyPlan(o, p)
+	return capeios.ApplyPlan(ctx, o, p)
 }
 
 // createMachinePoolInfo turns the specified machines into a connection pool
