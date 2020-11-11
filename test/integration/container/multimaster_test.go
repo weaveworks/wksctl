@@ -41,6 +41,7 @@ kind: ExistingInfraCluster
 metadata:
   name: test-multimaster
 spec:
+  kubernetesVersion: 1.17.13
   user: root
   imageRepository: %s:%d
   os:
