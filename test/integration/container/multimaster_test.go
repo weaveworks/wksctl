@@ -372,7 +372,7 @@ func TestMultimasterSetup(t *testing.T) {
 	if shouldRetagPush(t, registryPort) {
 		run(t, filepath.Join(rootDir, "environments/local-docker-registry/retag_push.sh"), "-p", strconv.Itoa(registryPort))
 	}
-	const capeiImage = "weaveworks/cluster-api-existinginfra-controller:v0.0.7"
+	const capeiImage = "docker.io/weaveworks/cluster-api-existinginfra-controller:v0.0.7"
 	run(t, "docker", "pull", capeiImage)
 	run(t, "docker", "tag", capeiImage, fmt.Sprintf("localhost:%d/%s", registryPort, capeiImage))
 	run(t, "docker", "push", fmt.Sprintf("localhost:%d/%s", registryPort, capeiImage))

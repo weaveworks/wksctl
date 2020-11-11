@@ -20,7 +20,7 @@ kind: ExistingInfraCluster
 metadata:
   name: example
 spec:
-  user: ec2-user
+  user: root
   controlPlaneMachineCount: "1"
   workerMachineCount: "1"
   cri:
