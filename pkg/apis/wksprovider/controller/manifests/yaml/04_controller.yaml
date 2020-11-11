@@ -42,7 +42,6 @@ spec:
         operator: Exists
       containers:
       - name: controller
-        # This will be overwritten!
         image: weaveworks/cluster-api-existinginfra-controller:v0.0.8
         args:
         - --verbose
