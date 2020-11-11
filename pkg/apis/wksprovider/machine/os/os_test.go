@@ -1,16 +1,15 @@
 package os
 
 import (
-	"encoding/base64"
-	"fmt"
 	"io/ioutil"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	capeios "github.com/weaveworks/cluster-api-provider-existinginfra/pkg/apis/wksprovider/machine/os"
 	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/plan"
+	capeiresource "github.com/weaveworks/cluster-api-provider-existinginfra/pkg/plan/resource"
 	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/utilities/object"
-	"github.com/weaveworks/wksctl/pkg/plan/resource"
 	appsv1 "k8s.io/api/apps/v1"
 	v1beta2 "k8s.io/api/apps/v1beta2"
 	v1 "k8s.io/api/core/v1"
@@ -59,7 +58,7 @@ spec:
 	}
 	for _, test := range tests {
 		in := []byte(test.yaml)
-		out, err := updateControllerImage(in, test.newImage)
+		out, err := capeios.UpdateControllerImage(in, test.newImage)
 		if test.expErr {
 			assert.NotNil(t, err, test.msg)
 			assert.Empty(t, out, test.msg)
@@ -98,28 +97,27 @@ func TestFlux(t *testing.T) {
 	_, err = f.WriteString(dk)
 	assert.NoError(t, f.Close())
 	assert.NoError(t, err)
-	identityStr := fmt.Sprintf("identity: %s", base64.StdEncoding.EncodeToString([]byte(dk)))
 
 	var gitDeployKeyPath = f.Name()
 	var tests = []struct {
-		URL, branch, deployKeyPath, notExp, expManifestText, notExpManifestText, msg string
+		URL, branch, deployKeyPath, notExp, msg string
 	}{
-		{"", "", "", "flux", "", "", "expected plan without flux"},
-		{gitURL, "", "", "", gitURL, "", "expected plan w/o branch or deploy key"},
-		{gitURL, "", gitDeployKeyPath, "", identityStr, "", "expected flux yaml with deploy key"},
-		{gitURL, "", "", "", "", identityStr, "expected flux yaml without deploy key"},
-		{gitURL, gitBranch, "", "", "--git-branch=" + gitBranch, "", "expected flux yaml with branch"},
-		{gitURL, gitBranch, "", "", "namespace: system", "", "expected to be in the system namespace"},
-		{gitURL, gitBranch, "", "", "", "namespace: flux", "flux should not be the namespace"},
+		{"", "", "", "flux", "expected plan without flux"},
+		{gitURL, "", "", "", "expected plan w/o branch or deploy key"},
+		{gitURL, "", gitDeployKeyPath, "", "expected flux yaml with deploy key"},
+		{gitURL, "", "", "", "expected flux yaml without deploy key"},
+		{gitURL, gitBranch, "", "", "expected flux yaml with branch"},
+		{gitURL, gitBranch, "", "", "expected to be in the system namespace"},
+		{gitURL, gitBranch, "", "", "flux should not be the namespace"},
 	}
 
 	for _, test := range tests {
 		b := plan.NewBuilder()
-		applyClstrRsc := &resource.KubectlApply{ManifestPath: object.String("")}
+		applyClstrRsc := &capeiresource.KubectlApply{ManifestPath: object.String("")}
 		b.AddResource("kubectl:apply:cluster", applyClstrRsc)
-		applyMachinesRsc := &resource.KubectlApply{ManifestPath: object.String("")}
+		applyMachinesRsc := &capeiresource.KubectlApply{ManifestPath: object.String("")}
 		b.AddResource("kubectl:apply:machines", applyMachinesRsc)
-		err = configureFlux(b, SeedNodeParams{GitData: GitParams{GitURL: test.URL, GitBranch: test.branch, GitDeployKeyPath: test.deployKeyPath},
+		err = capeios.ConfigureFlux(b, capeios.SeedNodeParams{GitData: capeios.GitParams{GitURL: test.URL, GitBranch: test.branch, GitDeployKeyPath: test.deployKeyPath},
 			Namespace: "system"})
 		assert.NoError(t, err)
 		p, err := b.Plan()
@@ -129,16 +127,10 @@ func TestFlux(t *testing.T) {
 			assert.NotContains(t, rjson, test.notExp)
 			continue
 		}
-		mani, err := p.State().GetObject("install:flux:flux-00")
+		mani, err := p.State().GetObject("install:flux:main")
 		assert.NoError(t, err)
-		mf, ok := mani["manifest"]
+		_, ok := mani["manifest"]
 		assert.True(t, ok)
-		m := string(mf.([]byte)[:])
-		if test.expManifestText != "" {
-			assert.Contains(t, m, test.expManifestText)
-		} else {
-			assert.NotContains(t, m, test.notExpManifestText)
-		}
 	}
 }
 
@@ -375,24 +367,24 @@ spec:
 
 func TestFindDaemonSet(t *testing.T) {
 	// nil case
-	_, _, err := findDaemonSet(nil)
+	_, _, err := capeios.FindDaemonSet(nil)
 	assert.Error(t, err, "nil manifest list should fail")
 
 	// empty case
 	manifestList := &v1.List{}
-	_, _, err = findDaemonSet(manifestList)
+	_, _, err = capeios.FindDaemonSet(manifestList)
 	assert.Error(t, err, "empty manifest list should fail")
 
 	// invalid manifest case
 	err = yaml.Unmarshal([]byte(wrongManifestList), manifestList)
 	assert.NoError(t, err)
-	_, _, err = findDaemonSet(manifestList)
+	_, _, err = capeios.FindDaemonSet(manifestList)
 	assert.Error(t, err, "manifest list without a daemonset should fail")
 
 	// valid manifest case
 	err = yaml.Unmarshal([]byte(validManifestList), manifestList)
 	assert.NoError(t, err)
-	idx, _, err := findDaemonSet(manifestList)
+	idx, _, err := capeios.FindDaemonSet(manifestList)
 	// the daemonSet is found at the 2nd position in the list
 	assert.Equal(t, idx, 1)
 	assert.NoError(t, err)
@@ -403,7 +395,7 @@ func TestInjectEnvVarToContainer(t *testing.T) {
 	manifestList := &v1.List{}
 	err := yaml.Unmarshal([]byte(validManifestList), manifestList)
 	assert.NoError(t, err)
-	_, daemonSet, err := findDaemonSet(manifestList)
+	_, daemonSet, err := capeios.FindDaemonSet(manifestList)
 	assert.NoError(t, err)
 
 	// inject a new env var
@@ -412,11 +404,11 @@ func TestInjectEnvVarToContainer(t *testing.T) {
 		Value: "10.96.0.0/16",
 	}
 	// nil case
-	err = injectEnvVarToContainer(nil, "", *ipallocRange)
+	err = capeios.InjectEnvVarToContainer(nil, "", *ipallocRange)
 	assert.Error(t, err, "nil case should return error")
 
 	// valid case, env var should be contained in daemonset
-	err = injectEnvVarToContainer(daemonSet.Spec.Template.Spec.Containers, "weave", *ipallocRange)
+	err = capeios.InjectEnvVarToContainer(daemonSet.Spec.Template.Spec.Containers, "weave", *ipallocRange)
 	assert.NoError(t, err)
 	assert.True(t, strings.Contains(daemonSet.String(), "IPALLOC_RANGE"))
 
@@ -425,7 +417,7 @@ func TestInjectEnvVarToContainer(t *testing.T) {
 		Name:  "IPALLOC_RANGE",
 		Value: "172.20.0.0/23",
 	}
-	err = injectEnvVarToContainer(daemonSet.Spec.Template.Spec.Containers, "weave", *ipallocRange)
+	err = capeios.InjectEnvVarToContainer(daemonSet.Spec.Template.Spec.Containers, "weave", *ipallocRange)
 	assert.Error(t, err, "env var exists with different value, should fail")
 
 	// test with sample manifest with containers that don't include env
@@ -433,7 +425,7 @@ func TestInjectEnvVarToContainer(t *testing.T) {
 	err = yaml.Unmarshal([]byte(sampleDaemonSet), daemonSet)
 	assert.NoError(t, err)
 
-	err = injectEnvVarToContainer(daemonSet.Spec.Template.Spec.Containers, "fluentd-elasticsearch", *ipallocRange)
+	err = capeios.InjectEnvVarToContainer(daemonSet.Spec.Template.Spec.Containers, "fluentd-elasticsearch", *ipallocRange)
 	assert.NoError(t, err)
 	assert.True(t, strings.Contains(daemonSet.String(), "IPALLOC_RANGE"))
 }

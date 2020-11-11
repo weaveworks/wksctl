@@ -15,11 +15,12 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	capeiv1alpha3 "github.com/weaveworks/cluster-api-provider-existinginfra/apis/cluster.weave.works/v1alpha3"
+	existinginfrav1 "github.com/weaveworks/cluster-api-provider-existinginfra/apis/cluster.weave.works/v1alpha3"
+	capeimachine "github.com/weaveworks/cluster-api-provider-existinginfra/pkg/cluster/machine"
 	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/kubernetes"
 	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/plan/runners/ssh"
+	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/specs"
 	"github.com/weaveworks/wksctl/pkg/cluster/machine"
-	"github.com/weaveworks/wksctl/pkg/specs"
 	spawn "github.com/weaveworks/wksctl/test/integration/spawn"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -64,9 +65,9 @@ func setLabel(role role) string {
 	}
 }
 
-func appendMachine(t *testing.T, ordinal int, ml *[]*clusterv1.Machine, bl *[]*capeiv1alpha3.ExistingInfraMachine, clusterName, role role, publicIP, privateIP string) {
+func appendMachine(t *testing.T, ordinal int, ml *[]*clusterv1.Machine, bl *[]*existinginfrav1.ExistingInfraMachine, clusterName, role role, publicIP, privateIP string) {
 	name := generateName(role, ordinal)
-	spec := capeiv1alpha3.ExistingInfraMachine{
+	spec := existinginfrav1.ExistingInfraMachine{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "cluster.weave.works/v1alpha3",
 			Kind:       "ExistingInfraMachine",
@@ -74,12 +75,12 @@ func appendMachine(t *testing.T, ordinal int, ml *[]*clusterv1.Machine, bl *[]*c
 		ObjectMeta: metav1.ObjectMeta{
 			Name: name,
 		},
-		Spec: capeiv1alpha3.MachineSpec{
-			Public: capeiv1alpha3.EndPoint{
+		Spec: existinginfrav1.MachineSpec{
+			Public: existinginfrav1.EndPoint{
 				Address: publicIP,
 				Port:    22,
 			},
-			Private: capeiv1alpha3.EndPoint{
+			Private: existinginfrav1.EndPoint{
 				Address: privateIP,
 				Port:    22,
 			}},
@@ -119,7 +120,7 @@ func appendMachine(t *testing.T, ordinal int, ml *[]*clusterv1.Machine, bl *[]*c
 // numMachines is the number of machines to use. It can be less than the number
 // of provisionned terraform machines. -1 means use all machines setup by
 // terraform. The minimum number of machines to use is 2.
-func makeMachinesFromTerraform(t *testing.T, clusterName string, terraform *terraformOutput, numMachines int) (ml []*clusterv1.Machine, bl []*capeiv1alpha3.ExistingInfraMachine) {
+func makeMachinesFromTerraform(t *testing.T, clusterName string, terraform *terraformOutput, numMachines int) (ml []*clusterv1.Machine, bl []*existinginfrav1.ExistingInfraMachine) {
 	publicIPs := terraform.stringArrayVar(keyPublicIPs)
 	privateIPs := terraform.stringArrayVar(keyPrivateIPs)
 	assert.True(t, len(publicIPs) >= 2) // One master and at least one node
@@ -146,7 +147,7 @@ func makeMachinesFromTerraform(t *testing.T, clusterName string, terraform *terr
 	return ml, bl
 }
 
-func writeYamlManifests(t *testing.T, path string, machines []*clusterv1.Machine, bml []*capeiv1alpha3.ExistingInfraMachine) {
+func writeYamlManifests(t *testing.T, path string, machines []*clusterv1.Machine, bml []*existinginfrav1.ExistingInfraMachine) {
 	var buf bytes.Buffer
 	err := machine.WriteMachines(&buf, machines, bml)
 	assert.NoError(t, err)
@@ -157,7 +158,7 @@ func writeYamlManifests(t *testing.T, path string, machines []*clusterv1.Machine
 func numMasters(l []*clusterv1.Machine) int {
 	n := 0
 	for _, m := range l {
-		if machine.IsMaster(m) {
+		if capeimachine.IsMaster(m) {
 			n++
 		}
 	}
@@ -167,7 +168,7 @@ func numMasters(l []*clusterv1.Machine) int {
 func numWorkers(l []*clusterv1.Machine) int {
 	n := 0
 	for _, m := range l {
-		if machine.IsNode(m) {
+		if capeimachine.IsNode(m) {
 			n++
 		}
 	}
@@ -180,7 +181,7 @@ func setKubernetesVersion(l []*clusterv1.Machine, version string) {
 	}
 }
 
-func parseClusterManifest(t *testing.T, file string) (*clusterv1.Cluster, *capeiv1alpha3.ExistingInfraCluster) {
+func parseClusterManifest(t *testing.T, file string) (*clusterv1.Cluster, *existinginfrav1.ExistingInfraCluster) {
 	f, err := os.Open(file)
 	assert.NoError(t, err)
 	cluster, eiCluster, err := specs.ParseCluster(f)
@@ -393,7 +394,7 @@ func TestApply(t *testing.T) {
 	eiMachines[0].Spec.Private.Address = savedAddress
 
 	machinesManifestPath := configPath("machines.yaml")
-	_, m := machine.FirstMaster(machines, eiMachines)
+	_, m := capeimachine.FirstMaster(machines, eiMachines)
 	assert.NotNil(t, m)
 	ip := m.Spec.Public.Address
 	port := m.Spec.Public.Port
@@ -429,7 +430,7 @@ func TestApply(t *testing.T) {
 	// Install the Cluster.
 	run, err = apply(exe, "--cluster="+clusterManifestPath, "--machines="+machinesManifestPath,
 		"--config-directory="+configDir, "--sealed-secret-key="+configPath("ss.key"), "--sealed-secret-cert="+configPath("ss.cert"),
-		"--verbose=true", "--ssh-key="+sshKeyPath)
+		"--verbose=true", "--ssh-key="+sshKeyPath, "--controller-image=docker.io/weaveworks/cluster-api-existinginfra-controller:v0.0.8")
 	assert.NoError(t, err)
 	require.Equal(t, 0, run.ExitCode())
 
@@ -457,7 +458,7 @@ func TestApply(t *testing.T) {
 
 	//Test we have installed the specified version.
 	t.Run("KubernetesVersion", func(t *testing.T) {
-		testApplyKubernetesVersion(t, "1.16.11")
+		testApplyKubernetesVersion(t, "1.17.13")
 	})
 
 	// Test we can run kubectl against the cluster.

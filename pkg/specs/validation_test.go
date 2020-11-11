@@ -2,11 +2,11 @@ package specs
 
 import (
 	"io/ioutil"
-	"strings"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	capeiv1alpha3 "github.com/weaveworks/cluster-api-provider-existinginfra/apis/cluster.weave.works/v1alpha3"
+	existinginfrav1 "github.com/weaveworks/cluster-api-provider-existinginfra/apis/cluster.weave.works/v1alpha3"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"
 )
@@ -164,9 +164,9 @@ metadata:
 spec:
   user: "vagrant"
   authenticationWebhook:
-	cacheTTL: 2m0s
-	server:
-	  url: file:///127.0.0.1:5000/authenticate
+    cacheTTL: 2m0s
+    server:
+      url: file:///127.0.0.1:5000/authenticate
 `
 
 //nolint:unused
@@ -189,12 +189,12 @@ metadata:
 spec:
   user: "vagrant"
   authenticationWebhook:
-	cacheTTL: 2m0s
-	client:
-	  keyData: SGVsbG8sIFdvcmxkIQo=
-	server:
-	  url: https://127.0.0.1:5000/authenticate
-	  certificateAuthorityData: SGVsbG8sIFdvcmxkIQo=
+    cacheTTL: 2m0s
+    client:
+      keyData: SGVsbG8sIFdvcmxkIQo=
+    server:
+      url: https://127.0.0.1:5000/authenticate
+      certificateAuthorityData: SGVsbG8sIFdvcmxkIQo=
 `
 
 //nolint:unused
@@ -217,13 +217,13 @@ metadata:
 spec:
   user: "vagrant"
   authorizationWebhook:
-	cacheAuthorizedTTL: 5m0s
-	cacheUnauthorizedTTL: 30s
-	client:
-	  keyData: SGVsbG8sIFdvcmxkIQo=
-	  certificateData: SGVsbG8sIFdvcmxkIQo=
-	server:
-	  url: https://127.0.0.1:5000/authenticate
+    cacheAuthorizedTTL: 5m0s
+    cacheUnauthorizedTTL: 30s
+    client:
+      keyData: SGVsbG8sIFdvcmxkIQo=
+      certificateData: SGVsbG8sIFdvcmxkIQo=
+    server:
+      url: https://127.0.0.1:5000/authenticate
 `
 
 const ClusterAddonBadName = `
@@ -269,13 +269,19 @@ spec:
   user: "vagrant"
   addons:
   - name: kube-kerberos
-	params:
-	  keytab: /foo
+    params:
+      keytab: /foo
 `
 
-func clusterFromString(t *testing.T, s string) (*clusterv1.Cluster, *capeiv1alpha3.ExistingInfraCluster) {
-	r := ioutil.NopCloser(strings.NewReader(s))
-	cluster, eic, err := ParseCluster(r)
+func clusterFromString(t *testing.T, s string) (*clusterv1.Cluster, *existinginfrav1.ExistingInfraCluster) {
+	f, err := ioutil.TempFile("", "")
+	assert.NoError(t, err)
+	defer os.Remove(f.Name())
+	_, err = f.WriteString(s)
+	assert.NoError(t, err)
+	err = f.Close()
+	assert.NoError(t, err)
+	cluster, eic, err := ParseClusterManifest(f.Name())
 	assert.NoError(t, err)
 	return cluster, eic
 }

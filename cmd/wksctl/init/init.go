@@ -11,17 +11,15 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/pelletier/go-toml"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	wksos "github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/os"
+	capeios "github.com/weaveworks/cluster-api-provider-existinginfra/pkg/apis/wksprovider/machine/os"
 	"github.com/weaveworks/wksctl/pkg/specs"
 	"github.com/weaveworks/wksctl/pkg/utilities/manifest"
 	"github.com/weaveworks/wksctl/pkg/version"
 )
 
-// A command that initializes a user's cloned git repository with a correct image tag for wks-controller and
-// updated git information for flux manifests.
+// A command that initializes a user's cloned git repository with updated git information for flux manifests.
 
 type initOptionType struct {
 	dependencyPath       string
@@ -46,7 +44,7 @@ var (
 	Cmd = &cobra.Command{
 		Use:          "init",
 		Short:        "Update stored kubernetes manifests to match the local cluster environment",
-		Long:         "'wksctl init' configures existing kubernetes 'flux.yaml', 'wks-controller.yaml' and 'weave-net.yaml' manifests in a repository with information about the local GitOps repository, the preferred weave system namespace, and current container image tags. The files can be anywhere in the repository. If either file is absent, 'wksctl init' will return an error.",
+		Long:         "'wksctl init' configures existing kubernetes 'flux.yaml', and 'weave-net.yaml' manifests in a repository with information about the local GitOps repository, the preferred weave system namespace, and current container image tags. The files can be anywhere in the repository. If either file is absent, 'wksctl init' will return an error.",
 		Example:      "wksctl init --namespace=wksctl --git-url=git@github.com:haskellcurry/lambda.git --git-branch=development --git-path=src",
 		RunE:         initRun,
 		SilenceUsage: true,
@@ -56,7 +54,6 @@ var (
 
 	namespacePrefixPattern = "kind: Namespace\n  metadata:\n    name: "
 	namespaceNamePattern   = multiLineRegexp(namespacePrefixPattern + `\S+`)
-	controllerImageSegment = multiLineRegexp(`(image:\s*\S*[-]controller)(:\s*\S+)?`)
 	namespacePattern       = multiLineRegexp(`namespace:\s*\S+`)
 	gitURLPattern          = multiLineRegexp(`(--git-url)=\S+`)
 	gitBranchPattern       = multiLineRegexp(`(--git-branch)=\S+`)
@@ -64,10 +61,7 @@ var (
 
 	updates = []manifestUpdate{
 		{name: "weave-net", selector: equal("weave-net.yaml"), updater: updateWeaveNetManifests},
-		{name: "wks-controller", selector: equal("wks-controller.yaml"), updater: updateControllerManifests},
 		{name: "flux", selector: and(prefix("flux"), extension("yaml")), updater: updateFluxManifests}}
-
-	dependencies = &toml.Tree{}
 )
 
 func multiLineRegexp(pattern string) *regexp.Regexp {
@@ -84,8 +78,6 @@ func init() {
 	Cmd.Flags().StringVar(&initOptions.gitPath, "git-path", ".", "Relative path to files in Git")
 	Cmd.Flags().StringVar(
 		&initOptions.namespace, "namespace", manifest.DefaultNamespace, "namespace portion of kubeconfig path")
-	Cmd.Flags().StringVar(
-		&initOptions.version, "controller-version", version.Version, "version of wks-controller to use")
 	Cmd.Flags().StringVar(&initOptions.clusterManifestPath, "cluster", "cluster.yaml", "Location of cluster manifest")
 	Cmd.Flags().StringVar(&initOptions.machinesManifestPath, "machines", "machines.yaml", "Location of machines manifest")
 	Cmd.Flags().StringVar(
@@ -126,20 +118,6 @@ func updatedArg(item string) []byte {
 	return []byte(fmt.Sprintf("$1=%s", item))
 }
 
-func updateControllerManifests(contents []byte, options initOptionType) ([]byte, error) {
-	controllerVersion, ok := dependencies.Get("controller.version").(string)
-	if !ok {
-		controllerVersion = options.version
-	}
-	var withVersion []byte
-	if strings.Contains(controllerVersion, "/") {
-		withVersion = controllerImageSegment.ReplaceAll(contents, []byte(`image: `+controllerVersion))
-	} else {
-		withVersion = controllerImageSegment.ReplaceAll(contents, []byte(`$1:`+controllerVersion))
-	}
-	return withVersion, nil
-}
-
 func updateWeaveNetManifests(contents []byte, options initOptionType) ([]byte, error) {
 	clusterManifestPath := (path.Join(options.localRepoDirectory, options.clusterManifestPath))
 	machinesManifestPath := (path.Join(options.localRepoDirectory, options.machinesManifestPath))
@@ -149,7 +127,7 @@ func updateWeaveNetManifests(contents []byte, options initOptionType) ([]byte, e
 	if len(podsCIDRBlocks) > 0 && podsCIDRBlocks[0] != "" {
 		// setting the pod CIDR block is currently only supported for the weave-net CNI
 		log.Debug("Updating weave-net manifest.")
-		manifests, err := wksos.SetWeaveNetPodCIDRBlock([][]byte{contents}, podsCIDRBlocks[0])
+		manifests, err := capeios.SetWeaveNetPodCIDRBlock([][]byte{contents}, podsCIDRBlocks[0])
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to inject ipalloc_range")
 		}
@@ -200,8 +178,8 @@ func updateManifests(options initOptionType) error {
 			}
 			return nil
 		})
-	if !found["flux"] || !found["wks-controller"] {
-		return errors.New("Both 'flux.yaml' and 'wks-controller.yaml' must be present in the repository")
+	if !found["flux"] {
+		return errors.New("'flux.yaml' must be present in the repository")
 	}
 	return err
 }
@@ -209,14 +187,6 @@ func updateManifests(options initOptionType) error {
 func initRun(cmd *cobra.Command, args []string) error {
 	if initOptions.version == "" {
 		initOptions.version = version.Version // from main command
-	}
-	bytes, err := ioutil.ReadFile(initOptions.dependencyPath)
-	if err != nil {
-		return err
-	}
-	dependencies, err = toml.Load(string(bytes))
-	if err != nil {
-		return err
 	}
 	return updateManifests(initOptions)
 }

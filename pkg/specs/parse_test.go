@@ -3,7 +3,7 @@ package specs
 import (
 	"fmt"
 	"io/ioutil"
-	"strings"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -39,9 +39,21 @@ func mergeObjects(a string, b string) string {
 }
 
 func parseConfig(s string) (err error) {
-	r := ioutil.NopCloser(strings.NewReader(s))
-	_, _, err = ParseCluster(r)
-	return
+	f, err := ioutil.TempFile("", "")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(f.Name())
+	_, err = f.WriteString(s)
+	if err != nil {
+		return err
+	}
+	if err = f.Close(); err != nil {
+		return err
+	}
+
+	_, _, err = ParseClusterManifest(f.Name())
+	return err
 }
 
 func TestParseCluster(t *testing.T) {

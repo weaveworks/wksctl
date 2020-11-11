@@ -11,7 +11,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/plan"
 	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/plan/resource"
-	capeiresource "github.com/weaveworks/cluster-api-provider-existinginfra/pkg/plan/resource"
 	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/utilities/manifest"
 	"github.com/weaveworks/libgitops/pkg/serializer"
 )
@@ -94,7 +93,7 @@ func writeTempFile(ctx context.Context, r plan.Runner, c []byte, fname string) (
 	}
 	path := strings.Trim(pathDirty, "\n")
 
-	if err := capeiresource.WriteFile(ctx, c, path, 0660, r); err != nil {
+	if err := resource.WriteFile(ctx, c, path, 0660, r); err != nil {
 		// Try to delete the temp file.
 		if _, rmErr := r.RunCommand(ctx, fmt.Sprintf("rm -vf %q", path), nil); rmErr != nil {
 			log.WithField("path", path).Errorf("failed to clean up the temp file: %v", rmErr)

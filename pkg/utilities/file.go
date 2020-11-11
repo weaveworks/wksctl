@@ -46,3 +46,12 @@ func isDir(fname string) bool {
 	}
 	return false
 }
+
+// FileExists returns whether or not a filename corresponds to an actual file
+func FileExists(filename string) bool {
+	info, err := os.Stat(filename)
+	if os.IsNotExist(err) {
+		return false
+	}
+	return !info.IsDir()
+}

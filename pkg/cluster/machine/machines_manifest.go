@@ -7,7 +7,8 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/thanhpk/randstr"
-	capeiv1alpha3 "github.com/weaveworks/cluster-api-provider-existinginfra/apis/cluster.weave.works/v1alpha3"
+	existinginfra1 "github.com/weaveworks/cluster-api-provider-existinginfra/apis/cluster.weave.works/v1alpha3"
+	capeimachine "github.com/weaveworks/cluster-api-provider-existinginfra/pkg/cluster/machine"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"
 	"sigs.k8s.io/yaml"
 )
@@ -29,7 +30,7 @@ func GetMachinesManifest(path string) (string, error) {
 // Note that if the customer updates the manifest with their own names, we'll
 // honor those.
 func UpdateWithGeneratedNames(r io.ReadCloser) (string, error) {
-	machines, bml, err := Parse(r)
+	machines, bml, err := capeimachine.Parse(r)
 	if err != nil {
 		return "", err
 	}
@@ -55,7 +56,7 @@ func UpdateWithGeneratedNames(r io.ReadCloser) (string, error) {
 	return buf.String(), err
 }
 
-func WriteMachines(w io.Writer, machines []*clusterv1.Machine, bml []*capeiv1alpha3.ExistingInfraMachine) error {
+func WriteMachines(w io.Writer, machines []*clusterv1.Machine, bml []*existinginfra1.ExistingInfraMachine) error {
 	// Need to do this in a loop because we want a stream not an array
 	for _, machine := range machines {
 		manifestBytes, err := yaml.Marshal(machine)

@@ -2,13 +2,11 @@ package recipe
 
 import (
 	"fmt"
-	"io/ioutil"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/plan"
+	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/plan/resource"
 	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/utilities/object"
-	"github.com/weaveworks/wksctl/pkg/apis/wksprovider/controller/manifests"
-	"github.com/weaveworks/wksctl/pkg/plan/resource"
 )
 
 // BuildConfigMapPlan creates a plan to handle config maps
@@ -18,64 +16,6 @@ func BuildConfigMapPlan(manifests map[string][]byte, namespace string) plan.Reso
 		remoteName := fmt.Sprintf("config-map-%s", name)
 		b.AddResource("install:"+remoteName, &resource.KubectlApply{Filename: object.String(remoteName), Manifest: manifest, Namespace: object.String(namespace)})
 	}
-	p, err := b.Plan()
-	if err != nil {
-		log.Fatalf("%v", err)
-	}
-	return &p
-}
-
-// BuildCNIPlan creates a sub-plan to install the CNI plugin.
-func BuildCNIPlan(cni string, manifests [][]byte) plan.Resource {
-	b := plan.NewBuilder()
-
-	b.AddResource(
-		"install-cni:apply-manifests",
-		&resource.KubectlApply{Manifest: manifests[0], Filename: object.String(cni + ".yaml")},
-	)
-	if len(manifests) == 2 {
-		b.AddResource(
-			"install-cni:apply-manifests-ds",
-			&resource.KubectlApply{Manifest: manifests[1], Filename: object.String(cni + "-daemon-set" + ".yaml")},
-			plan.DependOn("install-cni:apply-manifests"))
-	}
-
-	p, err := b.Plan()
-	if err != nil {
-		log.Fatalf("%v", err)
-	}
-	return &p
-}
-
-//BuildSealedSecretPlan creates a sub-plan to install sealed secrets so we can check secrets into GitHub for GitOps
-func BuildSealedSecretPlan(sealedSecretVersion, ns string, manifest []byte) plan.Resource {
-	b := plan.NewBuilder()
-	fileCRD, err := manifests.Manifests.Open("05_sealed_secret_crd.yaml")
-	if err != nil {
-		log.Fatalf("%v", err)
-	}
-	manifestbytesCRD, err := ioutil.ReadAll(fileCRD)
-	if err != nil {
-		log.Fatalf("%v", err)
-	}
-
-	b.AddResource("install:sealed-secret-crd",
-		&resource.KubectlApply{Manifest: manifestbytesCRD, Filename: object.String("SealedSecretCRD.yaml"),
-			WaitCondition: "condition=Established"})
-
-	b.AddResource("install:sealed-secrets-key", &resource.KubectlApply{Manifest: manifest})
-	file, err := manifests.Manifests.Open("06_sealed_secret_controller.yaml")
-	if err != nil {
-		log.Fatalf("%v", err)
-	}
-	manifestbytes, err := ioutil.ReadAll(file)
-	if err != nil {
-		log.Fatalf("%v", err)
-	}
-
-	b.AddResource("install:sealed-secrets-controller",
-		&resource.KubectlApply{Manifest: manifestbytes, Filename: object.String("SealedSecretController.yaml")},
-		plan.DependOn("install:sealed-secrets-key"))
 	p, err := b.Plan()
 	if err != nil {
 		log.Fatalf("%v", err)

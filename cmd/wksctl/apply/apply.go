@@ -1,22 +1,30 @@
 package apply
 
 import (
+	"bytes"
 	"context"
+	"io/ioutil"
 	"path/filepath"
 	"strings"
 
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	existinginfrav1 "github.com/weaveworks/cluster-api-provider-existinginfra/apis/cluster.weave.works/v1alpha3"
 	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/apis/wksprovider/machine/config"
 	capeios "github.com/weaveworks/cluster-api-provider-existinginfra/pkg/apis/wksprovider/machine/os"
+	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/scheme"
+	capeispecs "github.com/weaveworks/cluster-api-provider-existinginfra/pkg/specs"
 	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/utilities/kubeadm"
+	"github.com/weaveworks/libgitops/pkg/serializer"
 	"github.com/weaveworks/wksctl/pkg/addons"
 	wksos "github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/os"
 	"github.com/weaveworks/wksctl/pkg/manifests"
 	"github.com/weaveworks/wksctl/pkg/plan/runners/ssh"
 	"github.com/weaveworks/wksctl/pkg/specs"
+	"github.com/weaveworks/wksctl/pkg/utilities"
 	"github.com/weaveworks/wksctl/pkg/utilities/manifest"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"
 )
 
 // Cmd represents the apply command
@@ -96,6 +104,22 @@ func (a *Applier) Apply(ctx context.Context) error {
 	return a.initiateCluster(ctx, clusterPath, machinesPath)
 }
 
+// parseCluster converts the manifest file into a Cluster
+func parseCluster(clusterManifest []byte) (c *clusterv1.Cluster, eic *existinginfrav1.ExistingInfraCluster, err error) {
+	return capeispecs.ParseCluster(ioutil.NopCloser(bytes.NewReader(clusterManifest)))
+}
+
+func unparseCluster(c *clusterv1.Cluster, eic *existinginfrav1.ExistingInfraCluster) ([]byte, error) {
+	var buf bytes.Buffer
+	s := serializer.NewSerializer(scheme.Scheme, nil)
+	fw := serializer.NewYAMLFrameWriter(&buf)
+	err := s.Encoder().Encode(fw, c, eic)
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
 func (a *Applier) initiateCluster(ctx context.Context, clusterManifestPath, machinesManifestPath string) error {
 	sp := specs.NewFromPaths(clusterManifestPath, machinesManifestPath)
 	sshClient, err := ssh.NewClientForMachine(sp.MasterSpec, sp.ClusterSpec.User, a.Params.sshKeyPath, log.GetLevel() > log.InfoLevel)
@@ -156,31 +180,68 @@ func (a *Applier) initiateCluster(ctx context.Context, clusterManifestPath, mach
 		}
 	}
 
-	if err := wksos.SetupSeedNode(ctx, installer, wksos.SeedNodeParams{
+	clusterManifest, err := ioutil.ReadFile(clusterManifestPath)
+	if err != nil {
+		return errors.Wrap(err, "failed to read cluster manifest: ")
+	}
+
+	// Read manifests and pass in the contents
+	cluster, eic, err := parseCluster(clusterManifest)
+	if err != nil {
+		return errors.Wrap(err, "failed to parse cluster manifest: ")
+	}
+
+	eic.Spec.DeprecatedSSHKeyPath = a.Params.sshKeyPath
+	clusterManifest, err = unparseCluster(cluster, eic)
+	if err != nil {
+		return errors.Wrap(err, "failed to annotate cluster manifest: ")
+	}
+
+	machinesManifest, err := ioutil.ReadFile(machinesManifestPath)
+	if err != nil {
+		return errors.Wrap(err, "failed to read machines manifest: ")
+	}
+
+	// Read sealed secret cert and key
+	var cert []byte
+	var key []byte
+	if utilities.FileExists(a.Params.sealedSecretCertPath) && utilities.FileExists(sealedSecretKeyPath) {
+		cert, err = ioutil.ReadFile(a.Params.sealedSecretCertPath)
+		if err != nil {
+			return errors.Wrap(err, "failed to read sealed secret certificate: ")
+		}
+
+		key, err = ioutil.ReadFile(sealedSecretKeyPath)
+		if err != nil {
+			return errors.Wrap(err, "failed to read sealed secret key: ")
+		}
+	}
+
+	if err := wksos.SetupSeedNode(installer, capeios.SeedNodeParams{
 		PublicIP:             sp.GetMasterPublicAddress(),
 		PrivateIP:            sp.GetMasterPrivateAddress(),
 		ServicesCIDRBlocks:   sp.Cluster.Spec.ClusterNetwork.Services.CIDRBlocks,
 		PodsCIDRBlocks:       sp.Cluster.Spec.ClusterNetwork.Pods.CIDRBlocks,
-		ClusterManifestPath:  clusterManifestPath,
-		MachinesManifestPath: machinesManifestPath,
-		SSHKeyPath:           a.Params.sshKeyPath,
+		ExistingInfraCluster: *eic,
+		ClusterManifest:      string(clusterManifest),
+		MachinesManifest:     string(machinesManifest),
 		BootstrapToken:       token,
 		KubeletConfig: config.KubeletConfig{
 			NodeIP:         sp.GetMasterPrivateAddress(),
 			CloudProvider:  sp.GetCloudProvider(),
 			ExtraArguments: sp.GetKubeletArguments(),
 		},
-		Controller: wksos.ControllerParams{
+		Controller: capeios.ControllerParams{
 			ImageOverride: controllerImage,
 		},
-		GitData: wksos.GitParams{
+		GitData: capeios.GitParams{
 			GitURL:           a.Params.gitURL,
 			GitBranch:        a.Params.gitBranch,
 			GitPath:          a.Params.gitPath,
 			GitDeployKeyPath: a.Params.gitDeployKeyPath,
 		},
-		SealedSecretKeyPath:  sealedSecretKeyPath,
-		SealedSecretCertPath: a.Params.sealedSecretCertPath,
+		SealedSecretKey:      string(key),
+		SealedSecretCert:     string(cert),
 		ConfigDirectory:      configDir,
 		ImageRepository:      sp.ClusterSpec.ImageRepository,
 		ControlPlaneEndpoint: sp.ClusterSpec.ControlPlaneEndpoint,

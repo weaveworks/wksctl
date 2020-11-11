@@ -5,7 +5,7 @@ package scripts
 import (
 	"net/http"
 
-	"github.com/weaveworks/wksctl/pkg/utilities/fixeddate"
+	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/utilities/fixeddate"
 )
 
 // Scripts contains all operating systems' scripts.
