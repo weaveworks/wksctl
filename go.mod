@@ -12,7 +12,6 @@ require (
 	github.com/google/go-jsonnet v0.16.0
 	github.com/googleapis/gnostic v0.4.1 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.1 // indirect
-	github.com/pelletier/go-toml v1.8.0
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.5.1 // indirect
 	github.com/shurcooL/vfsgen v0.0.0-20200824052919-0d455de96546
@@ -21,7 +20,7 @@ require (
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.6.1
 	github.com/thanhpk/randstr v1.0.4
-	github.com/weaveworks/cluster-api-provider-existinginfra v0.0.8-0.20201111104902-14c5da75aade
+	github.com/weaveworks/cluster-api-provider-existinginfra v0.0.8
 	github.com/weaveworks/footloose v0.0.0-20200918140536-ff126705213e
 	github.com/weaveworks/go-checkpoint v0.0.0-20170503165305-ebbb8b0518ab
 	github.com/weaveworks/launcher v0.0.0-20180824102238-59a4fcc32c9c
