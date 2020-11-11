@@ -21,7 +21,7 @@ k8s.gcr.io/kube-controller-manager:v1.17.13
 k8s.gcr.io/kube-scheduler:v1.17.13
 k8s.gcr.io/kube-proxy:v1.17.13
 k8s.gcr.io/pause:3.1
-k8s.gcr.io/etcd:3.3.15-0
+k8s.gcr.io/etcd:3.4.3-0
 k8s.gcr.io/coredns:1.6.5
 k8s.gcr.io/kube-apiserver:v1.19.3
 k8s.gcr.io/kube-controller-manager:v1.19.3
