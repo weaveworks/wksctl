@@ -147,20 +147,22 @@ func Merge(existing *clientcmdapi.Config, tomerge *clientcmdapi.Config) *clientc
 
 // RenameConfig renames the default cluster and context names to the values from cluster.yaml
 func RenameConfig(sp *specs.Specs, newConfig *clientcmdapi.Config) {
+	name := fmt.Sprintf("wks-%s", sp.GetClusterName())
+
 	log.Debug("Renaming cluster")
-	newConfig.Clusters[sp.GetClusterName()] = newConfig.Clusters[DefaultClusterName]
+	newConfig.Clusters[name] = newConfig.Clusters[DefaultClusterName]
 	delete(newConfig.Clusters, DefaultClusterName)
 
 	log.Debug("Renaming user")
-	newConfig.AuthInfos[sp.GetClusterName()] = newConfig.AuthInfos[DefaultClusterAdminName]
+	newConfig.AuthInfos[name] = newConfig.AuthInfos[DefaultClusterAdminName]
 	delete(newConfig.AuthInfos, DefaultClusterAdminName)
 
 	log.Debug("Renaming context")
-	newConfig.Contexts[sp.GetClusterName()] = newConfig.Contexts[DefaultContextName]
-	newConfig.Contexts[sp.GetClusterName()].Cluster = sp.GetClusterName()
-	newConfig.Contexts[sp.GetClusterName()].AuthInfo = sp.GetClusterName()
+	newConfig.Contexts[name] = newConfig.Contexts[DefaultContextName]
+	newConfig.Contexts[name].Cluster = name
+	newConfig.Contexts[name].AuthInfo = name
 	delete(newConfig.Contexts, DefaultContextName)
 
 	log.Debug("Renaming current context")
-	newConfig.CurrentContext = sp.GetClusterName()
+	newConfig.CurrentContext = name
 }
