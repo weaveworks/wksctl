@@ -151,12 +151,15 @@ func RenameConfig(sp *specs.Specs, newConfig *clientcmdapi.Config) {
 	newConfig.Clusters[sp.GetClusterName()] = newConfig.Clusters[DefaultClusterName]
 	delete(newConfig.Clusters, DefaultClusterName)
 
+	log.Debug("Renaming user")
+	newConfig.AuthInfos[sp.GetClusterName()] = newConfig.AuthInfos[DefaultClusterAdminName]
+	delete(newConfig.AuthInfos, DefaultClusterAdminName)
+
 	log.Debug("Renaming context")
-	newContextName := fmt.Sprintf("%s@%s", DefaultClusterAdminName, sp.GetClusterName())
-	newConfig.Contexts[newContextName] = newConfig.Contexts[DefaultContextName]
-	newConfig.Contexts[newContextName].Cluster = sp.GetClusterName()
+	newConfig.Contexts[sp.GetClusterName()] = newConfig.Contexts[DefaultContextName]
+	newConfig.Contexts[sp.GetClusterName()].Cluster = sp.GetClusterName()
 	delete(newConfig.Contexts, DefaultContextName)
 
 	log.Debug("Renaming current context")
-	newConfig.CurrentContext = newContextName
+	newConfig.CurrentContext = sp.GetClusterName()
 }
