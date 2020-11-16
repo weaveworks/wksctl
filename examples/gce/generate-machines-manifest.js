@@ -41,6 +41,7 @@ const Machine = (instance, role) => ({
     },
   },
   spec: {
+    bootstrap: {},
     clusterName: 'example-gce',
     infrastructureRef: {
       apiVersion: 'cluster.weave.works/v1alpha3',
