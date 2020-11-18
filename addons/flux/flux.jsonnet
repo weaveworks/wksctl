@@ -47,7 +47,7 @@ function(
       },
       image: {
         repo: 'fluxcd/flux',
-        version: '1.13.3',
+        version: '1.21.0',
       },
     },
     memcached: {
