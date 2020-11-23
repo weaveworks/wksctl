@@ -58,6 +58,52 @@ resource "google_compute_instance" "tf_test_vm" {
   timeouts {
     delete = "10m"
   }
+
+  depends_on = ["google_compute_firewall.fw-allow-ping-and-ssh"]
+}
+
+resource "google_compute_firewall" "fw-allow-ping-and-ssh" {
+  name        = "${var.name}-allow-ping-and-ssh"
+  network     = "${var.gcp_network}"
+  target_tags = ["${var.name}"]
+
+  allow {
+    protocol = "tcp"
+    ports    = ["22"]
+  }
+
+  allow {
+    protocol = "icmp"
+  }
+
+  source_ranges = ["${var.client_ip}"]
+}
+
+resource "google_compute_firewall" "fw-allow-internal" {
+  name        = "${var.name}-allow-internal"
+  network     = "${var.gcp_network}"
+  target_tags = ["${var.name}"]
+
+  allow {
+    protocol = "tcp"
+    ports    = ["22"]
+  }
+
+  allow {
+    protocol = "tcp"
+    ports    = ["1024-65535"]
+  }
+
+  allow {
+    protocol = "udp"
+    ports    = ["1024-65535"]
+  }
+
+  allow {
+    protocol = "icmp"
+  }
+
+  source_ranges = ["${var.gcp_network_global_cidr}"]
 }
 
 resource "google_compute_firewall" "fw-allow-docker-and-weave" {
