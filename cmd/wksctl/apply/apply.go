@@ -13,6 +13,7 @@ import (
 	existinginfrav1 "github.com/weaveworks/cluster-api-provider-existinginfra/apis/cluster.weave.works/v1alpha3"
 	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/apis/wksprovider/machine/config"
 	capeios "github.com/weaveworks/cluster-api-provider-existinginfra/pkg/apis/wksprovider/machine/os"
+	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/cluster/machine"
 	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/scheme"
 	capeispecs "github.com/weaveworks/cluster-api-provider-existinginfra/pkg/specs"
 	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/utilities/kubeadm"
@@ -186,20 +187,30 @@ func (a *Applier) initiateCluster(ctx context.Context, clusterManifestPath, mach
 	}
 
 	// Read manifests and pass in the contents
+	machinesManifest, err := ioutil.ReadFile(machinesManifestPath)
+	if err != nil {
+		return errors.Wrap(err, "failed to read machines manifest: ")
+	}
+
 	cluster, eic, err := parseCluster(clusterManifest)
 	if err != nil {
 		return errors.Wrap(err, "failed to parse cluster manifest: ")
+	}
+
+	// Allow for versions to be on machines only (for now)
+	if eic.Spec.KubernetesVersion == "" {
+		machines, _, err := machine.Parse(ioutil.NopCloser(bytes.NewReader(machinesManifest)))
+		if err != nil {
+			return errors.Wrap(err, "failed to parse machine manifest: ")
+		}
+
+		eic.Spec.KubernetesVersion = *machines[0].Spec.Version
 	}
 
 	eic.Spec.DeprecatedSSHKeyPath = a.Params.sshKeyPath
 	clusterManifest, err = unparseCluster(cluster, eic)
 	if err != nil {
 		return errors.Wrap(err, "failed to annotate cluster manifest: ")
-	}
-
-	machinesManifest, err := ioutil.ReadFile(machinesManifestPath)
-	if err != nil {
-		return errors.Wrap(err, "failed to read machines manifest: ")
 	}
 
 	// Read sealed secret cert and key
