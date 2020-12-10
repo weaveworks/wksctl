@@ -265,7 +265,7 @@ items:
                 readOnly: false
         hostNetwork: true
         dnsPolicy: ClusterFirstWithHostNet
-        hostPID: true
+        hostPID: false
         restartPolicy: Always
         securityContext:
           seLinuxOptions: {}
