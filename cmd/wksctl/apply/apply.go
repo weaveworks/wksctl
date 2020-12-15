@@ -259,6 +259,7 @@ func (a *Applier) initiateCluster(ctx context.Context, clusterManifestPath, mach
 		AdditionalSANs:       sp.ClusterSpec.APIServer.AdditionalSANs,
 		Namespace:            ns,
 		AddonNamespaces:      addonNamespaces,
+		Flavor:               sp.ClusterSpec.Flavor,
 	}); err != nil {
 		return errors.Wrapf(err, "failed to set up seed node (%s)", sp.GetMasterPublicAddress())
 	}
