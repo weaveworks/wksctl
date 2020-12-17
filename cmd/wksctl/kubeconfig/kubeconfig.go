@@ -79,16 +79,19 @@ func kubeconfigRun(cmd *cobra.Command, args []string) error {
 	// TODO: deduplicate clusterPath/machinesPath evaluation between here and cmd/wksctl/apply
 	// https://github.com/weaveworks/wksctl/issues/58
 	if kubeconfigOptions.gitURL == "" {
-		// Check for cluster.yaml and machines.yaml paths
-		if _, err := os.Stat(kubeconfigOptions.clusterManifestPath); os.IsNotExist(err) {
-			kubeconfigOptions.clusterManifestPath = "./setup/cluster.yaml"
-		}
-
-		if _, err := os.Stat(kubeconfigOptions.machinesManifestPath); os.IsNotExist(err) {
-			kubeconfigOptions.machinesManifestPath = "./setup/machines.yaml"
-		}
 		// Cluster and Machine manifests come from the local filesystem.
 		clusterPath, machinesPath = kubeconfigOptions.clusterManifestPath, kubeconfigOptions.machinesManifestPath
+		// Check for cluster.yaml and machines.yaml paths
+		if clusterPath == "cluster.yaml" {
+			if _, err := os.Stat(kubeconfigOptions.clusterManifestPath); os.IsNotExist(err) {
+				clusterPath = "./setup/cluster.yaml"
+			}
+		}
+		if machinesPath == "machines.yaml" {
+			if _, err := os.Stat(kubeconfigOptions.machinesManifestPath); os.IsNotExist(err) {
+				machinesPath = "./setup/machines.yaml"
+			}
+		}
 	} else {
 		// Cluster and Machine manifests come from a Git repo that we'll clone for the duration of this command.
 		repo, err := manifests.CloneClusterAPIRepo(kubeconfigOptions.gitURL, kubeconfigOptions.gitBranch, kubeconfigOptions.gitDeployKeyPath, kubeconfigOptions.gitPath)
@@ -128,11 +131,6 @@ func writeKubeconfig(ctx context.Context, cpath, mpath string) error {
 		configPath = path.Kubeconfig(wksHome, kubeconfigOptions.namespace, sp.GetClusterName())
 	} else {
 		configPath = clientcmd.RecommendedHomeFile
-	}
-
-	// Check for cluster-key in repo
-	if _, err := os.Stat(kubeconfigOptions.sshKeyPath); os.IsNotExist(err) {
-		kubeconfigOptions.sshKeyPath = "./setup/cluster-key"
 	}
 
 	configStr, err := config.GetRemoteKubeconfig(ctx, sp, kubeconfigOptions.sshKeyPath, kubeconfigOptions.verbose, kubeconfigOptions.skipTLSVerify)
