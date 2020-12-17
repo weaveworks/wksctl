@@ -82,12 +82,10 @@ func kubeconfigRun(cmd *cobra.Command, args []string) error {
 		// Cluster and Machine manifests come from the local filesystem.
 		clusterPath, machinesPath = kubeconfigOptions.clusterManifestPath, kubeconfigOptions.machinesManifestPath
 		// Check for cluster.yaml and machines.yaml paths
-		if clusterPath == "cluster.yaml" {
+		if clusterPath == "cluster.yaml" && machinesPath == "machines.yaml" {
 			if _, err := os.Stat(kubeconfigOptions.clusterManifestPath); os.IsNotExist(err) {
 				clusterPath = "./setup/cluster.yaml"
 			}
-		}
-		if machinesPath == "machines.yaml" {
 			if _, err := os.Stat(kubeconfigOptions.machinesManifestPath); os.IsNotExist(err) {
 				machinesPath = "./setup/machines.yaml"
 			}
