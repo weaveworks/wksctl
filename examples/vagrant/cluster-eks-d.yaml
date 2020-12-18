@@ -28,6 +28,10 @@ spec:
     package: docker-ce
     version: 19.03.8
   kubernetesVersion: 1.18.9
+  flavor:
+    name: eks-d
+    manifestURL: https://distro.eks.amazonaws.com/kubernetes-1-18/kubernetes-1-18-eks-1.yaml
+  cni: 'kubectl create -f https://raw.githubusercontent.com/cilium/cilium/v1.9/install/kubernetes/quick-install.yaml'
   os:
     files:
     - destination: /etc/yum.repos.d/kubernetes.repo
