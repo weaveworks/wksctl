@@ -14,10 +14,8 @@ import (
 	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/apis/wksprovider/machine/config"
 	capeios "github.com/weaveworks/cluster-api-provider-existinginfra/pkg/apis/wksprovider/machine/os"
 	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/cluster/machine"
-	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/scheme"
 	capeispecs "github.com/weaveworks/cluster-api-provider-existinginfra/pkg/specs"
 	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/utilities/kubeadm"
-	"github.com/weaveworks/libgitops/pkg/serializer"
 	"github.com/weaveworks/wksctl/pkg/addons"
 	wksos "github.com/weaveworks/wksctl/pkg/apis/wksprovider/machine/os"
 	"github.com/weaveworks/wksctl/pkg/manifests"
@@ -110,17 +108,6 @@ func parseCluster(clusterManifest []byte) (c *clusterv1.Cluster, eic *existingin
 	return capeispecs.ParseCluster(ioutil.NopCloser(bytes.NewReader(clusterManifest)))
 }
 
-func unparseCluster(c *clusterv1.Cluster, eic *existinginfrav1.ExistingInfraCluster) ([]byte, error) {
-	var buf bytes.Buffer
-	s := serializer.NewSerializer(scheme.Scheme, nil)
-	fw := serializer.NewYAMLFrameWriter(&buf)
-	err := s.Encoder().Encode(fw, c, eic)
-	if err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
-}
-
 func (a *Applier) initiateCluster(ctx context.Context, clusterManifestPath, machinesManifestPath string) error {
 	sp := specs.NewFromPaths(clusterManifestPath, machinesManifestPath)
 	sshClient, err := ssh.NewClientForMachine(sp.MasterSpec, sp.ClusterSpec.User, a.Params.sshKeyPath, log.GetLevel() > log.InfoLevel)
@@ -208,7 +195,7 @@ func (a *Applier) initiateCluster(ctx context.Context, clusterManifestPath, mach
 	}
 
 	eic.Spec.DeprecatedSSHKeyPath = a.Params.sshKeyPath
-	clusterManifest, err = unparseCluster(cluster, eic)
+	clusterManifest, err = wksos.UnparseCluster(cluster, eic)
 	if err != nil {
 		return errors.Wrap(err, "failed to annotate cluster manifest: ")
 	}
