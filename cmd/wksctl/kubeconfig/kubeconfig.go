@@ -56,7 +56,7 @@ func init() {
 		"Branch within git repo containing your cluster and machine information")
 	Cmd.Flags().StringVar(&kubeconfigOptions.gitPath, "git-path", ".", "Relative path to files in Git")
 	Cmd.Flags().StringVar(&kubeconfigOptions.gitDeployKeyPath, "git-deploy-key", "", "Path to the Git deploy key")
-	Cmd.Flags().StringVar(&kubeconfigOptions.sshKeyPath, "ssh-key", "./setup/cluster-key", "Path to a key authorized to log in to machines by SSH")
+	Cmd.Flags().StringVar(&kubeconfigOptions.sshKeyPath, "ssh-key", "cluster-key", "Path to a key authorized to log in to machines by SSH")
 	Cmd.Flags().StringVar(
 		&kubeconfigOptions.artifactDirectory, "artifact-directory", "", "Write output files in the specified directory")
 	Cmd.Flags().StringVar(
