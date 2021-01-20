@@ -64,6 +64,6 @@ Flags:
       --namespace string            namespace override for WKS components (default "weavek8sops")
       --sealed-secret-cert string   Path to a certificate used to encrypt sealed secrets
       --sealed-secret-key string    Path to a key used to decrypt sealed secrets
-      --ssh-key string              Path to a key authorized to log in to machines by SSH (default "./cluster-key")
+      --ssh-key string              Path to a key authorized to log in to machines by SSH (default "./setup/cluster-key")
       --use-manifest-namespace      use namespaces from supplied manifests (overriding any --namespace argument)
 ```
