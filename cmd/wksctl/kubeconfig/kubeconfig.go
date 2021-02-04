@@ -2,7 +2,9 @@ package kubeconfig
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	log "github.com/sirupsen/logrus"
 	"path/filepath"
 
 	"github.com/pkg/errors"
@@ -74,6 +76,10 @@ func init() {
 
 func kubeconfigRun(cmd *cobra.Command, args []string) error {
 	var clusterPath, machinesPath string
+
+	log.Debug("Args",args)
+	bts, _ := json.Marshal(kubeconfigOptions)
+	log.Debug("kubeconfigOptions", string(bts))
 
 	// TODO: deduplicate clusterPath/machinesPath evaluation between here and cmd/wksctl/apply
 	// https://github.com/weaveworks/wksctl/issues/58
