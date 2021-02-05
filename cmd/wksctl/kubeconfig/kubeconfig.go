@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	log "github.com/sirupsen/logrus"
+	"os"
 	"path/filepath"
 
 	"github.com/pkg/errors"
@@ -76,6 +77,8 @@ func init() {
 
 func kubeconfigRun(cmd *cobra.Command, args []string) error {
 	var clusterPath, machinesPath string
+
+	log.SetOutput(os.Stdout)
 
 	log.Debug("Args",args)
 	bts, _ := json.Marshal(kubeconfigOptions)
