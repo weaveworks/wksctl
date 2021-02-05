@@ -78,9 +78,9 @@ func init() {
 func kubeconfigRun(cmd *cobra.Command, args []string) error {
 	var clusterPath, machinesPath string
 
-	log.SetOutput(os.Stdout)
+	log.SetOutput(os.Stderr)
 
-	log.Debug("Args",args)
+	log.Debug("Args", args)
 	bts, _ := json.Marshal(kubeconfigOptions)
 	log.Debug("kubeconfigOptions", string(bts))
 
