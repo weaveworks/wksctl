@@ -17,6 +17,7 @@ Vagrant.configure("2") do |config|
             end
 
             config.vm.network :private_network, ip: "172.17.8.#{i+100}"
+            config.vm.network "forwarded_port", guest: 6443, host: 6443, auto_correct: true
             # The below line is required for Weave Net to reach the API server
             # in order to get the list of peers. Without it, worker nodes never
             # become "Ready".
