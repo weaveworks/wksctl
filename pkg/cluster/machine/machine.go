@@ -6,7 +6,7 @@ import (
 	"github.com/blang/semver"
 	existinginfra1 "github.com/weaveworks/cluster-api-provider-existinginfra/apis/cluster.weave.works/v1alpha3"
 	capeimachine "github.com/weaveworks/cluster-api-provider-existinginfra/pkg/cluster/machine"
-	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/kubernetes"
+	"github.com/weaveworks/wksctl/pkg/kubernetes"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"
 )
