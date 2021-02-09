@@ -3,6 +3,7 @@
 /rpm/output
 /test/resource/tests
 /test/integration/test/kubectl
+/.idea
 
 # Ignore generated binaries:
 /cmd/controller/controller
