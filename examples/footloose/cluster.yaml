@@ -18,7 +18,7 @@ spec:
 apiVersion: cluster.weave.works/v1alpha3
 kind: ExistingInfraCluster
 metadata:
-  name: example
+  name: example-provider
 spec:
   user: root
   controlPlaneMachineCount: "1"

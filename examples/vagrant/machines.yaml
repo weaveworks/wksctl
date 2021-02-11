@@ -5,6 +5,9 @@ metadata:
     set: master
   name: master-v5n5l
 spec:
+  clusterName: example
+  bootstrap: {}
+  version: 1.18.9
   infrastructureRef:
     apiVersion: cluster.weave.works/v1alpha3
     kind: ExistingInfraMachine
@@ -29,6 +32,9 @@ metadata:
     set: worker
   name: worker-tsb5q
 spec:
+  clusterName: example
+  bootstrap: {}
+  version: 1.18.9
   infrastructureRef:
     apiVersion: cluster.weave.works/v1alpha3
     kind: ExistingInfraMachine

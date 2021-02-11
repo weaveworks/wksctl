@@ -1,6 +1,7 @@
 package os
 
 import (
+	"bytes"
 	"context"
 	"crypto/rsa"
 	"encoding/base64"
@@ -27,6 +28,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/client-go/util/keyutil"
+	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"
 	"sigs.k8s.io/yaml"
 )
 
@@ -64,18 +66,40 @@ func SetupSeedNode(o *capeios.OS, params capeios.SeedNodeParams) error {
 	return capeios.ApplyPlan(ctx, o, p)
 }
 
+func UnparseCluster(c *clusterv1.Cluster, eic *existinginfrav1.ExistingInfraCluster) ([]byte, error) {
+	var buf bytes.Buffer
+	s := serializer.NewSerializer(scheme.Scheme, nil)
+	fw := serializer.NewYAMLFrameWriter(&buf)
+	err := s.Encoder().Encode(fw, c, eic)
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
 // createMachinePoolInfo turns the specified machines into a connection pool
 // that can be used to contact the machines
 func createMachinePoolInfo(params capeios.SeedNodeParams) (capeios.SeedNodeParams, error) {
-	_, eic, err := specs.ParseCluster(ioutil.NopCloser(strings.NewReader(params.ClusterManifest)))
+	c, eic, err := specs.ParseCluster(ioutil.NopCloser(strings.NewReader(params.ClusterManifest)))
 	if err != nil {
 		return capeios.SeedNodeParams{}, err
 	}
+	eic.Spec.DeprecatedSSHKeyPath = ""
+	unparsed, err := UnparseCluster(c, eic)
+	if err != nil {
+		return capeios.SeedNodeParams{}, err
+	}
+	params.ClusterManifest = string(unparsed)
+
 	_, eims, err := machine.Parse(ioutil.NopCloser(strings.NewReader(params.MachinesManifest)))
 	if err != nil {
 		return capeios.SeedNodeParams{}, err
 	}
-	sshKey, err := ioutil.ReadFile(eic.Spec.DeprecatedSSHKeyPath)
+	keyPath := params.ExistingInfraCluster.Spec.DeprecatedSSHKeyPath
+	// we want this to match future plans to avoid spurious repaves; normal node plan creation
+	// doesn't place a value in DeprecatedSSHKeyPath
+	params.ExistingInfraCluster.Spec.DeprecatedSSHKeyPath = ""
+	sshKey, err := ioutil.ReadFile(keyPath)
 	if err != nil {
 		return capeios.SeedNodeParams{}, err
 	}
