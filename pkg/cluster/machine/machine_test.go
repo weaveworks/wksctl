@@ -10,6 +10,7 @@ import (
 	existinginfrav1 "github.com/weaveworks/cluster-api-provider-existinginfra/apis/cluster.weave.works/v1alpha3"
 	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/cluster/machine"
 	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/kubernetes"
+
 	//	"github.com/weaveworks/wksctl/pkg/cluster/machine"
 	"github.com/weaveworks/wksctl/pkg/utilities/manifest"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -69,7 +70,7 @@ const machinesValid = `
     infrastructureRef:
         kind: ExistingInfraMachine
         name: master-0
-    version: "1.19.3"
+    version: "1.20.0"
 ---
   apiVersion: "cluster.weave.works/v1alpha3"
   kind: "ExistingInfraMachine"
@@ -89,7 +90,7 @@ const machinesValid = `
     infrastructureRef:
         kind: ExistingInfraMachine
         name: node-0
-    version: "1.19.3"
+    version: "1.20.0"
 ---
   apiVersion: "cluster.weave.works/v1alpha3"
   kind: "ExistingInfraMachine"
@@ -316,7 +317,7 @@ func TestGetKubernetesVersionFromMasterInDefaultsVersionWhenMachinesDoNotSpecify
 func TestGetKubernetesVersionFromMasterInGetsControlPlaneVersion(t *testing.T) {
 	version, _, err := machine.GetKubernetesVersionFromMasterIn(machinesFromString(t, machinesValid))
 	assert.NoError(t, err)
-	assert.Equal(t, "1.19.3", version)
+	assert.Equal(t, "1.20.0", version)
 }
 
 func TestGetKubernetesVersionDefaultsVersionWhenMachinesDoNotSpecifyAny(t *testing.T) {
