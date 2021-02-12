@@ -13,14 +13,14 @@ spec:
   infrastructureRef:
     apiVersion: cluster.weave.works/v1alpha3
     kind: ExistingInfraCluster
-    name: example-provider
+    name: example
 ---
 apiVersion: cluster.weave.works/v1alpha3
 kind: ExistingInfraCluster
 metadata:
-  name: example-provider
+  name: example
 spec:
-  user: vagrant
+  user: root
   controlPlaneMachineCount: "1"
   workerMachineCount: "1"
   cri:
@@ -28,6 +28,9 @@ spec:
     package: docker-ce
     version: 19.03.8
   kubernetesVersion: 1.18.9
+  flavor:
+    name: eks-d
+    manifestURL: https://distro.eks.amazonaws.com/kubernetes-1-18/kubernetes-1-18-eks-1.yaml
   os:
     files:
     - destination: /etc/yum.repos.d/kubernetes.repo

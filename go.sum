@@ -75,6 +75,8 @@ github.com/asaskevich/govalidator v0.0.0-20200108200545-475eaeb16496/go.mod h1:o
 github.com/auth0/go-jwt-middleware v0.0.0-20170425171159-5493cabe49f7/go.mod h1:LWMyo4iOLWXHGdBki7NIht1kHru/0wM179h+d3g8ATM=
 github.com/aws/aws-sdk-go v1.15.11/go.mod h1:mFuSZ37Z9YOHbQEwBWztmVzqXrEkub65tZoCYDt7FT0=
 github.com/aws/aws-sdk-go v1.28.2/go.mod h1:KmX6BPdI08NWTb3/sm4ZGu5ShLoqVDhKgpiN924inxo=
+github.com/aws/eks-distro-build-tooling/release v0.0.0-20201211225747-07f05a470de8 h1:75gPAFuZYhlbmyoMF+XkbGBiptXATi37fegJRqWen1Y=
+github.com/aws/eks-distro-build-tooling/release v0.0.0-20201211225747-07f05a470de8/go.mod h1:zS4jJCwuah31QqzRtwe0fVaj8UtjZDaC9MjaveZGmI0=
 github.com/bazelbuild/bazel-gazelle v0.18.2/go.mod h1:D0ehMSbS+vesFsLGiD6JXu3mVEzOlfUl8wNnq+x/9p0=
 github.com/bazelbuild/bazel-gazelle v0.19.1-0.20191105222053-70208cbdc798/go.mod h1:rPwzNHUqEzngx1iVBfO/2X2npKaT3tqPqqHW6rVsn/A=
 github.com/bazelbuild/buildtools v0.0.0-20190731111112-f720930ceb60/go.mod h1:5JP0TXzWDHXv8qvxRC4InIazwdyDseBDbzESUMKk1yU=
@@ -193,6 +195,8 @@ github.com/docker/go-units v0.4.0/go.mod h1:fgPhTUdO+D/Jk86RDLlptpiXQzgHJF7gydDD
 github.com/docker/libtrust v0.0.0-20150114040149-fa567046d9b1/go.mod h1:cyGadeNEkKy96OOhEzfZl+yxihPEzKnqJwvfuSUqbZE=
 github.com/docker/spdystream v0.0.0-20160310174837-449fdfce4d96 h1:cenwrSVm+Z7QLSV/BsnenAOcDXdX4cMv4wP0B/5QbPg=
 github.com/docker/spdystream v0.0.0-20160310174837-449fdfce4d96/go.mod h1:Qh8CwZgvJUkLughtfhJv5dyTYa91l1fOUCrgjqmcifM=
+github.com/drone/envsubst v1.0.2 h1:dpYLMAspQHW0a8dZpLRKe9jCNvIGZPhCPrycZzIHdqo=
+github.com/drone/envsubst v1.0.2/go.mod h1:bkZbnc/2vh1M12Ecn7EYScpI4YGYU0etwLJICOWi8Z0=
 github.com/dustin/go-humanize v0.0.0-20171111073723-bb3d318650d4/go.mod h1:HtrtbFcZ19U5GC7JDqmcUSB87Iq5E25KnS6fMYU6eOk=
 github.com/dustin/go-humanize v1.0.0/go.mod h1:HtrtbFcZ19U5GC7JDqmcUSB87Iq5E25KnS6fMYU6eOk=
 github.com/dustmop/soup v1.1.2-0.20190516214245-38228baa104e/go.mod h1:CgNC6SGbT+Xb8wGGvzilttZL1mc5sQ/5KkcxsZttMIk=
@@ -849,10 +853,8 @@ github.com/vektah/gqlparser v1.1.2/go.mod h1:1ycwN7Ij5njmMkPPAOaRFY4rET2Enx7IkVv
 github.com/vishvananda/netlink v1.0.0/go.mod h1:+SR5DhBJrl6ZM7CoCKvpw5BKroDKQ+PJqOg65H/2ktk=
 github.com/vishvananda/netns v0.0.0-20171111001504-be1fbeda1936/go.mod h1:ZjcWmFBXmLKZu9Nxj3WKYEafiSqer2rnvPr0en9UNpI=
 github.com/vmware/govmomi v0.20.3/go.mod h1:URlwyTFZX72RmxtxuaFL2Uj3fD1JTvZdx59bHWk6aFU=
-github.com/weaveworks/cluster-api-provider-existinginfra v0.2.0 h1:J9mGNaGdoyT76BhyDE5fN/D+Fku5NIB7Mzpm9JQkbdM=
-github.com/weaveworks/cluster-api-provider-existinginfra v0.2.0/go.mod h1:YEi5vGmSucFgcmHl+mUIp8dfm4aX3UO5tuUzSoh5Pfs=
-github.com/weaveworks/cluster-api-provider-existinginfra v0.2.1-0.20210209210435-f28d15d4b252 h1:G58bHlBXyc9O31GoiLJiq9k/myPJIdg5XCnHKG6Wgeg=
-github.com/weaveworks/cluster-api-provider-existinginfra v0.2.1-0.20210209210435-f28d15d4b252/go.mod h1:YEi5vGmSucFgcmHl+mUIp8dfm4aX3UO5tuUzSoh5Pfs=
+github.com/weaveworks/cluster-api-provider-existinginfra v0.2.1 h1:GXtEI2tZc7Uw4Ty3A3+RUAz3esJ6EFTZKdnDcHxHjT0=
+github.com/weaveworks/cluster-api-provider-existinginfra v0.2.1/go.mod h1:CnqlmKLJw+ztGRXkUE3vdpAhciCbFwqy5gt2/qfT6gU=
 github.com/weaveworks/footloose v0.0.0-20200918140536-ff126705213e h1:lW0k9X2U0S+6Kq5qoYQaDKrUCS50x2M7ZivVpOFgTso=
 github.com/weaveworks/footloose v0.0.0-20200918140536-ff126705213e/go.mod h1:nxDdCjg1kb5+luh4mUCp+mtBZIWrhzoLIArrD99y+Sc=
 github.com/weaveworks/go-checkpoint v0.0.0-20170503165305-ebbb8b0518ab h1:mW+hgchD9qUUBqnuaDBj7BkcpFPk/FxeFcUFI5lvvUw=

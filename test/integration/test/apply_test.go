@@ -430,7 +430,7 @@ func TestApply(t *testing.T) {
 	// Install the Cluster.
 	run, err = apply(exe, "--cluster="+clusterManifestPath, "--machines="+machinesManifestPath,
 		"--config-directory="+configDir, "--sealed-secret-key="+configPath("ss.key"), "--sealed-secret-cert="+configPath("ss.cert"),
-		"--verbose=true", "--ssh-key="+sshKeyPath, "--controller-image=docker.io/weaveworks/cluster-api-existinginfra-controller:master-f28d15d4")
+		"--verbose=true", "--ssh-key="+sshKeyPath, "--controller-image=docker.io/weaveworks/cluster-api-existinginfra-controller:v0.2.1")
 	assert.NoError(t, err)
 	require.Equal(t, 0, run.ExitCode())
 
