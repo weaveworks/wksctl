@@ -8,6 +8,7 @@ require (
 	github.com/dlespiau/kube-test-harness v0.0.0-20200706152414-7c811932d687
 	github.com/ghodss/yaml v1.0.0
 	github.com/google/go-jsonnet v0.16.0
+	github.com/googleapis/gnostic v0.5.4 // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/shurcooL/vfsgen v0.0.0-20200824052919-0d455de96546
 	github.com/sirupsen/logrus v1.6.0
