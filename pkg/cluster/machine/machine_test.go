@@ -197,7 +197,7 @@ const machinesNoGodNoMaster = `
     infrastructureRef:
         kind: ExistingInfraMachine
         name: node-0
-    version: "1.19.3"
+    version: "1.20.4"
 ---
   apiVersion: "cluster.weave.works/v1alpha3"
   kind: "ExistingInfraMachine"
