@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ChangeListManager">
+    <list default="true" id="39fb81e8-b589-4cda-a89e-9974fe30f92a" name="Default Changelist" comment="">
+      <change beforePath="$PROJECT_DIR$/go.mod" beforeDir="false" afterPath="$PROJECT_DIR$/go.mod" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/go.sum" beforeDir="false" afterPath="$PROJECT_DIR$/go.sum" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="GOROOT" path="/usr/local/Cellar/go/1.15.8/libexec" />
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="GoLibraries">
+    <option name="indexEntireGoPath" value="false" />
+  </component>
+  <component name="JsbtTreeLayoutManager">
+    <layout place="tools.popupGrunt">
+      <scroll-view-position x="0" y="0" />
+    </layout>
+  </component>
+  <component name="ProjectId" id="1oipOkauRmzLB0SlkQpJD0Jb6DP" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">
+    <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
+    <property name="WebServerToolWindowFactoryState" value="false" />
+    <property name="go.import.settings.migrated" value="true" />
+    <property name="go.sdk.automatically.set" value="true" />
+    <property name="go.tried.to.enable.integration.vgo.integrator" value="true" />
+    <property name="go.vendoring.notification.had.been.shown" value="true" />
+    <property name="last_opened_file_path" value="$USER_HOME$" />
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="VgoProject">
+    <integration-enabled>true</integration-enabled>
+  </component>
+  <component name="WindowStateProjectService">
+    <state x="634" y="239" key="RollbackChangesDialog" timestamp="1614019369938">
+      <screen x="0" y="0" width="1680" height="1050" />
+    </state>
+    <state x="634" y="239" key="RollbackChangesDialog/0.0.1680.1050@0.0.1680.1050" timestamp="1614019369938" />
+    <state x="724" y="246" key="RollbackChangesDialog/0.0.1920.1080/-1920.0.1920.1080@0.0.1920.1080" timestamp="1613780743874" />
+    <state x="484" y="146" key="com.intellij.openapi.editor.actions.MultiplePasteAction$ClipboardContentChooser" timestamp="1614020293818">
+      <screen x="0" y="0" width="1680" height="1050" />
+    </state>
+    <state x="484" y="146" key="com.intellij.openapi.editor.actions.MultiplePasteAction$ClipboardContentChooser/0.0.1680.1050@0.0.1680.1050" timestamp="1614020293818" />
+    <state x="553" y="150" key="com.intellij.openapi.editor.actions.MultiplePasteAction$ClipboardContentChooser/0.0.1920.1080/-1920.0.1920.1080@0.0.1920.1080" timestamp="1613779247526" />
+    <state x="577" y="287" width="567" height="490" key="find.popup" timestamp="1614031165369">
+      <screen x="0" y="0" width="1680" height="1050" />
+    </state>
+    <state x="577" y="287" width="567" height="490" key="find.popup/0.0.1680.1050@0.0.1680.1050" timestamp="1614031165369" />
+    <state x="659" y="295" width="602" height="490" key="find.popup/0.0.1920.1080/-1920.0.1920.1080@0.0.1920.1080" timestamp="1613779385833" />
+    <state x="715" y="400" width="250" height="278" key="jetbrains.javascript.buildTools.run-task-popup" timestamp="1614005455289">
+      <screen x="0" y="0" width="1680" height="1050" />
+    </state>
+    <state x="715" y="400" width="250" height="278" key="jetbrains.javascript.buildTools.run-task-popup/0.0.1680.1050@0.0.1680.1050" timestamp="1614005455289" />
+  </component>
+</project>
