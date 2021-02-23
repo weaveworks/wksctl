@@ -1,6 +1,7 @@
 package container
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -464,22 +465,28 @@ func TestMultimasterSetup(t *testing.T) {
 					subCmds := []string{"ps -ef", "ps -ef | grep -v 'ps -ef'", "ps -ef | grep -v 'ps -ef' | grep /usr/bin/kubelet", fmt.Sprintf("ps -ef | grep -v 'ps -ef' | grep /usr/bin/kubelet | grep %s", kubeletArg)}
 					for i, c := range subCmds {
 						args := strings.Split(c, " ")
-						fmt.Println("RUNNING-"+fmt.Sprintf("%d", i), args)
+						fmt.Println(t.Name(), "RUNNING-"+fmt.Sprintf("%d", i), args)
 						ccmd := exec.Command("sh", "-c", c)
+						var stdout, stderr bytes.Buffer
 						ccmd.Dir = testTempDir
-						ccmd.Stdout = os.Stdout
-						ccmd.Stderr = os.Stderr
+						ccmd.Stdout = &stdout
+						ccmd.Stderr = &stderr
 						err := ccmd.Run()
-						log.Info("DEBUG-Err", err)
+						log.Info(t.Name(), "DEBUG-Err", err)
+						log.Info(t.Name(), "DEBUG-stdout", stdout.String())
+						log.Info(t.Name(), "DEBUG-stderr", stderr.String())
 					}
 
 					cmd := exec.Command("footloose", "-c", filepath.Join(rootDir, "examples/footloose/"+node_os+node_version+"/docker/multimaster.yaml"),
 						"ssh", fmt.Sprintf("root@node%d", i), fmt.Sprintf("ps -ef | grep -v 'ps -ef' | grep /usr/bin/kubelet | grep %s", kubeletArg))
+					var stdout, stderr bytes.Buffer
 					cmd.Dir = testTempDir
-					cmd.Stdout = os.Stdout
-					cmd.Stderr = os.Stderr
+					cmd.Stdout = &stdout
+					cmd.Stderr = &stderr
 					err := cmd.Run()
-					log.Info("DEBUG-Err", err)
+					log.Info(t.Name(), "DEBUG-Err", err)
+					log.Info(t.Name(), "DEBUG-stdout", stdout.String())
+					log.Info(t.Name(), "DEBUG-stderr", stderr.String())
 
 					//run(t, "footloose")
 				}
