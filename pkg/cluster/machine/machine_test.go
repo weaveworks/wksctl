@@ -113,7 +113,7 @@ const machinesInconsistentKubeVersion = `
     infrastructureRef:
         kind: ExistingInfraMachine
         name: master-0
-    version: "1.19.8"
+    version: "1.20.0"
 ---
   apiVersion: "cluster.weave.works/v1alpha3"
   kind: "ExistingInfraMachine"
@@ -133,7 +133,7 @@ const machinesInconsistentKubeVersion = `
     infrastructureRef:
         kind: ExistingInfraMachine
         name: node-0
-    version: "1.19.8"
+    version: "1.19.7"
 ---
   apiVersion: "cluster.weave.works/v1alpha3"
   kind: "ExistingInfraMachine"
