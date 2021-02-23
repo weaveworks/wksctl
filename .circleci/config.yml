@@ -7,8 +7,8 @@ defaults: &defaults
       environment:
         GOPATH: /go/
         SRCDIR: /src/github.com/weaveworks/wksctl
-        KUBECTL_URL: https://dl.k8s.io/v1.18.5/kubernetes-client-linux-amd64.tar.gz
-        KUBECTL_CHECKSUM: f6051fa7f715c68d56998d9b4c9be4f08552f3a8427b2c6b9e2e5339dd2929b6
+        KUBECTL_URL: https://dl.k8s.io/release/v1.20.0/bin/linux/amd64/kubectl
+        KUBECTL_CHECKSUM: a5895007f331f08d2e082eb12458764949559f30bcc5beae26c38f3e2724262c
   working_directory: /src/github.com/weaveworks/wksctl
 
 workflows:
@@ -76,9 +76,8 @@ jobs:
       - run:
           name: Install kubectl
           command: |
-            curl -L $KUBECTL_URL -o kubectl.tar.gz
-            echo "$KUBECTL_CHECKSUM kubectl.tar.gz" | sha256sum -c
-            tar xvzf kubectl.tar.gz --strip-components=3
+            curl -L $KUBECTL_URL -o kubectl
+            echo "$KUBECTL_CHECKSUM kubectl" | sha256sum -c
             sudo mv kubectl /usr/local/bin
 
       - run:
@@ -128,8 +127,8 @@ jobs:
       SRCDIR: /home/circleci/src/github.com/weaveworks/wksctl
       FOOTLOOSE_URL: https://github.com/weaveworks/footloose/releases/download/0.5.0/footloose-0.5.0-linux-x86_64
       FOOTLOOSE_CHECKSUM: 0e4e49e81940c5876eafa26607154acd788d9979e9f4a4215f17532a3ea5429a
-      KUBECTL_URL: https://dl.k8s.io/v1.18.5/kubernetes-client-linux-amd64.tar.gz
-      KUBECTL_CHECKSUM: f6051fa7f715c68d56998d9b4c9be4f08552f3a8427b2c6b9e2e5339dd2929b6
+      KUBECTL_URL: https://dl.k8s.io/release/v1.20.0/bin/linux/amd64/kubectl
+      KUBECTL_CHECKSUM: a5895007f331f08d2e082eb12458764949559f30bcc5beae26c38f3e2724262c
       CAPEI_URL: https://github.com/weaveworks/cluster-api-provider-existinginfra/archive/v0.0.2.tar.gz
       CAPEI_CHECKSUM: a2d5d2a0f43a2c0872bcc96265d753868a4f0867f555743a5e280cff73f95cdc
     working_directory: /home/circleci/src/github.com/weaveworks/wksctl
@@ -150,9 +149,8 @@ jobs:
       - run:
           name: Install kubectl
           command: |
-            curl -L $KUBECTL_URL -o kubectl.tar.gz
-            echo "$KUBECTL_CHECKSUM kubectl.tar.gz" | sha256sum -c
-            tar xvzf kubectl.tar.gz --strip-components=3
+            curl -L $KUBECTL_URL -o kubectl
+            echo "$KUBECTL_CHECKSUM kubectl" | sha256sum -c
             sudo mv kubectl /usr/local/bin
       - run:
           # TODO: Use CAPEI upstream when its build system has been set up
@@ -195,9 +193,8 @@ jobs:
       - run:
           name: Install kubectl
           command: |
-            curl -L $KUBECTL_URL -o kubectl.tar.gz
-            echo "$KUBECTL_CHECKSUM kubectl.tar.gz" | sha256sum -c
-            tar xvzf kubectl.tar.gz --strip-components=3
+            curl -L $KUBECTL_URL -o kubectl
+            echo "$KUBECTL_CHECKSUM kubectl" | sha256sum -c
             sudo mv kubectl /usr/local/bin
       - run:
           name: Centos integration tests
@@ -222,9 +219,8 @@ jobs:
       - run:
           name: Install kubectl
           command: |
-            curl -L $KUBECTL_URL -o kubectl.tar.gz
-            echo "$KUBECTL_CHECKSUM kubectl.tar.gz" | sha256sum -c
-            tar xvzf kubectl.tar.gz --strip-components=3
+            curl -L $KUBECTL_URL -o kubectl
+            echo "$KUBECTL_CHECKSUM kubectl" | sha256sum -c
             sudo mv kubectl /usr/local/bin
 
       - run:
@@ -251,9 +247,8 @@ jobs:
       - run:
           name: Install kubectl
           command: |
-            curl -L $KUBECTL_URL -o kubectl.tar.gz
-            echo "$KUBECTL_CHECKSUM kubectl.tar.gz" | sha256sum -c
-            tar xvzf kubectl.tar.gz --strip-components=3
+            curl -L $KUBECTL_URL -o kubectl
+            echo "$KUBECTL_CHECKSUM kubectl" | sha256sum -c
             sudo mv kubectl /usr/local/bin
 
       - run:
