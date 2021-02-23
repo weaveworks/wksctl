@@ -445,6 +445,10 @@ func TestMultimasterSetup(t *testing.T) {
 				time.Sleep(30 * time.Second)
 			}
 
+			log.Info("waiting 5min")
+			time.Sleep(time.Minute * 5)
+			log.Info("done waiting 5min")
+
 			assert.Len(t, nodeList.Items, 4)
 			log.Infof("IL: %#v", nodeList.Items)
 			assert.Len(t, nodes.Masters(nodeList).Items, 3)
