@@ -460,9 +460,16 @@ func TestMultimasterSetup(t *testing.T) {
 			for i := 0; i < 4; i++ {
 				for _, kubeletArg := range expectedKubeletArgs {
 					log.Infof("Checking kubelet arg (%s) on node%d", kubeletArg, i)
-					run(t, "footloose",
-						"-c", filepath.Join(rootDir, "examples/footloose/"+node_os+node_version+"/docker/multimaster.yaml"),
+
+					cmd := exec.Command("footloose", "-c", filepath.Join(rootDir, "examples/footloose/"+node_os+node_version+"/docker/multimaster.yaml"),
 						"ssh", fmt.Sprintf("root@node%d", i), fmt.Sprintf("ps -ef | grep -v 'ps -ef' | grep /usr/bin/kubelet | grep %s", kubeletArg))
+					cmd.Dir = testTempDir
+					cmd.Stdout = os.Stdout
+					cmd.Stderr = os.Stderr
+					err := cmd.Run()
+					log.Info("DEBUG-Err", err)
+
+					//run(t, "footloose")
 				}
 
 				// node0 - node2 are masters
