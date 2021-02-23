@@ -461,6 +461,18 @@ func TestMultimasterSetup(t *testing.T) {
 				for _, kubeletArg := range expectedKubeletArgs {
 					log.Infof("Checking kubelet arg (%s) on node%d", kubeletArg, i)
 
+					subCmds := []string{"ps -ef", "ps -ef | grep -v 'ps -ef'", "ps -ef | grep -v 'ps -ef' | grep /usr/bin/kubelet", fmt.Sprintf("ps -ef | grep -v 'ps -ef' | grep /usr/bin/kubelet | grep %s", kubeletArg)}
+					for i, c := range subCmds {
+						args := strings.Split(c, " ")
+						fmt.Println("RUNNING-"+fmt.Sprintf("%d", i), args)
+						ccmd := exec.Command("sh", "-c", c)
+						ccmd.Dir = testTempDir
+						ccmd.Stdout = os.Stdout
+						ccmd.Stderr = os.Stderr
+						err := ccmd.Run()
+						log.Info("DEBUG-Err", err)
+					}
+
 					cmd := exec.Command("footloose", "-c", filepath.Join(rootDir, "examples/footloose/"+node_os+node_version+"/docker/multimaster.yaml"),
 						"ssh", fmt.Sprintf("root@node%d", i), fmt.Sprintf("ps -ef | grep -v 'ps -ef' | grep /usr/bin/kubelet | grep %s", kubeletArg))
 					cmd.Dir = testTempDir
