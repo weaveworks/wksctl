@@ -7,8 +7,8 @@ defaults: &defaults
       environment:
         GOPATH: /go/
         SRCDIR: /src/github.com/weaveworks/wksctl
-        KUBECTL_URL: https://dl.k8s.io/release/v1.20.0/bin/linux/amd64/kubectl
-        KUBECTL_CHECKSUM: a5895007f331f08d2e082eb12458764949559f30bcc5beae26c38f3e2724262c
+        KUBECTL_URL: https://dl.k8s.io/release/v1.19.8/bin/linux/amd64/kubectl
+        KUBECTL_CHECKSUM: a0737d3a15ca177816b6fb1fd59bdd5a3751bfdc66de4e08dffddba84e38bf3f
   working_directory: /src/github.com/weaveworks/wksctl
 
 workflows:
@@ -79,6 +79,7 @@ jobs:
             curl -L $KUBECTL_URL -o kubectl
             echo "$KUBECTL_CHECKSUM kubectl" | sha256sum -c
             sudo mv kubectl /usr/local/bin
+            chmod +x /usr/local/bin/kubectl
 
       - run:
           name: Run unit tests
@@ -127,8 +128,8 @@ jobs:
       SRCDIR: /home/circleci/src/github.com/weaveworks/wksctl
       FOOTLOOSE_URL: https://github.com/weaveworks/footloose/releases/download/0.5.0/footloose-0.5.0-linux-x86_64
       FOOTLOOSE_CHECKSUM: 0e4e49e81940c5876eafa26607154acd788d9979e9f4a4215f17532a3ea5429a
-      KUBECTL_URL: https://dl.k8s.io/release/v1.20.0/bin/linux/amd64/kubectl
-      KUBECTL_CHECKSUM: a5895007f331f08d2e082eb12458764949559f30bcc5beae26c38f3e2724262c
+      KUBECTL_URL: https://dl.k8s.io/release/v1.19.8/bin/linux/amd64/kubectl
+      KUBECTL_CHECKSUM: a0737d3a15ca177816b6fb1fd59bdd5a3751bfdc66de4e08dffddba84e38bf3f
       CAPEI_URL: https://github.com/weaveworks/cluster-api-provider-existinginfra/archive/v0.0.2.tar.gz
       CAPEI_CHECKSUM: a2d5d2a0f43a2c0872bcc96265d753868a4f0867f555743a5e280cff73f95cdc
     working_directory: /home/circleci/src/github.com/weaveworks/wksctl
@@ -152,6 +153,7 @@ jobs:
             curl -L $KUBECTL_URL -o kubectl
             echo "$KUBECTL_CHECKSUM kubectl" | sha256sum -c
             sudo mv kubectl /usr/local/bin
+            chmod +x /usr/local/bin/kubectl
       - run:
           # TODO: Use CAPEI upstream when its build system has been set up
           name: Build cluster-api-provider-existinginfra
@@ -196,6 +198,7 @@ jobs:
             curl -L $KUBECTL_URL -o kubectl
             echo "$KUBECTL_CHECKSUM kubectl" | sha256sum -c
             sudo mv kubectl /usr/local/bin
+            chmod +x /usr/local/bin/kubectl
       - run:
           name: Centos integration tests
           command: |
@@ -222,6 +225,7 @@ jobs:
             curl -L $KUBECTL_URL -o kubectl
             echo "$KUBECTL_CHECKSUM kubectl" | sha256sum -c
             sudo mv kubectl /usr/local/bin
+            chmod +x /usr/local/bin/kubectl
 
       - run:
           name: Ubuntu integration tests
@@ -250,6 +254,7 @@ jobs:
             curl -L $KUBECTL_URL -o kubectl
             echo "$KUBECTL_CHECKSUM kubectl" | sha256sum -c
             sudo mv kubectl /usr/local/bin
+            chmod +x /usr/local/bin/kubectl
 
       - run:
           name: rhel integration tests
