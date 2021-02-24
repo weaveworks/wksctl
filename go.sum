@@ -847,8 +847,8 @@ github.com/vishvananda/netns v0.0.0-20200728191858-db3c7e526aae/go.mod h1:DD4vA1
 github.com/vmware/govmomi v0.20.3/go.mod h1:URlwyTFZX72RmxtxuaFL2Uj3fD1JTvZdx59bHWk6aFU=
 github.com/weaveworks/cluster-api-provider-existinginfra v0.2.2 h1:O+n1z177Sc0kY51wAsgINLPlR9HAXkKosOiL9buP7Zk=
 github.com/weaveworks/cluster-api-provider-existinginfra v0.2.2/go.mod h1:obbk7Zjs2jnRHgipe2Ysb/aUMzXAREFSCdycDYy++g0=
-github.com/weaveworks/footloose v0.0.0-20210208164054-2862489574a3 h1:/1kAy4SJD2itxj6vbqn9p0l/BtQN4p65Pd7a6hvpmiQ=
-github.com/weaveworks/footloose v0.0.0-20210208164054-2862489574a3/go.mod h1:nxDdCjg1kb5+luh4mUCp+mtBZIWrhzoLIArrD99y+Sc=
+github.com/weaveworks/footloose v0.0.0-20200127181411-352435f62e04 h1:XhtTrHO5sMzMArNtJHIhFCy9hPXo7N7O1UNk5TAL+nE=
+github.com/weaveworks/footloose v0.0.0-20200127181411-352435f62e04/go.mod h1:nxDdCjg1kb5+luh4mUCp+mtBZIWrhzoLIArrD99y+Sc=
 github.com/weaveworks/go-checkpoint v0.0.0-20170503165305-ebbb8b0518ab h1:mW+hgchD9qUUBqnuaDBj7BkcpFPk/FxeFcUFI5lvvUw=
 github.com/weaveworks/go-checkpoint v0.0.0-20170503165305-ebbb8b0518ab/go.mod h1:qkbvw5GPibQ/Nf7IZJL0UoLwmJ6858b4S/hUWRd+cH4=
 github.com/weaveworks/launcher v0.0.0-20180824102238-59a4fcc32c9c h1:YTNC1c2AM3xjrL6DM4vuq0HNJ79GFR8ScT+QKWadFUw=
@@ -1203,8 +1203,8 @@ google.golang.org/genproto v0.0.0-20200526211855-cb27e3aa2013/go.mod h1:NbSheEEY
 google.golang.org/genproto v0.0.0-20201019141844-1ed22bb0c154/go.mod h1:FWY/as6DDZQgahTzZj3fqbO1CbirC29ZNUFHwi0/+no=
 google.golang.org/genproto v0.0.0-20201110150050-8816d57aaa9a h1:pOwg4OoaRYScjmR4LlLgdtnyoHYTSAVhhqe5uPdpII8=
 google.golang.org/genproto v0.0.0-20201110150050-8816d57aaa9a/go.mod h1:FWY/as6DDZQgahTzZj3fqbO1CbirC29ZNUFHwi0/+no=
-google.golang.org/genproto v0.0.0-20210223151946-22b48be4551b h1:GXCSqFSSKq+L4Pi31A2Ba7j8BZCwHN8oJkREab1VokI=
-google.golang.org/genproto v0.0.0-20210223151946-22b48be4551b/go.mod h1:FWY/as6DDZQgahTzZj3fqbO1CbirC29ZNUFHwi0/+no=
+google.golang.org/genproto v0.0.0-20210224155714-063164c882e6 h1:bXUwz2WkXXrXgiLxww3vWmoSHLOGv4ipdPdTvKymcKw=
+google.golang.org/genproto v0.0.0-20210224155714-063164c882e6/go.mod h1:FWY/as6DDZQgahTzZj3fqbO1CbirC29ZNUFHwi0/+no=
 google.golang.org/grpc v0.0.0-20160317175043-d3ddb4469d5a/go.mod h1:yo6s7OP7yaDglbqo1J04qKzAhqBH6lvTonzMVmEdcZw=
 google.golang.org/grpc v1.19.0/go.mod h1:mqu4LbDTu4XGKhr4mRzUsmM4RtVoemTSY81AxZiDr8c=
 google.golang.org/grpc v1.20.1/go.mod h1:10oTOabMzJvdu6/UiuZezV6QK5dSlG84ov/aaiqXj38=
