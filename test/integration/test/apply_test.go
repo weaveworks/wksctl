@@ -375,7 +375,7 @@ func writeTmpFile(runner *ssh.Client, inputFilename, outputFilename string) erro
 func TestApply(t *testing.T) {
 	clusterManifestPath := configPath("cluster.yaml")
 	_, c := parseClusterManifest(t, clusterManifestPath)
-	k8sTestVersion := "1.19.8"
+	k8sTestVersion := "1.18.16"
 	exe := run.NewExecutor()
 
 	// Prepare the machines manifest from terraform output.
