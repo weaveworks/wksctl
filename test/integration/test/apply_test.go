@@ -17,7 +17,6 @@ import (
 	"github.com/stretchr/testify/require"
 	existinginfrav1 "github.com/weaveworks/cluster-api-provider-existinginfra/apis/cluster.weave.works/v1alpha3"
 	capeimachine "github.com/weaveworks/cluster-api-provider-existinginfra/pkg/cluster/machine"
-	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/kubernetes"
 	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/plan/runners/ssh"
 	"github.com/weaveworks/cluster-api-provider-existinginfra/pkg/specs"
 	"github.com/weaveworks/wksctl/pkg/cluster/machine"
@@ -376,7 +375,7 @@ func writeTmpFile(runner *ssh.Client, inputFilename, outputFilename string) erro
 func TestApply(t *testing.T) {
 	clusterManifestPath := configPath("cluster.yaml")
 	_, c := parseClusterManifest(t, clusterManifestPath)
-
+	k8sTestVersion := "1.19.8"
 	exe := run.NewExecutor()
 
 	// Prepare the machines manifest from terraform output.
@@ -384,7 +383,7 @@ func TestApply(t *testing.T) {
 	require.NoError(t, err)
 
 	machines, eiMachines := makeMachinesFromTerraform(t, c.Name, terraform, terraform.numMachines()-1)
-	setKubernetesVersion(machines, kubernetes.DefaultVersion)
+	setKubernetesVersion(machines, k8sTestVersion)
 	writeYamlManifests(t, configPath("machines.yaml"), machines, eiMachines)
 
 	// Generate bad version to check failure return codes
@@ -458,7 +457,7 @@ func TestApply(t *testing.T) {
 
 	//Test we have installed the specified version.
 	t.Run("KubernetesVersion", func(t *testing.T) {
-		testApplyKubernetesVersion(t, "1.19.8")
+		testApplyKubernetesVersion(t, k8sTestVersion)
 	})
 
 	// Test we can run kubectl against the cluster.
