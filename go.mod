@@ -6,25 +6,30 @@ require (
 	github.com/bitnami-labs/sealed-secrets v0.12.5
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/dlespiau/kube-test-harness v0.0.0-20200706152414-7c811932d687
+	github.com/docker/docker v20.10.3+incompatible // indirect
 	github.com/ghodss/yaml v1.0.0
+	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/google/go-jsonnet v0.16.0
 	github.com/googleapis/gnostic v0.5.4 // indirect
+	github.com/magefile/mage v1.11.0 // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/shurcooL/vfsgen v0.0.0-20200824052919-0d455de96546
-	github.com/sirupsen/logrus v1.6.0
-	github.com/spf13/cobra v1.1.1
+	github.com/sirupsen/logrus v1.8.0
+	github.com/spf13/cobra v1.1.3
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.6.1
 	github.com/thanhpk/randstr v1.0.4
 	github.com/weaveworks/cluster-api-provider-existinginfra v0.2.2
-	github.com/weaveworks/footloose v0.0.0-20200918140536-ff126705213e
+	github.com/weaveworks/footloose v0.0.0-20210208164054-2862489574a3
 	github.com/weaveworks/go-checkpoint v0.0.0-20170503165305-ebbb8b0518ab
 	github.com/weaveworks/launcher v0.0.0-20180824102238-59a4fcc32c9c
 	github.com/weaveworks/libgitops v0.0.2
 	github.com/whilp/git-urls v0.0.0-20191001220047-6db9661140c0
 	golang.org/x/crypto v0.0.0-20201016220609-9e8e0b390897
-	golang.org/x/tools v0.0.0-20200708003708-134513de8882 // indirect
+	golang.org/x/sys v0.0.0-20210223212115-eede4237b368 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.1.0 // indirect
+	google.golang.org/genproto v0.0.0-20210223151946-22b48be4551b // indirect
+	google.golang.org/grpc v1.35.0 // indirect
 	gopkg.in/src-d/go-git.v4 v4.13.1
 	k8s.io/api v0.20.2
 	k8s.io/apimachinery v0.20.2
