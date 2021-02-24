@@ -466,7 +466,7 @@ func TestMultimasterSetup(t *testing.T) {
 					for i, c := range subCmds {
 						args := strings.Split(c, " ")
 						fmt.Println(t.Name(), "RUNNING-"+fmt.Sprintf("%d", i), args)
-						ccmd := exec.Command("sh", "-c", c)
+						ccmd := exec.Command("sh", "-c", "footloose -c "+filepath.Join(rootDir, "examples/footloose/"+node_os+node_version+"/docker/multimaster.yaml ssh "+c))
 						var stdout, stderr bytes.Buffer
 						ccmd.Dir = testTempDir
 						ccmd.Stdout = &stdout
