@@ -27,7 +27,7 @@ spec:
     kind: docker
     package: docker-ce
     version: 19.03.8
-  kubernetesVersion: 1.18.16
+  kubernetesVersion: 1.18.15
   os:
     files:
     - destination: /etc/yum.repos.d/kubernetes.repo
