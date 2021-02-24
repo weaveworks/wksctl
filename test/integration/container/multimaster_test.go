@@ -472,9 +472,9 @@ func TestMultimasterSetup(t *testing.T) {
 						ccmd.Stdout = &stdout
 						ccmd.Stderr = &stderr
 						err := ccmd.Run()
-						log.Info(t.Name(), "DEBUG-Err", err)
-						log.Info(t.Name(), "DEBUG-stdout", stdout.String())
-						log.Info(t.Name(), "DEBUG-stderr", stderr.String())
+						log.Infoln(t.Name(), "DEBUG-Err", err)
+						log.Infoln(t.Name(), "DEBUG-stdout", stdout.String())
+						log.Infoln(t.Name(), "DEBUG-stderr", stderr.String())
 					}
 
 					cmd := exec.Command("footloose", "-c", filepath.Join(rootDir, "examples/footloose/"+node_os+node_version+"/docker/multimaster.yaml"),
@@ -484,9 +484,9 @@ func TestMultimasterSetup(t *testing.T) {
 					cmd.Stdout = &stdout
 					cmd.Stderr = &stderr
 					err := cmd.Run()
-					log.Info(t.Name(), "DEBUG-Err", err)
-					log.Info(t.Name(), "DEBUG-stdout", stdout.String())
-					log.Info(t.Name(), "DEBUG-stderr", stderr.String())
+					log.Infoln(t.Name(), "DEBUG-Err", err)
+					log.Infoln(t.Name(), "DEBUG-stdout", stdout.String())
+					log.Infoln(t.Name(), "DEBUG-stderr", stderr.String())
 
 					//run(t, "footloose")
 				}
