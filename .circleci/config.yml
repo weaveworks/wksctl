@@ -126,8 +126,8 @@ jobs:
       GOROOT: /home/circleci/goroot
       GOPATH: /home/circleci/go
       SRCDIR: /home/circleci/src/github.com/weaveworks/wksctl
-      FOOTLOOSE_URL: https://github.com/weaveworks/footloose/releases/download/0.5.0/footloose-0.5.0-linux-x86_64
-      FOOTLOOSE_CHECKSUM: 0e4e49e81940c5876eafa26607154acd788d9979e9f4a4215f17532a3ea5429a
+      FOOTLOOSE_URL: https://github.com/weaveworks/footloose/releases/download/0.6.3/footloose-0.6.3-linux-x86_64
+      FOOTLOOSE_CHECKSUM: 7a19cc713320373d756de4d57b0375369e87cefecce2e7dec58aac12174481b9
       KUBECTL_URL: https://dl.k8s.io/v1.18.5/kubernetes-client-linux-amd64.tar.gz
       KUBECTL_CHECKSUM: f6051fa7f715c68d56998d9b4c9be4f08552f3a8427b2c6b9e2e5339dd2929b6
       CAPEI_URL: https://github.com/weaveworks/cluster-api-provider-existinginfra/archive/v0.0.2.tar.gz
