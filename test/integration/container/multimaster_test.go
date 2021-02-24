@@ -229,6 +229,7 @@ var machinesYAML = `
       set: master
   spec:
     clusterName: test-multimaster
+    version: 1.18.15
     infrastructureRef:
       apiVersion: cluster.weave.works/v1alpha3
       kind: ExistingInfraMachine
@@ -255,6 +256,7 @@ var machinesYAML = `
       set: master
   spec:
     clusterName: test-multimaster
+    version: 1.18.15
     infrastructureRef:
       apiVersion: cluster.weave.works/v1alpha3
       kind: ExistingInfraMachine
@@ -281,6 +283,7 @@ var machinesYAML = `
       set: master
   spec:
     clusterName: test-multimaster
+    version: 1.18.15
     infrastructureRef:
       apiVersion: cluster.weave.works/v1alpha3
       kind: ExistingInfraMachine
@@ -307,6 +310,7 @@ var machinesYAML = `
       set: worker
   spec:
     clusterName: test-multimaster
+    version: 1.18.15
     infrastructureRef:
       apiVersion: cluster.weave.works/v1alpha3
       kind: ExistingInfraMachine
