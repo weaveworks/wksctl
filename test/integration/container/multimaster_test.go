@@ -458,6 +458,10 @@ func TestMultimasterSetup(t *testing.T) {
 			expectedKubeletArgs := []string{"alsologtostderr=true", "container-runtime=docker"}
 			expectedApiServerArgs := []string{"alsologtostderr=true", "audit-log-maxsize=10000"}
 
+			log.Infof("waiting 2min")
+			time.Sleep(time.Minute * 2)
+			log.Infof("waiting done")
+
 			for i := 0; i < 4; i++ {
 				for _, kubeletArg := range expectedKubeletArgs {
 					log.Infof("Checking kubelet arg (%s) on node%d", kubeletArg, i)
