@@ -1,6 +1,7 @@
 package container
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -460,6 +461,21 @@ func TestMultimasterSetup(t *testing.T) {
 			for i := 0; i < 4; i++ {
 				for _, kubeletArg := range expectedKubeletArgs {
 					log.Infof("Checking kubelet arg (%s) on node%d", kubeletArg, i)
+
+					subCmds := []string{"ps -ef", "ps -ef | grep -v 'ps -ef'", "ps -ef | grep -v 'ps -ef' | grep /usr/bin/kubelet", fmt.Sprintf("ps -ef | grep -v 'ps -ef' | grep /usr/bin/kubelet | grep %s", kubeletArg)}
+					for _, c := range subCmds {
+						cargs := "footloose -c " + filepath.Join(rootDir, "examples/footloose/"+node_os+node_version+"/docker/multimaster.yaml") + " ssh " + c
+						fmt.Println(t.Name(), "RUNNING-"+fmt.Sprintf("%d", i), cargs)
+						ccmd := exec.Command("sh", "-c", cargs)
+						var stdout, stderr bytes.Buffer
+						ccmd.Dir = testTempDir
+						ccmd.Stdout = &stdout
+						ccmd.Stderr = &stderr
+						err := ccmd.Run()
+						log.Infoln(t.Name(), "DEBUG-Err", err)
+						log.Infoln(t.Name(), "DEBUG-stdout", stdout.String())
+						log.Infoln(t.Name(), "DEBUG-stderr", stderr.String())
+					}
 
 					run(t, "footloose",
 						"-c", filepath.Join(rootDir, "examples/footloose/"+node_os+node_version+"/docker/multimaster.yaml"),
