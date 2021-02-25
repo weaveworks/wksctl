@@ -368,6 +368,7 @@ func TestMultimasterSetup(t *testing.T) {
 	if err := os.Chdir(testTempDir); err != nil {
 		log.Fatal("Could not change directory")
 	}
+	fmt.Printf("Using temp directory: %s\n", testTempDir)
 
 	// Ensure the local Docker registry is running:
 	if out := runIgnoreError(t, "docker", "inspect", "-f", "'{{.State.Running}}'", "registry"); !strings.Contains(out, "true") {
@@ -448,6 +449,11 @@ func TestMultimasterSetup(t *testing.T) {
 					break
 				}
 				time.Sleep(30 * time.Second)
+
+				cmd := exec.Command("kubectl", "logs", "-n", "weavek8sops", "-l=name=wks-controller")
+				cmd.Stderr = os.Stderr
+				cmd.Stdout = os.Stdout
+				cmd.Run()
 			}
 
 			assert.Len(t, nodeList.Items, 4)
