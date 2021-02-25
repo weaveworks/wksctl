@@ -453,7 +453,7 @@ func TestMultimasterSetup(t *testing.T) {
 				cmd := exec.Command("kubectl", "logs", "-n", "weavek8sops", "-l=name=wks-controller")
 				cmd.Stderr = os.Stderr
 				cmd.Stdout = os.Stdout
-				cmd.Run()
+				_ = cmd.Run()
 			}
 
 			assert.Len(t, nodeList.Items, 4)
