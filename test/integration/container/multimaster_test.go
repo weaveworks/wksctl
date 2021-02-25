@@ -213,8 +213,6 @@ spec:
     value: docker
   - name: eviction-hard
     value: "memory.available<100Mi,nodefs.available<100Mi,imagefs.available<100Mi"
-  - name: eviction-pressure-transition-period
-    value: 30s
   apiServer:
     extraArguments:
     - name: alsologtostderr
