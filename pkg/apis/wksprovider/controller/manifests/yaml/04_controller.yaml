@@ -42,7 +42,7 @@ spec:
         operator: Exists
       containers:
       - name: controller
-        image: weaveworks/cluster-api-existinginfra-controller:master-0badf2ca
+        image: weaveworks/cluster-api-existinginfra-controller:v0.2.4
         args:
         - --verbose
         resources:
