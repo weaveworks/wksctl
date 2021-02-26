@@ -41,7 +41,7 @@ kind: ExistingInfraCluster
 metadata:
   name: test-multimaster
 spec:
-  kubernetesVersion: 1.17.13
+  kubernetesVersion: 1.18.15
   user: root
   imageRepository: %s:%d
   os:
@@ -229,6 +229,7 @@ var machinesYAML = `
       set: master
   spec:
     clusterName: test-multimaster
+    version: 1.18.15
     infrastructureRef:
       apiVersion: cluster.weave.works/v1alpha3
       kind: ExistingInfraMachine
@@ -255,6 +256,7 @@ var machinesYAML = `
       set: master
   spec:
     clusterName: test-multimaster
+    version: 1.18.15
     infrastructureRef:
       apiVersion: cluster.weave.works/v1alpha3
       kind: ExistingInfraMachine
@@ -281,6 +283,7 @@ var machinesYAML = `
       set: master
   spec:
     clusterName: test-multimaster
+    version: 1.18.15
     infrastructureRef:
       apiVersion: cluster.weave.works/v1alpha3
       kind: ExistingInfraMachine
@@ -307,6 +310,7 @@ var machinesYAML = `
       set: worker
   spec:
     clusterName: test-multimaster
+    version: 1.18.15
     infrastructureRef:
       apiVersion: cluster.weave.works/v1alpha3
       kind: ExistingInfraMachine
@@ -373,7 +377,7 @@ func TestMultimasterSetup(t *testing.T) {
 		run(t, filepath.Join(rootDir, "environments/local-docker-registry/retag_push.sh"), "-p", strconv.Itoa(registryPort))
 	}
 	// FIXME: look this value up more dynamically.
-	const capeiImage = "weaveworks/cluster-api-existinginfra-controller:v0.2.1"
+	const capeiImage = "weaveworks/cluster-api-existinginfra-controller:v0.2.4"
 	run(t, "docker", "pull", capeiImage)
 	run(t, "docker", "tag", capeiImage, fmt.Sprintf("localhost:%d/%s", registryPort, capeiImage))
 	run(t, "docker", "push", fmt.Sprintf("localhost:%d/%s", registryPort, capeiImage))
@@ -456,6 +460,7 @@ func TestMultimasterSetup(t *testing.T) {
 			for i := 0; i < 4; i++ {
 				for _, kubeletArg := range expectedKubeletArgs {
 					log.Infof("Checking kubelet arg (%s) on node%d", kubeletArg, i)
+
 					run(t, "footloose",
 						"-c", filepath.Join(rootDir, "examples/footloose/"+node_os+node_version+"/docker/multimaster.yaml"),
 						"ssh", fmt.Sprintf("root@node%d", i), fmt.Sprintf("ps -ef | grep -v 'ps -ef' | grep /usr/bin/kubelet | grep %s", kubeletArg))
