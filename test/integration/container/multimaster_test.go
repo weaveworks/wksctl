@@ -351,6 +351,34 @@ func init() {
 	rootDir = dir
 }
 
+func getLatestCAPEIRelease() (string, error) {
+	url := "https://api.github.com/repos/weaveworks/wksctl/releases"
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return "", err
+	}
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+
+	var response []struct {
+		Name string `json:"name"`
+	}
+
+	if err := json.NewDecoder(res.Body).Decode(&response); err != nil {
+		return "", err
+	}
+
+	if len(response) == 0 {
+		return "", fmt.Errorf("no releases found")
+	}
+
+	return response[0].Name, nil
+}
+
 func TestMultimasterSetup(t *testing.T) {
 	// Set env var NODE_OS to either "centos" or "ubuntu" to choose a node running that OS
 	// e.g. NODE_OS=centos go test -v test/integration/container/...
@@ -376,8 +404,10 @@ func TestMultimasterSetup(t *testing.T) {
 	if shouldRetagPush(t, registryPort) {
 		run(t, filepath.Join(rootDir, "environments/local-docker-registry/retag_push.sh"), "-p", strconv.Itoa(registryPort))
 	}
-	// FIXME: look this value up more dynamically.
-	const capeiImage = "weaveworks/cluster-api-existinginfra-controller:v0.2.4"
+	release, err := getLatestCAPEIRelease()
+	assert.NoError(t, err)
+
+	var capeiImage = fmt.Sprintf("weaveworks/cluster-api-existinginfra-controller:%s", release)
 	run(t, "docker", "pull", capeiImage)
 	run(t, "docker", "tag", capeiImage, fmt.Sprintf("localhost:%d/%s", registryPort, capeiImage))
 	run(t, "docker", "push", fmt.Sprintf("localhost:%d/%s", registryPort, capeiImage))
