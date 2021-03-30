@@ -23,32 +23,32 @@ spec:
       nodeSelector:
         node-role.kubernetes.io/master: ""
       tolerations:
-      # Allow scheduling on master nodes. This is required because during
-      # bootstrapping of the cluster, we may initially have just one master,
-      # and would then need to deploy this controller there to set the entire
-      # cluster up.
-      - effect: NoSchedule
-        key: node-role.kubernetes.io/master
-        operator: Exists
-      # Mark this as a critical addon:
-      - key: CriticalAddonsOnly
-        operator: Exists
-      # Only schedule on nodes which are ready and reachable:
-      - effect: NoExecute
-        key: node.alpha.kubernetes.io/notReady
-        operator: Exists
-      - effect: NoExecute
-        key: node.alpha.kubernetes.io/unreachable
-        operator: Exists
+        # Allow scheduling on master nodes. This is required because during
+        # bootstrapping of the cluster, we may initially have just one master,
+        # and would then need to deploy this controller there to set the entire
+        # cluster up.
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/master
+          operator: Exists
+        # Mark this as a critical addon:
+        - key: CriticalAddonsOnly
+          operator: Exists
+        # Only schedule on nodes which are ready and reachable:
+        - effect: NoExecute
+          key: node.alpha.kubernetes.io/notReady
+          operator: Exists
+        - effect: NoExecute
+          key: node.alpha.kubernetes.io/unreachable
+          operator: Exists
       containers:
-      - name: controller
-        image: weaveworks/cluster-api-existinginfra-controller:v0.2.4
-        args:
-        - --verbose
-        resources:
-          limits:
-            cpu: 100m
-            memory: 30Mi
-          requests:
-            cpu: 100m
-            memory: 20Mi
+        - name: controller
+          image: weaveworks/cluster-api-existinginfra-controller:v0.2.5
+          args:
+            - --verbose
+          resources:
+            limits:
+              cpu: 100m
+              memory: 30Mi
+            requests:
+              cpu: 100m
+              memory: 20Mi
