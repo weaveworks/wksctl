@@ -82,10 +82,10 @@ pkg/apis/wksprovider/controller/manifests/manifests_vfsdata.go: $(MANIFESTS)
 	go generate ./pkg/apis/wksprovider/controller/manifests
 
 CRDS=$(shell find pkg/apis/cluster-api/config/crds -name '*.yaml' -print)
-pkg/apis/wksprovider/machine/os/crds_vfsdata.go: $(CRDS)
+pkg/apis/wksprovider/machine/crds/crds_vfsdata.go: $(CRDS)
 	go generate ./pkg/apis/wksprovider/machine/crds
 
-generated: pkg/addons/assets/assets_vfsdata.go pkg/apis/wksprovider/controller/manifests/manifests_vfsdata.go pkg/apis/wksprovider/machine/scripts/scripts_vfsdata.go pkg/apis/wksprovider/machine/os/crds_vfsdata.go
+generated: pkg/addons/assets/assets_vfsdata.go pkg/apis/wksprovider/controller/manifests/manifests_vfsdata.go pkg/apis/wksprovider/machine/scripts/scripts_vfsdata.go pkg/apis/wksprovider/machine/crds/crds_vfsdata.go
 
 cmd/wksctl/wksctl: $(DEPS) generated
 cmd/wksctl/wksctl: cmd/wksctl/*.go
