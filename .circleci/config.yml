@@ -3,7 +3,7 @@ version: 2
 # https://circleci.com/blog/circleci-hacks-reuse-yaml-in-your-circleci-config-with-yaml/
 defaults: &defaults
   docker:
-    - image: docker.io/weaveworks/wksctl-build:go-1.14.1-431fabe9
+    - image: docker.io/weaveworks/wksctl-build:switch-away-from-quay-53c3c712-WIP
       environment:
         GOPATH: /go/
         SRCDIR: /src/github.com/weaveworks/wksctl
@@ -70,7 +70,7 @@ jobs:
             fi
   unit-tests:
     docker:
-      - image: docker.io/weaveworks/wksctl-build:go-1.14.1-431fabe9
+      - image: docker.io/weaveworks/wksctl-build:switch-away-from-quay-53c3c712-WIP
         environment:
           GOPATH: /go
           SRCDIR: /src/github.com/weaveworks/wksctl
@@ -189,7 +189,7 @@ jobs:
   #
   integration-tests-gcp-centos:
     docker:
-      - image: docker.io/weaveworks/wksctl-build:go-1.14.1-431fabe9
+      - image: docker.io/weaveworks/wksctl-build:switch-away-from-quay-53c3c712-WIP
         environment:
           GOPATH: /go/
           SRCDIR: /src/github.com/weaveworks/wksctl
@@ -225,7 +225,7 @@ jobs:
       - run: "true"
   integration-tests-gcp-ubuntu:
     docker:
-      - image: docker.io/weaveworks/wksctl-build:go-1.14.1-431fabe9
+      - image: docker.io/weaveworks/wksctl-build:switch-away-from-quay-53c3c712-WIP
         environment:
           GOPATH: /go/
           SRCDIR: /src/github.com/weaveworks/wksctl
@@ -261,7 +261,7 @@ jobs:
       - run: "true"
   integration-tests-gcp-rhel:
     docker:
-      - image: docker.io/weaveworks/wksctl-build:go-1.14.1-431fabe9
+      - image: docker.io/weaveworks/wksctl-build:switch-away-from-quay-53c3c712-WIP
         environment:
           GOPATH: /go/
           SRCDIR: /src/github.com/weaveworks/wksctl
