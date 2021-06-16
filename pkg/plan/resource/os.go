@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"strings"
 
+	reflections "github.com/oleiade/reflections"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/weaveworks/wksctl/pkg/plan"
-	reflections "gopkg.in/oleiade/reflections.v1"
 )
 
 // OS is a set of OS properties.
