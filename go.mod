@@ -21,7 +21,7 @@ require (
 	github.com/hashicorp/go-cleanhttp v0.5.1 // indirect
 	github.com/hashicorp/golang-lru v0.5.3 // indirect
 	github.com/imdario/mergo v0.3.7 // indirect
-	github.com/oleiade/reflections v1.0.0 // indirect
+	github.com/oleiade/reflections v1.0.1
 	github.com/pelletier/go-toml v1.2.0
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
 	github.com/pkg/errors v0.8.1
@@ -31,7 +31,7 @@ require (
 	github.com/sirupsen/logrus v1.4.2
 	github.com/spf13/cobra v0.0.5
 	github.com/spf13/pflag v1.0.3
-	github.com/stretchr/testify v1.4.0
+	github.com/stretchr/testify v1.6.1
 	github.com/thanhpk/randstr v0.0.0-20190104161604-ac5b2d62bffb
 	github.com/weaveworks/footloose v0.0.0-20190903132036-efbcbb7a6390
 	github.com/weaveworks/go-checkpoint v0.0.0-20170503165305-ebbb8b0518ab
@@ -45,7 +45,6 @@ require (
 	gomodules.xyz/jsonpatch/v2 v2.0.1 // indirect
 	google.golang.org/appengine v1.4.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
-	gopkg.in/oleiade/reflections.v1 v1.0.0
 	gopkg.in/src-d/go-git.v4 v4.10.0
 	k8s.io/api v0.0.0-20190831074750-7364b6bdad65
 	k8s.io/apiextensions-apiserver v0.0.0-20190831115834-b8e250c992fa // indirect

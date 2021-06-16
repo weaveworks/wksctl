@@ -594,13 +594,41 @@ func (a *MachineActuator) clearUpdateCount(node *corev1.Node) error {
 func (a *MachineActuator) kubeadmUpOrDowngrade(machine *clusterv1.Machine, node *corev1.Node, installer *os.OS,
 	k8sVersion, planKey, planJSON string, ntype nodeType) error {
 	b := plan.NewBuilder()
-	b.AddResource(
-		"upgrade:node-unlock-kubernetes",
-		&resource.Run{Script: object.String("yum versionlock delete 'kube*' || true")})
-	b.AddResource(
-		"upgrade:node-install-kubeadm",
-		&resource.RPM{Name: "kubeadm", Version: k8sVersion, DisableExcludes: "kubernetes"},
-		plan.DependOn("upgrade:node-unlock-kubernetes"))
+	//TODO add OS check and
+	switch installer.PkgType {
+	case resource.PkgTypeRPM, resource.PkgTypeRHEL:
+		b.AddResource(
+			"upgrade:node-unlock-kubernetes",
+			&resource.Run{Script: object.String("yum versionlock delete 'kube*' || true")})
+		b.AddResource(
+			"upgrade:node-kubelet",
+			&resource.RPM{Name: "kubelet", Version: k8sVersion, DisableExcludes: "kubernetes"},
+			plan.DependOn("upgrade:node-unlock-kubernetes"))
+		b.AddResource(
+			"upgrade:node-kubectl",
+			&resource.RPM{Name: "kubectl", Version: k8sVersion, DisableExcludes: "kubernetes"},
+			plan.DependOn("upgrade:node-kubelet"))
+		b.AddResource(
+			"upgrade:node-install-kubeadm",
+			&resource.RPM{Name: "kubeadm", Version: k8sVersion, DisableExcludes: "kubernetes"},
+			plan.DependOn("upgrade:node-kubectl"))
+		b.AddResource(
+			"upgrade:node-lock-kubernetes",
+			&resource.Run{Script: object.String("yum versionlock add 'kube*' || true")},
+			plan.DependOn("upgrade:node-install-kubeadm"))
+	case resource.PkgTypeDeb:
+		b.AddResource(
+			"upgrade:node-kubelet",
+			&resource.Deb{Name: "kubelet", Suffix: "=" + k8sVersion + "-00"})
+		b.AddResource(
+			"upgrade:node-kubectl",
+			&resource.Deb{Name: "kubectl", Suffix: "=" + k8sVersion + "-00"},
+			plan.DependOn("upgrade:node-kubelet"))
+		b.AddResource(
+			"upgrade:node-install-kubeadm",
+			&resource.Deb{Name: "kubeadm", Suffix: "=" + k8sVersion + "-00"},
+			plan.DependOn("upgrade:node-kubectl"))
+	}
 
 	//
 	// For secondary masters
@@ -630,21 +658,9 @@ func (a *MachineActuator) kubeadmUpOrDowngrade(machine *clusterv1.Machine, node 
 			plan.DependOn("upgrade:node-install-kubeadm"))
 	}
 	b.AddResource(
-		"upgrade:node-kubelet",
-		&resource.RPM{Name: "kubelet", Version: k8sVersion, DisableExcludes: "kubernetes"},
-		plan.DependOn("upgrade:node-kubeadm-upgrade"))
-	b.AddResource(
 		"upgrade:node-restart-kubelet",
 		&resource.Run{Script: object.String("systemctl restart kubelet")},
-		plan.DependOn("upgrade:node-kubelet"))
-	b.AddResource(
-		"upgrade:node-kubectl",
-		&resource.RPM{Name: "kubectl", Version: k8sVersion, DisableExcludes: "kubernetes"},
-		plan.DependOn("upgrade:node-restart-kubelet"))
-	b.AddResource(
-		"upgrade:node-lock-kubernetes",
-		&resource.Run{Script: object.String("yum versionlock add 'kube*' || true")},
-		plan.DependOn("upgrade:node-kubectl"))
+		plan.DependOn("upgrade:node-kubeadm-upgrade"))
 
 	p, err := b.Plan()
 	if err != nil {
