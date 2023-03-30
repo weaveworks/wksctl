@@ -1,4 +1,4 @@
-# ⚠️ [Weave Kubernetes System Control has been retired](https://eol.weave.works/). This repo is now archived. ⚠️
+# ⚠️ [Weave Kubernetes System has been retired](https://eol.weave.works/). This repo is now archived. ⚠️
 
 Please see <https://www.weave.works/product/gitops/> and <https://www.weave.works/product/gitops-enterprise/> for alternatives.
 
