@@ -31,3 +31,17 @@ markdown_extensions:
   - pymdownx.superfences
   - toc:
       permalink: true
+
+plugins:
+    - redirects:
+        redirect_maps:
+            'cluster.md': 'index.md'
+            'development.md': 'index.md'
+            'faq.md': 'index.md'
+            'get-started.md': 'index.md'
+            'releasing.md': 'index.md'
+            'requirements.md': 'index.md'
+            'wks-and-firekube.md': 'index.md'
+            'wks-and-footloose.md': 'index.md'
+            'wks-and-vagrant.md': 'index.md'
+            'wks-on-gce.md': 'index.md'
