@@ -32,11 +32,16 @@ markdown_extensions:
   - toc:
       permalink: true
 
-nav:
-  - Get started with wksctl: get-started.md
-  - WKS and Firekube: wks-and-firekube.md
-  - WKS and Footloose: wks-and-footloose.md
-  - WKS and Vagrant: wks-and-vagrant.md
-  - WKS on GCE: wks-on-gce.md
-  - Frequently asked questions: faq.md
-  - Development: development.md
+plugins:
+    - redirects:
+        redirect_maps:
+            'cluster.md': 'index.md'
+            'development.md': 'index.md'
+            'faq.md': 'index.md'
+            'get-started.md': 'index.md'
+            'releasing.md': 'index.md'
+            'requirements.md': 'index.md'
+            'wks-and-firekube.md': 'index.md'
+            'wks-and-footloose.md': 'index.md'
+            'wks-and-vagrant.md': 'index.md'
+            'wks-on-gce.md': 'index.md'
