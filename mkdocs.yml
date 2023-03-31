@@ -31,12 +31,3 @@ markdown_extensions:
   - pymdownx.superfences
   - toc:
       permalink: true
-
-nav:
-  - Get started with wksctl: get-started.md
-  - WKS and Firekube: wks-and-firekube.md
-  - WKS and Footloose: wks-and-footloose.md
-  - WKS and Vagrant: wks-and-vagrant.md
-  - WKS on GCE: wks-on-gce.md
-  - Frequently asked questions: faq.md
-  - Development: development.md
