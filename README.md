@@ -1,4 +1,8 @@
-# Weave Kubernetes System Control - `wksctl`
+# ⚠️ [Weave Kubernetes System has been retired](https://eol.weave.works/). This repo is now archived. ⚠️
+
+Please see <https://www.weave.works/product/gitops/> and <https://www.weave.works/product/gitops-enterprise/> for alternatives.
+
+## Weave Kubernetes System Control - `wksctl`
 
 **Please note that the code has recently updated from ClusterAPI v1alpha1 to v1alpha3 and as a result Everything Has Changed**
 While this note is in the README you may find inconsistencies in the code, and between the code, examples and documentation.
@@ -13,7 +17,7 @@ Its features include:
 - manage addons like Weave Net or Flux
 - Sealed Secret integration
 
-## Install wksctl binary
+### Install wksctl binary
 
 1. Download the OS specific `wksctl` release package from the [release page](https://github.com/weaveworks/wksctl/releases)
 1. Unpack and add the `wksctl` binary to your path
@@ -29,7 +33,7 @@ sudo mv wksctl /usr/local/bin/
 
 Check out [our Get Started doc](https://wksctl.readthedocs.io/en/latest/get-started) to dive deeper into the different ways to operate `wksctl`.
 
-## Quick start
+### Quick start
 
 We put together a couple of guides to get you up and running with WKS in combination with [Footloose](https://github.com/weaveworks/footloose), [Vagrant](https://www.vagrantup.com) and others!
 
@@ -38,7 +42,7 @@ We put together a couple of guides to get you up and running with WKS in combina
 - [WKS and Vagrant](https://wksctl.readthedocs.io/en/latest/wks-and-vagrant)
 - [WKS on GCE](https://wksctl.readthedocs.io/en/latest/wks-on-gce)
 
-## Contributing
+### Contributing
 
 Please see [CONTRIBUTING.md](CONTRIBUTING.md) and our [Code Of Conduct](CODE_OF_CONDUCT.md).
 
@@ -47,12 +51,12 @@ Other interesting resources include:
 - [The issue tracker](https://github.com/weaveworks/wksctl/issues)
 - [Developing `wksctl`](https://wksctl.readthedocs.io/en/latest/development)
 
-## More Documentation
+### More Documentation
 
 - [Frequently asked questions](https://wksctl.readthedocs.io/en/latest/faq)
 - [Developing `wksctl`](https://wksctl.readthedocs.io/en/latest/development)
 
-## Getting Help
+### Getting Help
 
 If you have any questions about, feedback for or problems with `wksctl`:
 
@@ -62,6 +66,6 @@ If you have any questions about, feedback for or problems with `wksctl`:
 
 Your feedback is always welcome!
 
-## License
+### License
 
 [Apache 2.0](LICENSE)
